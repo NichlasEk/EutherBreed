@@ -18,10 +18,11 @@ crates/
   game_core/     Pure gameplay rules and tests
   euther_game/   First playable Bevy prototype
   abta_tools/    Local-only research tools for original format inspection
-assets/          Original EutherBreed assets
-assets/levels/   RON level definitions
-research/        Notes and non-shipping research output
-PLAN.md          Project plan and milestone outline
+assets/            Original EutherBreed assets
+assets/campaigns/  RON campaign graph definitions
+assets/levels/     RON level definitions
+research/          Notes and non-shipping research output
+PLAN.md            Project plan and milestone outline
 ```
 
 ## Run The Prototype

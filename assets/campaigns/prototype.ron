@@ -1,0 +1,14 @@
+(
+    name: "Prototype Campaign",
+    start_level: "prototype_quarantine_ward",
+    levels: [
+        (
+            id: "prototype_quarantine_ward",
+            path: "assets/levels/prototype_quarantine_ward.ron",
+        ),
+        (
+            id: "lab_access_corridor",
+            path: "assets/levels/lab_access_corridor.ron",
+        ),
+    ],
+)
