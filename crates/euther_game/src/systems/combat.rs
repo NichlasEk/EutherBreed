@@ -13,25 +13,36 @@ const PROJECTILE_RADIUS: f32 = 5.0;
 pub fn fire_syringe_round(
     mut commands: Commands,
     buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
     camera_query: Single<(&Camera, &GlobalTransform)>,
     window_query: Single<&Window, With<PrimaryWindow>>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     mut vitals: ResMut<ApothecaryVitals>,
 ) {
-    if !buttons.just_pressed(MouseButton::Left) || vitals.0.ammo <= 0 {
+    let fire_pressed = buttons.just_pressed(MouseButton::Left)
+        || keys.just_pressed(KeyCode::KeyZ)
+        || keys.just_pressed(KeyCode::KeyX)
+        || keys.just_pressed(KeyCode::KeyC);
+
+    if !fire_pressed || vitals.0.ammo <= 0 {
         return;
     }
 
     let (camera, camera_transform) = *camera_query;
-    let Some(cursor_position) = window_query.cursor_position() else {
-        return;
-    };
-    let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
-        return;
-    };
-
     let origin = apothecary_query.translation.xy();
-    let direction = (world_position - origin).normalize_or_zero();
+    let direction = window_query
+        .cursor_position()
+        .and_then(|cursor_position| {
+            camera
+                .viewport_to_world_2d(camera_transform, cursor_position)
+                .ok()
+        })
+        .map(|world_position| (world_position - origin).normalize_or_zero())
+        .unwrap_or_else(|| {
+            (apothecary_query.rotation * Vec3::X)
+                .xy()
+                .normalize_or_zero()
+        });
 
     if direction == Vec2::ZERO {
         return;

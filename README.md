@@ -105,7 +105,7 @@ Controls:
 
 - `WASD` or arrow keys: move
 - mouse: aim
-- left mouse button: fire reagent round
+- left mouse button or `Z`/`X`/`C`: fire reagent round
 - `F5`: quick save to `saves/slot1.ron`
 - `F9`: quick load from `saves/slot1.ron`
 - `Esc`: quit
