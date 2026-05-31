@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use crate::components::LevelEntity;
 use crate::resources::{
-    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
-    LocalLevelState, PersistentLevelStates, SaveSlot,
+    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, GameNotice,
+    LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use crate::setup::{load_level_from_campaign, spawn_level};
 use crate::systems::save::{build_runtime_save, write_runtime_save};
@@ -18,6 +18,7 @@ pub fn update_campaign_progress(
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
     vitals: Res<ApothecaryVitals>,
     save_slot: Res<SaveSlot>,
+    mut notice: ResMut<GameNotice>,
     level_entities: Query<Entity, With<LevelEntity>>,
 ) {
     let Some(pending_exit) = signal.pending_exit.take() else {
@@ -86,12 +87,18 @@ pub fn update_campaign_progress(
         run_position,
     );
     match write_runtime_save(&save_slot.path, &save) {
-        Ok(()) => info!("autosave written to {}", save_slot.path.display()),
-        Err(error) => warn!(
-            "autosave to {} failed: {:?}",
-            save_slot.path.display(),
-            error
-        ),
+        Ok(()) => {
+            notice.show("Autosaved", 1.4);
+            info!("autosave written to {}", save_slot.path.display());
+        }
+        Err(error) => {
+            notice.show("Autosave failed", 2.0);
+            warn!(
+                "autosave to {} failed: {:?}",
+                save_slot.path.display(),
+                error
+            );
+        }
     }
 }
 

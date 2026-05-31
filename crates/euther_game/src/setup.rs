@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use game_core::{LevelDefinition, PickupKind, TerminalKind};
 
 use crate::components::{
-    Apothecary, Contaminant, Door, ExitZone, LevelEntity, Pickup, StatusText, Terminal, Wall,
+    Apothecary, Contaminant, Door, ExitZone, LevelEntity, NoticeText, Pickup, StatusText, Terminal,
+    Wall,
 };
 use crate::resources::{CampaignRuntime, LevelRuntime, LocalLevelState};
 
@@ -28,6 +29,22 @@ pub fn setup(
             ..default()
         },
         StatusText,
+    ));
+
+    commands.spawn((
+        Text::new(""),
+        TextFont {
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.92, 0.82, 0.46)),
+        Node {
+            position_type: PositionType::Absolute,
+            right: px(18),
+            bottom: px(18),
+            ..default()
+        },
+        NoticeText,
     ));
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();

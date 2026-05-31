@@ -6,8 +6,8 @@ mod systems;
 
 use bevy::prelude::*;
 use resources::{
-    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
-    LocalLevelState, PersistentLevelStates, SaveSlot,
+    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, GameNotice,
+    LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use setup::{apothecary_spawn_position, setup};
 use systems::{
@@ -15,7 +15,7 @@ use systems::{
     interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
     quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
     resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, unlock_doors,
-    update_campaign_progress, update_status_text,
+    update_campaign_progress, update_notice_text, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -61,6 +61,11 @@ fn main() {
         return;
     }
 
+    if std::env::args().any(|arg| arg == "--notice-smoke") {
+        run_notice_smoke();
+        return;
+    }
+
     run_game();
 }
 
@@ -75,6 +80,7 @@ fn run_game() {
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
         .insert_resource(initial_save_slot())
+        .insert_resource(GameNotice::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -103,6 +109,7 @@ fn run_game() {
                 report_exit_overlap,
                 update_campaign_progress,
                 update_status_text,
+                update_notice_text,
                 quit_on_escape,
             ),
         )
@@ -119,6 +126,7 @@ fn run_headless_smoke() {
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
         .insert_resource(initial_save_slot())
+        .insert_resource(GameNotice::default())
         .add_plugins(MinimalPlugins);
 
     app.update();
@@ -372,6 +380,20 @@ fn run_entry_smoke() {
     println!("entry smoke ok");
     println!("lab_from_ward: {},{}", lab_entry.x, lab_entry.y);
     println!("ward_from_lab: {},{}", ward_entry.x, ward_entry.y);
+}
+
+fn run_notice_smoke() {
+    let mut notice = GameNotice::default();
+
+    notice.show("Saved", 1.5);
+    assert!(notice.is_visible());
+    assert_eq!(notice.text, "Saved");
+
+    notice.clear();
+    assert!(!notice.is_visible());
+
+    println!("notice smoke ok");
+    println!("visible: {}", notice.is_visible());
 }
 
 fn save_smoke_roundtrip() -> game_core::SaveGame {

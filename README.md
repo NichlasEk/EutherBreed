@@ -42,6 +42,7 @@ Validate campaign and level content:
 ```sh
 cargo run -p euther_game -- --validate-content
 cargo run -p euther_game -- --entry-smoke
+cargo run -p euther_game -- --notice-smoke
 ```
 
 Run save/load serialization smoke test:
@@ -113,6 +114,7 @@ Current prototype:
 - save files preserve run position and level-local progress per campaign level, including collected pickups, unlocked doors, and activated terminals
 - autosave writes the current slot after successful level transitions
 - exits can route the apothecary to named entry points on the destination level
+- HUD notice feedback reports quicksave, quickload, missing saves, and autosave status
 
 ## Non-Goals
 

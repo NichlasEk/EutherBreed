@@ -26,6 +26,9 @@ pub struct Wall {
 pub struct StatusText;
 
 #[derive(Component)]
+pub struct NoticeText;
+
+#[derive(Component)]
 pub struct Pickup {
     pub id: String,
     pub kind: game_core::PickupKind,

@@ -5,8 +5,8 @@ use bevy::prelude::*;
 
 use crate::components::{Apothecary, LevelEntity};
 use crate::resources::{
-    ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState,
-    PersistentLevelStates, SaveSlot,
+    ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, GameNotice, LevelRuntime,
+    LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use crate::setup::{load_level_from_campaign, spawn_level};
 
@@ -18,6 +18,7 @@ pub fn quick_save_on_key(
     level_state: Res<LocalLevelState>,
     persistent_level_states: Res<PersistentLevelStates>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
+    mut notice: ResMut<GameNotice>,
 ) {
     if !input.just_pressed(KeyCode::F5) {
         return;
@@ -32,12 +33,18 @@ pub fn quick_save_on_key(
     );
 
     match write_runtime_save(&save_slot.path, &save) {
-        Ok(()) => info!("quick save written to {}", save_slot.path.display()),
-        Err(error) => warn!(
-            "quick save to {} failed: {:?}",
-            save_slot.path.display(),
-            error
-        ),
+        Ok(()) => {
+            notice.show("Saved", 1.4);
+            info!("quick save written to {}", save_slot.path.display());
+        }
+        Err(error) => {
+            notice.show("Save failed", 2.0);
+            warn!(
+                "quick save to {} failed: {:?}",
+                save_slot.path.display(),
+                error
+            );
+        }
     }
 }
 
@@ -51,6 +58,7 @@ pub fn quick_load_on_key(
     mut persistent_level_states: ResMut<PersistentLevelStates>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
     mut level_runtime: ResMut<LevelRuntime>,
+    mut notice: ResMut<GameNotice>,
     level_entities: Query<Entity, With<LevelEntity>>,
 ) {
     if !input.just_pressed(KeyCode::F9) {
@@ -60,6 +68,7 @@ pub fn quick_load_on_key(
     let save = match game_core::SaveGame::read_from_file(&save_slot.path) {
         Ok(save) => save,
         Err(error) => {
+            notice.show("No save found", 2.0);
             warn!(
                 "quick load from {} failed: {:?}",
                 save_slot.path.display(),
@@ -101,6 +110,7 @@ pub fn quick_load_on_key(
     );
     level_runtime.loaded_level_id = Some(campaign_runtime.progress.current_level().to_string());
 
+    notice.show("Loaded", 1.4);
     info!("quick load read from {}", save_slot.path.display());
 }
 

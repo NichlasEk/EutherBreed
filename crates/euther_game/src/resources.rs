@@ -44,3 +44,34 @@ pub struct LevelRuntime {
 pub struct SaveSlot {
     pub path: PathBuf,
 }
+
+#[derive(Resource)]
+pub struct GameNotice {
+    pub text: String,
+    pub timer: Timer,
+}
+
+impl Default for GameNotice {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            timer: Timer::from_seconds(0.0, TimerMode::Once),
+        }
+    }
+}
+
+impl GameNotice {
+    pub fn show(&mut self, text: impl Into<String>, seconds: f32) {
+        self.text = text.into();
+        self.timer = Timer::from_seconds(seconds, TimerMode::Once);
+        self.timer.reset();
+    }
+
+    pub fn clear(&mut self) {
+        self.text.clear();
+    }
+
+    pub fn is_visible(&self) -> bool {
+        !self.text.is_empty()
+    }
+}
