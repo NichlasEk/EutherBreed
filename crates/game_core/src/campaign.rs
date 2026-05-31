@@ -65,6 +65,51 @@ impl CampaignDefinition {
         Ok(())
     }
 
+    pub fn load_and_validate_levels(&self) -> Result<Vec<LevelDefinition>, CampaignContentError> {
+        self.load_and_validate_levels_from_base(".")
+    }
+
+    pub fn load_and_validate_levels_from_base(
+        &self,
+        base_path: impl AsRef<Path>,
+    ) -> Result<Vec<LevelDefinition>, CampaignContentError> {
+        self.validate().map_err(CampaignContentError::Campaign)?;
+
+        let base_path = base_path.as_ref();
+        let mut levels = Vec::new();
+
+        for campaign_level in &self.levels {
+            let level_path = base_path.join(&campaign_level.path);
+            let level = LevelDefinition::from_ron_file(&level_path).map_err(|error| {
+                CampaignContentError::LevelLoad {
+                    level_id: campaign_level.id.clone(),
+                    error,
+                }
+            })?;
+
+            level
+                .validate()
+                .map_err(|error| CampaignContentError::LevelInvalid {
+                    level_id: campaign_level.id.clone(),
+                    error,
+                })?;
+
+            if level.name != campaign_level.id {
+                return Err(CampaignContentError::LevelNameMismatch {
+                    level_id: campaign_level.id.clone(),
+                    level_name: level.name,
+                });
+            }
+
+            levels.push(level);
+        }
+
+        self.validate_level_routes(&levels)
+            .map_err(CampaignContentError::Campaign)?;
+
+        Ok(levels)
+    }
+
     fn level_ids(&self) -> Result<HashSet<String>, CampaignValidationError> {
         if self.levels.is_empty() {
             return Err(CampaignValidationError::NoLevels);
@@ -134,6 +179,23 @@ impl CampaignProgress {
 pub enum CampaignLoadError {
     Read(std::io::Error),
     Parse(ron::error::SpannedError),
+}
+
+#[derive(Debug)]
+pub enum CampaignContentError {
+    Campaign(CampaignValidationError),
+    LevelLoad {
+        level_id: String,
+        error: crate::level::LevelLoadError,
+    },
+    LevelInvalid {
+        level_id: String,
+        error: crate::level::LevelValidationError,
+    },
+    LevelNameMismatch {
+        level_id: String,
+        level_name: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -221,6 +283,17 @@ mod tests {
             campaign.validate_level_routes([&quarantine, &corridor]),
             Ok(())
         );
+    }
+
+    #[test]
+    fn campaign_loads_and_validates_all_level_files() {
+        let campaign = CampaignDefinition::from_ron_file("../../assets/campaigns/prototype.ron")
+            .expect("prototype campaign should load");
+        let levels = campaign
+            .load_and_validate_levels_from_base("../..")
+            .expect("prototype campaign content should validate");
+
+        assert_eq!(levels.len(), 2);
     }
 
     #[test]

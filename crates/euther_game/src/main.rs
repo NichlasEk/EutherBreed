@@ -104,6 +104,9 @@ fn initial_contaminant_timer() -> ContaminantSpawnTimer {
 fn initial_campaign_runtime() -> CampaignRuntime {
     let definition = game_core::CampaignDefinition::from_ron_file("assets/campaigns/prototype.ron")
         .unwrap_or_else(|error| panic!("failed to load prototype campaign: {error:?}"));
+    definition
+        .load_and_validate_levels()
+        .unwrap_or_else(|error| panic!("invalid prototype campaign content: {error:?}"));
     let progress = game_core::CampaignProgress::start(&definition)
         .unwrap_or_else(|error| panic!("invalid prototype campaign: {error:?}"));
 
