@@ -227,17 +227,17 @@ fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2, level_name: &st
 
 fn level_floor_color(level_name: &str) -> Color {
     match level_name {
-        "lab_access_corridor" => Color::srgb(0.055, 0.075, 0.095),
-        "triage_vault" => Color::srgb(0.075, 0.070, 0.085),
-        _ => Color::srgb(0.08, 0.10, 0.13),
+        "lab_access_corridor" => Color::srgb(0.030, 0.042, 0.054),
+        "triage_vault" => Color::srgb(0.044, 0.038, 0.052),
+        _ => Color::srgb(0.038, 0.048, 0.060),
     }
 }
 
 fn level_wall_color(level_name: &str) -> Color {
     match level_name {
-        "lab_access_corridor" => Color::srgb(0.20, 0.31, 0.34),
-        "triage_vault" => Color::srgb(0.30, 0.25, 0.34),
-        _ => Color::srgb(0.23, 0.28, 0.32),
+        "lab_access_corridor" => Color::srgb(0.115, 0.185, 0.205),
+        "triage_vault" => Color::srgb(0.170, 0.135, 0.205),
+        _ => Color::srgb(0.135, 0.165, 0.195),
     }
 }
 
