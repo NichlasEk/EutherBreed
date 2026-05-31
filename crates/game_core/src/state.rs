@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{ApothecaryVitals, ObjectiveProgress};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RunState {
     pub vitals: ApothecaryVitals,
     pub current_level: String,
@@ -21,7 +22,7 @@ impl RunState {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LevelState {
     pub clearances: HashSet<String>,
     pub objectives: ObjectiveProgress,

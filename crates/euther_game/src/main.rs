@@ -30,6 +30,11 @@ fn main() {
         return;
     }
 
+    if std::env::args().any(|arg| arg == "--save-smoke") {
+        run_save_smoke();
+        return;
+    }
+
     run_game();
 }
 
@@ -144,6 +149,32 @@ fn validate_content() {
             level.exits.len(),
         );
     }
+}
+
+fn run_save_smoke() {
+    let mut level_state = game_core::LevelState::default();
+    level_state.grant_clearance("quarantine_green");
+    level_state.complete_objective("analyze_contaminant_sample");
+
+    let save = game_core::SaveGame::new(
+        game_core::RunState::new(
+            game_core::ApothecaryVitals::new(100, 48, 0),
+            "prototype_quarantine_ward",
+        ),
+        level_state,
+    );
+    let content = save
+        .to_ron_string()
+        .unwrap_or_else(|error| panic!("failed to serialize save smoke: {error:?}"));
+    let loaded = game_core::SaveGame::from_ron_str(&content)
+        .unwrap_or_else(|error| panic!("failed to deserialize save smoke: {error:?}"));
+
+    println!("save smoke ok");
+    println!("version: {}", loaded.version);
+    println!("current_level: {}", loaded.run_state.current_level);
+    println!("health: {}", loaded.run_state.vitals.health);
+    println!("ammo: {}", loaded.run_state.vitals.ammo);
+    println!("bio_samples: {}", loaded.run_state.vitals.bio_samples);
 }
 
 fn initial_level_runtime() -> LevelRuntime {

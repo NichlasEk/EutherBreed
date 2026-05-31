@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ObjectiveProgress {
     completed: HashSet<String>,
 }

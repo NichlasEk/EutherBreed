@@ -43,6 +43,12 @@ Validate campaign and level content:
 cargo run -p euther_game -- --validate-content
 ```
 
+Run save/load serialization smoke test:
+
+```sh
+cargo run -p euther_game -- --save-smoke
+```
+
 ## Scripts
 
 ```sh
