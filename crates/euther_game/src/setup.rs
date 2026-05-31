@@ -65,6 +65,7 @@ pub fn setup(mut commands: Commands) {
             Transform::from_xyz(exit.position.x, exit.position.y, 2.0),
             ExitZone {
                 target: exit.target.clone(),
+                required_objectives: exit.required_objectives.clone(),
             },
         ));
     }

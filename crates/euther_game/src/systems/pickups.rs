@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use game_core::PickupKind;
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
-use crate::resources::{AccessInventory, ApothecaryVitals};
+use crate::resources::{AccessInventory, ApothecaryVitals, CampaignSignal, ObjectiveState};
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
@@ -59,12 +59,28 @@ pub fn unlock_doors(
 pub fn report_exit_overlap(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     exit_query: Query<(&Transform, &ExitZone)>,
+    objective_state: Res<ObjectiveState>,
+    mut campaign_signal: ResMut<CampaignSignal>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
 
     for (transform, exit) in &exit_query {
-        if apothecary_position.distance(transform.translation.xy()) < 34.0 {
-            debug!("apothecary reached exit target={}", exit.target);
+        if apothecary_position.distance(transform.translation.xy()) >= 34.0 {
+            continue;
+        }
+
+        let requirements_met = exit
+            .required_objectives
+            .iter()
+            .all(|objective_id| objective_state.completed.contains(objective_id));
+
+        if requirements_met {
+            if campaign_signal.pending_exit_target.as_ref() != Some(&exit.target) {
+                campaign_signal.pending_exit_target = Some(exit.target.clone());
+                info!("exit target={} is ready", exit.target);
+            }
+        } else {
+            debug!("exit target={} is locked by objectives", exit.target);
         }
     }
 }

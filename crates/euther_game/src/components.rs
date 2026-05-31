@@ -30,6 +30,7 @@ pub struct Pickup {
 #[derive(Component)]
 pub struct ExitZone {
     pub target: String,
+    pub required_objectives: Vec<String>,
 }
 
 #[derive(Component)]

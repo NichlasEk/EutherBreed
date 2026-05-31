@@ -38,6 +38,7 @@ pub struct LevelExit {
     pub position: Vec2,
     pub half_extents: Vec2,
     pub target: String,
+    pub required_objectives: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -123,6 +124,20 @@ impl LevelDefinition {
             }
         }
 
+        for exit in &self.exits {
+            if exit.target.trim().is_empty() {
+                return Err(LevelValidationError::InvalidExit);
+            }
+
+            if exit
+                .required_objectives
+                .iter()
+                .any(|objective_id| objective_id.trim().is_empty())
+            {
+                return Err(LevelValidationError::InvalidObjective);
+            }
+        }
+
         Ok(())
     }
 
@@ -175,6 +190,7 @@ impl LevelDefinition {
                 position: Vec2::new(432.0, 205.0),
                 half_extents: Vec2::new(22.0, 46.0),
                 target: "lab_access_corridor".to_string(),
+                required_objectives: vec!["analyze_contaminant_sample".to_string()],
             }],
         }
     }
@@ -195,6 +211,7 @@ pub enum LevelValidationError {
     InvalidPickupAmount,
     InvalidClearanceId,
     InvalidObjective,
+    InvalidExit,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -252,5 +269,23 @@ mod tests {
                 .expect("prototype level should load");
 
         assert_eq!(level.validate(), Ok(()));
+    }
+
+    #[test]
+    fn exit_requires_objective_in_prototype_level() {
+        let level = LevelDefinition::prototype_quarantine_ward();
+
+        assert_eq!(
+            level.exits[0].required_objectives,
+            vec!["analyze_contaminant_sample".to_string()]
+        );
+    }
+
+    #[test]
+    fn validation_rejects_empty_exit_target() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.exits[0].target.clear();
+
+        assert_eq!(level.validate(), Err(LevelValidationError::InvalidExit));
     }
 }

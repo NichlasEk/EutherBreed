@@ -17,3 +17,8 @@ pub struct AccessInventory {
 pub struct ObjectiveState {
     pub completed: HashSet<String>,
 }
+
+#[derive(Resource, Default)]
+pub struct CampaignSignal {
+    pub pending_exit_target: Option<String>,
+}

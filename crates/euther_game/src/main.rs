@@ -5,7 +5,9 @@ mod setup;
 mod systems;
 
 use bevy::prelude::*;
-use resources::{AccessInventory, ApothecaryVitals, ContaminantSpawnTimer, ObjectiveState};
+use resources::{
+    AccessInventory, ApothecaryVitals, CampaignSignal, ContaminantSpawnTimer, ObjectiveState,
+};
 use setup::setup;
 use systems::{
     aim_apothecary, collect_pickups, fire_syringe_round, interact_with_terminals, move_apothecary,
@@ -32,6 +34,7 @@ fn run_game() {
         .insert_resource(initial_contaminant_timer())
         .insert_resource(AccessInventory::default())
         .insert_resource(ObjectiveState::default())
+        .insert_resource(CampaignSignal::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -69,6 +72,7 @@ fn run_headless_smoke() {
         .insert_resource(initial_contaminant_timer())
         .insert_resource(AccessInventory::default())
         .insert_resource(ObjectiveState::default())
+        .insert_resource(CampaignSignal::default())
         .add_plugins(MinimalPlugins);
 
     app.update();
