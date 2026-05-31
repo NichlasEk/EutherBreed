@@ -25,6 +25,10 @@ research/          Notes and non-shipping research output
 PLAN.md            Project plan and milestone outline
 ```
 
+## License
+
+EutherBreed is currently private/prototype software. See [LICENSE](LICENSE) for the all-rights-reserved project terms.
+
 ## Run The Prototype
 
 ```sh

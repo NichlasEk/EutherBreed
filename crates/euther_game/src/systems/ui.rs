@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use game_core::ExitReadiness;
 
 use crate::components::{
-    Apothecary, Door, ExitZone, NoticeText, ObjectiveText, PromptText, SectionText, StatusText,
-    Terminal,
+    Apothecary, BioText, Door, ExitZone, HudGaugeKind, HudGaugePip, KeysText, NoticeText,
+    ObjectiveText, PromptText, SectionText, Terminal,
 };
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, CurrentLevelMap, GameNotice, LevelRuntime, LocalLevelState,
@@ -14,20 +14,49 @@ const PROMPT_RADIUS: f32 = 72.0;
 pub fn update_status_text(
     level_state: Res<LocalLevelState>,
     vitals: Res<ApothecaryVitals>,
-    mut text_query: Query<&mut Text, With<StatusText>>,
+    mut pip_query: Query<(&HudGaugePip, &mut BackgroundColor, &mut BorderColor)>,
+    mut keys_query: Query<&mut Text, With<KeysText>>,
+    mut bio_query: Query<&mut Text, (With<BioText>, Without<KeysText>)>,
 ) {
     if !vitals.is_changed() && !level_state.is_changed() {
         return;
     }
 
-    for mut text in &mut text_query {
-        **text = format!(
-            "1UP <{}>  AMMO <{}>  KEYS {:02}  BIO {:02}",
-            meter(vitals.0.health, 100, 12),
-            meter(vitals.0.ammo, 48, 12),
-            level_state.0.clearances.len(),
-            vitals.0.bio_samples
-        );
+    for (pip, mut color, mut border) in &mut pip_query {
+        let active = match pip.kind {
+            HudGaugeKind::Health => active_pip(pip.index, vitals.0.health, 100, 12),
+            HudGaugeKind::Ammo => active_pip(pip.index, vitals.0.ammo, 48, 12),
+        };
+
+        let (fill, edge) = match (pip.kind, active) {
+            (HudGaugeKind::Health, true) => (
+                Color::srgb(0.95, 0.39, 0.14),
+                Color::srgba(1.0, 0.70, 0.24, 0.68),
+            ),
+            (HudGaugeKind::Ammo, true) => (
+                Color::srgb(1.00, 0.55, 0.08),
+                Color::srgba(1.0, 0.75, 0.24, 0.70),
+            ),
+            (HudGaugeKind::Health, false) => (
+                Color::srgb(0.20, 0.08, 0.04),
+                Color::srgba(0.52, 0.24, 0.12, 0.46),
+            ),
+            (HudGaugeKind::Ammo, false) => (
+                Color::srgb(0.22, 0.10, 0.03),
+                Color::srgba(0.58, 0.30, 0.10, 0.46),
+            ),
+        };
+
+        color.0 = fill;
+        *border = BorderColor::all(edge);
+    }
+
+    for mut text in &mut keys_query {
+        **text = format!("{:02}", level_state.0.clearances.len());
+    }
+
+    for mut text in &mut bio_query {
+        **text = format!("{:02}", vitals.0.bio_samples);
     }
 }
 
@@ -47,11 +76,7 @@ pub fn update_section_text(
     };
 
     for mut text in &mut text_query {
-        **text = format!(
-            "SECTION <{}>  EXITS <{}>",
-            runtime.progress.current_level(),
-            exits
-        );
+        **text = format!("{} | exits {}", runtime.progress.current_level(), exits);
     }
 }
 
@@ -96,9 +121,9 @@ pub fn update_objective_text(
                 .find(|objective| {
                     objective.required && !level_state.0.objectives.is_complete(&objective.id)
                 })
-                .map(|objective| format!("OBJ <{}>", objective.label))
+                .map(|objective| objective.label.clone())
         })
-        .unwrap_or_else(|| "OBJ <Reach the exit>".to_string());
+        .unwrap_or_else(|| "Reach the exit".to_string());
 
     for mut current_text in &mut text_query {
         **current_text = text.clone();
@@ -177,8 +202,7 @@ fn prompt_for_position(
     None
 }
 
-fn meter(value: i32, max: i32, width: usize) -> String {
+fn active_pip(index: usize, value: i32, max: i32, width: usize) -> bool {
     let filled = ((value.max(0) as f32 / max.max(1) as f32) * width as f32).ceil() as usize;
-    let filled = filled.min(width);
-    format!("{}{}", "/".repeat(filled), ".".repeat(width - filled))
+    index < filled.min(width)
 }

@@ -44,8 +44,23 @@ pub struct Wall {
     pub half_extents: Vec2,
 }
 
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum HudGaugeKind {
+    Health,
+    Ammo,
+}
+
 #[derive(Component)]
-pub struct StatusText;
+pub struct HudGaugePip {
+    pub kind: HudGaugeKind,
+    pub index: usize,
+}
+
+#[derive(Component)]
+pub struct KeysText;
+
+#[derive(Component)]
+pub struct BioText;
 
 #[derive(Component)]
 pub struct NoticeText;

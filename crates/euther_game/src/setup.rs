@@ -4,9 +4,9 @@ use game_core::{LevelDefinition, PickupKind, TerminalKind};
 use std::time::Duration;
 
 use crate::components::{
-    Apothecary, ApothecaryAnimation, Contaminant, ContaminantAnimation, Door, ExitZone,
-    LevelEntity, NoticeText, ObjectiveText, Pickup, PromptText, SectionText, StatusText, Terminal,
-    Wall,
+    Apothecary, ApothecaryAnimation, BioText, Contaminant, ContaminantAnimation, Door, ExitZone,
+    HudGaugeKind, HudGaugePip, KeysText, LevelEntity, NoticeText, ObjectiveText, Pickup,
+    PromptText, SectionText, Terminal, Wall,
 };
 use crate::resources::{
     CampaignRuntime, ContaminantSpawnTimer, CurrentLevelMap, LevelRuntime, LocalLevelState,
@@ -80,13 +80,25 @@ pub fn load_level_from_campaign(
 
 fn spawn_hud(commands: &mut Commands, asset_server: &AssetServer) {
     spawn_hud_rail(commands, asset_server, HudRail::Top, |parent| {
-        spawn_hud_segment(
+        spawn_hud_gauge(
             parent,
             asset_server,
-            "1UP <////////////>",
-            StatusText,
-            Color::srgb(0.90, 0.94, 0.88),
-            430.0,
+            "1UP",
+            HudGaugeKind::Health,
+            Color::srgb(0.95, 0.39, 0.14),
+            Color::srgb(0.20, 0.08, 0.04),
+            178.0,
+            12,
+        );
+        spawn_hud_gauge(
+            parent,
+            asset_server,
+            "AMMO",
+            HudGaugeKind::Ammo,
+            Color::srgb(1.00, 0.55, 0.08),
+            Color::srgb(0.22, 0.10, 0.03),
+            218.0,
+            12,
         );
         spawn_static_hud_segment(
             parent,
@@ -94,6 +106,24 @@ fn spawn_hud(commands: &mut Commands, asset_server: &AssetServer) {
             "LIVES 01",
             Color::srgb(0.55, 0.68, 0.68),
             132.0,
+        );
+        spawn_hud_value_segment(
+            parent,
+            asset_server,
+            "KEYS",
+            "00",
+            KeysText,
+            Color::srgb(0.64, 0.84, 0.82),
+            104.0,
+        );
+        spawn_hud_value_segment(
+            parent,
+            asset_server,
+            "BIO",
+            "00",
+            BioText,
+            Color::srgb(0.62, 0.95, 0.82),
+            92.0,
         );
         spawn_static_hud_segment(
             parent,
@@ -105,18 +135,20 @@ fn spawn_hud(commands: &mut Commands, asset_server: &AssetServer) {
     });
 
     spawn_hud_rail(commands, asset_server, HudRail::Bottom, |parent| {
-        spawn_hud_segment(
+        spawn_hud_value_segment(
             parent,
             asset_server,
-            "OBJ <standby>",
+            "OBJ",
+            "standby",
             ObjectiveText,
             Color::srgb(0.90, 0.84, 0.52),
             390.0,
         );
-        spawn_hud_segment(
+        spawn_hud_value_segment(
             parent,
             asset_server,
-            "SECTION <loading>",
+            "SECTION",
+            "loading",
             SectionText,
             Color::srgb(0.55, 0.75, 0.92),
             360.0,
@@ -219,6 +251,117 @@ fn spawn_hud_segment<M: Component>(
         .with_children(|segment| {
             segment.spawn((
                 Text::new(text),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(color),
+                marker,
+            ));
+        });
+}
+
+fn spawn_hud_gauge(
+    parent: &mut ChildSpawnerCommands,
+    asset_server: &AssetServer,
+    label: &'static str,
+    kind: HudGaugeKind,
+    active_color: Color,
+    _inactive_color: Color,
+    width: f32,
+    pip_count: usize,
+) {
+    parent
+        .spawn((
+            Node {
+                width: px(width),
+                height: px(26),
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                column_gap: px(7),
+                padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                ..default()
+            },
+            hud_segment_image(asset_server, HUD_SEGMENT_CYAN_PATH),
+            BackgroundColor(Color::srgba(0.04, 0.055, 0.055, 0.90)),
+            BorderColor::all(Color::srgba(0.18, 0.85, 0.78, 0.45)),
+        ))
+        .with_children(|segment| {
+            segment.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.82, 0.92, 0.88)),
+                Node {
+                    width: px(46),
+                    ..default()
+                },
+            ));
+
+            segment
+                .spawn(Node {
+                    display: Display::Flex,
+                    align_items: AlignItems::Center,
+                    column_gap: px(3),
+                    ..default()
+                })
+                .with_children(|pips| {
+                    for index in 0..pip_count {
+                        pips.spawn((
+                            Node {
+                                width: px(7),
+                                height: px(14),
+                                border: UiRect::all(px(1)),
+                                ..default()
+                            },
+                            BackgroundColor(active_color),
+                            BorderColor::all(Color::srgba(1.0, 0.72, 0.26, 0.58)),
+                            HudGaugePip { kind, index },
+                        ));
+                    }
+                });
+        });
+}
+
+fn spawn_hud_value_segment<M: Component>(
+    parent: &mut ChildSpawnerCommands,
+    asset_server: &AssetServer,
+    label: &'static str,
+    value: &'static str,
+    marker: M,
+    color: Color,
+    width: f32,
+) {
+    parent
+        .spawn((
+            Node {
+                width: px(width),
+                height: px(26),
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                column_gap: px(8),
+                padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                ..default()
+            },
+            hud_segment_image(asset_server, HUD_SEGMENT_STEEL_PATH),
+            BackgroundColor(Color::srgba(0.035, 0.040, 0.044, 0.90)),
+            BorderColor::all(Color::srgba(0.62, 0.68, 0.64, 0.55)),
+        ))
+        .with_children(|segment| {
+            segment.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.42, 0.54, 0.54)),
+            ));
+            segment.spawn((
+                Text::new(value),
                 TextFont {
                     font_size: 16.0,
                     ..default()
