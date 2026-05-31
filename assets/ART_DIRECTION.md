@@ -45,6 +45,7 @@ First build a small but cohesive prototype atlas:
 - `assets/concepts/apothecary_hero_concept.png`: first transparent concept pass for the adult female apothecary hero. Use as direction reference, not final runtime sprite.
 - `assets/sprites/source/apothecary_hero_concept_chroma.png`: generated chroma-key source for the concept image.
 - `assets/sprites/apothecary_topdown.png`: first transparent runtime sprite pass for the player character. It is wired into the prototype and should be judged in motion.
+- `assets/sprites/apothecary/walk_0.png` through `walk_5.png`: runtime walk frames derived from the top-down apothecary sprite, with subtle side-to-side body motion and highlight variation for movement readability.
 - `assets/sprites/source/apothecary_topdown_chroma.png`: generated chroma-key source for the runtime sprite.
 - `assets/sprites/biomech/`: first cohesive biomechanical runtime sprite pass for contaminants, reagent projectiles, pickups, terminals, doors, exits, floor panels, and wall panels.
 - `assets/sprites/source/biomech_sheet_chroma.png`: generated chroma-key source for the biomechanical runtime sprite pass.

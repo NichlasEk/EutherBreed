@@ -11,9 +11,9 @@ use resources::{
 };
 use setup::{apothecary_spawn_position, setup};
 use systems::{
-    aim_apothecary, apply_save_to_runtime, collect_pickups, fire_syringe_round,
-    interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
-    quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
+    aim_apothecary, animate_apothecary_walk, apply_save_to_runtime, collect_pickups,
+    fire_syringe_round, interact_with_terminals, move_apothecary, move_contaminants,
+    move_projectiles, quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
     resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, sync_camera_to_level,
     toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress, update_contaminant_hit_flash,
     update_notice_text, update_section_text, update_status_text,
@@ -103,6 +103,7 @@ fn run_game() {
             (
                 move_apothecary,
                 aim_apothecary,
+                animate_apothecary_walk,
                 fire_syringe_round,
                 move_projectiles,
                 spawn_contaminants,

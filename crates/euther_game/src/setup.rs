@@ -3,8 +3,8 @@ use game_core::{LevelDefinition, PickupKind, TerminalKind};
 use std::time::Duration;
 
 use crate::components::{
-    Apothecary, Contaminant, ContaminantAnimation, Door, ExitZone, LevelEntity, NoticeText, Pickup,
-    SectionText, StatusText, Terminal, Wall,
+    Apothecary, ApothecaryAnimation, Contaminant, ContaminantAnimation, Door, ExitZone,
+    LevelEntity, NoticeText, Pickup, SectionText, StatusText, Terminal, Wall,
 };
 use crate::resources::{CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState};
 
@@ -142,6 +142,7 @@ pub fn spawn_level(
         apothecary_sprite(asset_server),
         Transform::from_xyz(apothecary_start.x, apothecary_start.y, 10.0),
         Apothecary,
+        apothecary_animation(asset_server),
         LevelEntity,
     ));
 
@@ -240,10 +241,18 @@ pub fn apothecary_spawn_position(level: &LevelDefinition, entry_id: Option<&str>
 }
 
 fn apothecary_sprite(asset_server: &AssetServer) -> Sprite {
-    let mut sprite = Sprite::from_image(asset_server.load("sprites/apothecary_topdown.png"));
-    sprite.rect = Some(Rect::new(244.0, 348.0, 1113.0, 802.0));
+    let mut sprite = Sprite::from_image(asset_server.load("sprites/apothecary/walk_0.png"));
     sprite.custom_size = Some(Vec2::new(96.0, 50.0));
     sprite
+}
+
+fn apothecary_animation(asset_server: &AssetServer) -> ApothecaryAnimation {
+    ApothecaryAnimation {
+        frames: (0..=5)
+            .map(|index| asset_server.load(format!("sprites/apothecary/walk_{index}.png")))
+            .collect(),
+        phase: 0.0,
+    }
 }
 
 fn image_sprite(

@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use bevy::window::{MonitorSelection, PrimaryWindow, WindowMode};
 
-use crate::components::{Apothecary, Wall};
+use crate::components::{Apothecary, ApothecaryAnimation, Wall};
 use crate::geometry::circle_hits_any_wall;
 
 const APOTHECARY_SPEED: f32 = 260.0;
 const APOTHECARY_RADIUS: f32 = 22.0;
+const APOTHECARY_WALK_FPS: f32 = 9.5;
 
 pub fn move_apothecary(
     input: Res<ButtonInput<KeyCode>>,
@@ -78,6 +79,36 @@ pub fn aim_apothecary(
         if direction.length_squared() > 0.001 {
             transform.rotation = Quat::from_rotation_z(direction.y.atan2(direction.x));
         }
+    }
+}
+
+pub fn animate_apothecary_walk(
+    input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut query: Query<(&mut Sprite, &mut ApothecaryAnimation), With<Apothecary>>,
+) {
+    let walking = input.pressed(KeyCode::KeyW)
+        || input.pressed(KeyCode::ArrowUp)
+        || input.pressed(KeyCode::KeyS)
+        || input.pressed(KeyCode::ArrowDown)
+        || input.pressed(KeyCode::KeyA)
+        || input.pressed(KeyCode::ArrowLeft)
+        || input.pressed(KeyCode::KeyD)
+        || input.pressed(KeyCode::ArrowRight);
+
+    for (mut sprite, mut animation) in &mut query {
+        if animation.frames.is_empty() {
+            continue;
+        }
+
+        if walking {
+            animation.phase += time.delta_secs() * APOTHECARY_WALK_FPS;
+        } else {
+            animation.phase = 0.0;
+        }
+
+        let frame = animation.phase as usize % animation.frames.len();
+        sprite.image = animation.frames[frame].clone();
     }
 }
 

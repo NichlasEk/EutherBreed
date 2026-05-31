@@ -8,7 +8,10 @@ pub mod save;
 pub mod terminals;
 pub mod ui;
 
-pub use apothecary::{aim_apothecary, move_apothecary, quit_on_escape, toggle_fullscreen_on_f11};
+pub use apothecary::{
+    aim_apothecary, animate_apothecary_walk, move_apothecary, quit_on_escape,
+    toggle_fullscreen_on_f11,
+};
 pub use camera::sync_camera_to_level;
 pub use combat::{
     fire_syringe_round, move_projectiles, resolve_projectile_hits, update_contaminant_hit_flash,

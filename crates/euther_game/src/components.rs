@@ -4,6 +4,12 @@ use bevy::prelude::*;
 pub struct Apothecary;
 
 #[derive(Component)]
+pub struct ApothecaryAnimation {
+    pub frames: Vec<Handle<Image>>,
+    pub phase: f32,
+}
+
+#[derive(Component)]
 pub struct LevelEntity;
 
 #[derive(Component)]
