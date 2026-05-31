@@ -101,9 +101,7 @@ fn run_game() {
         .add_systems(
             Update,
             (
-                move_apothecary,
-                aim_apothecary,
-                animate_apothecary_walk,
+                (move_apothecary, aim_apothecary, animate_apothecary_walk).chain(),
                 fire_syringe_round,
                 move_projectiles,
                 spawn_contaminants,

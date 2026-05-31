@@ -6,7 +6,9 @@ use crate::geometry::circle_hits_any_wall;
 
 const APOTHECARY_SPEED: f32 = 260.0;
 const APOTHECARY_RADIUS: f32 = 22.0;
-const APOTHECARY_WALK_FPS: f32 = 9.5;
+const APOTHECARY_WALK_FPS: f32 = 11.0;
+const APOTHECARY_WALK_SWAY_RADIANS: f32 = 0.085;
+const APOTHECARY_WALK_SIDE_OFFSET: f32 = 3.2;
 
 pub fn move_apothecary(
     input: Res<ButtonInput<KeyCode>>,
@@ -85,7 +87,7 @@ pub fn aim_apothecary(
 pub fn animate_apothecary_walk(
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<(&mut Sprite, &mut ApothecaryAnimation), With<Apothecary>>,
+    mut query: Query<(&mut Transform, &mut Sprite, &mut ApothecaryAnimation), With<Apothecary>>,
 ) {
     let walking = input.pressed(KeyCode::KeyW)
         || input.pressed(KeyCode::ArrowUp)
@@ -96,10 +98,14 @@ pub fn animate_apothecary_walk(
         || input.pressed(KeyCode::KeyD)
         || input.pressed(KeyCode::ArrowRight);
 
-    for (mut sprite, mut animation) in &mut query {
+    for (mut transform, mut sprite, mut animation) in &mut query {
         if animation.frames.is_empty() {
             continue;
         }
+
+        transform.translation.x -= animation.visual_offset.x;
+        transform.translation.y -= animation.visual_offset.y;
+        animation.visual_offset = Vec2::ZERO;
 
         if walking {
             animation.phase += time.delta_secs() * APOTHECARY_WALK_FPS;
@@ -109,6 +115,19 @@ pub fn animate_apothecary_walk(
 
         let frame = animation.phase as usize % animation.frames.len();
         sprite.image = animation.frames[frame].clone();
+
+        if walking {
+            let stride =
+                (animation.phase * std::f32::consts::TAU / animation.frames.len() as f32).sin();
+            let side = transform.rotation * Vec3::Y;
+            animation.visual_offset = side.xy() * stride * APOTHECARY_WALK_SIDE_OFFSET;
+            transform.translation.x += animation.visual_offset.x;
+            transform.translation.y += animation.visual_offset.y;
+            transform.rotation *= Quat::from_rotation_z(stride * APOTHECARY_WALK_SWAY_RADIANS);
+            transform.scale = Vec3::new(1.0, 1.0 + stride.abs() * 0.045, 1.0);
+        } else {
+            transform.scale = Vec3::ONE;
+        }
     }
 }
 

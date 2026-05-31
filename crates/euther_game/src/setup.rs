@@ -252,6 +252,7 @@ fn apothecary_animation(asset_server: &AssetServer) -> ApothecaryAnimation {
             .map(|index| asset_server.load(format!("sprites/apothecary/walk_{index}.png")))
             .collect(),
         phase: 0.0,
+        visual_offset: Vec2::ZERO,
     }
 }
 

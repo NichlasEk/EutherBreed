@@ -7,6 +7,7 @@ pub struct Apothecary;
 pub struct ApothecaryAnimation {
     pub frames: Vec<Handle<Image>>,
     pub phase: f32,
+    pub visual_offset: Vec2,
 }
 
 #[derive(Component)]
