@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use game_core::LevelDefinition;
 use game_core::{
     ApothecaryVitals as CoreApothecaryVitals, CampaignDefinition, CampaignProgress, LevelState,
 };
@@ -44,6 +45,11 @@ pub struct LevelRuntime {
     pub dynamic_spawn_cursor: usize,
     pub dynamic_spawn_interval_seconds: f32,
     pub available_exits: Vec<String>,
+}
+
+#[derive(Resource, Default)]
+pub struct CurrentLevelMap {
+    pub level: Option<LevelDefinition>,
 }
 
 #[derive(Resource)]

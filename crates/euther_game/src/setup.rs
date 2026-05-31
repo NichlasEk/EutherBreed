@@ -6,7 +6,9 @@ use crate::components::{
     Apothecary, ApothecaryAnimation, Contaminant, ContaminantAnimation, Door, ExitZone,
     LevelEntity, NoticeText, Pickup, SectionText, StatusText, Terminal, Wall,
 };
-use crate::resources::{CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState};
+use crate::resources::{
+    CampaignRuntime, ContaminantSpawnTimer, CurrentLevelMap, LevelRuntime, LocalLevelState,
+};
 
 const FLOOR_VISUAL_BLEED: Vec2 = Vec2::new(960.0, 480.0);
 const FLOOR_TILE_PATHS: [&str; 4] = [
@@ -22,6 +24,7 @@ pub fn setup(
     campaign_runtime: Res<CampaignRuntime>,
     level_state: Res<LocalLevelState>,
     mut level_runtime: ResMut<LevelRuntime>,
+    mut current_level_map: ResMut<CurrentLevelMap>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
 ) {
     commands.spawn(Camera2d);
@@ -84,7 +87,12 @@ pub fn setup(
         None,
         None,
     );
-    update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
+    update_level_runtime(
+        &mut level_runtime,
+        &mut current_level_map,
+        &level,
+        &mut contaminant_timer,
+    );
 
     level_runtime.loaded_level_id = Some(current_level_id);
 }
@@ -339,6 +347,7 @@ fn visual_floor_size(playable_size: Vec2) -> Vec2 {
 
 pub fn update_level_runtime(
     level_runtime: &mut LevelRuntime,
+    current_level_map: &mut CurrentLevelMap,
     level: &LevelDefinition,
     contaminant_timer: &mut ContaminantSpawnTimer,
 ) {
@@ -349,6 +358,7 @@ pub fn update_level_runtime(
     level_runtime.dynamic_spawn_cursor = 0;
     level_runtime.dynamic_spawn_interval_seconds = interval;
     level_runtime.available_exits = level.exits.iter().map(|exit| exit.target.clone()).collect();
+    current_level_map.level = Some(level.clone());
 
     if interval > 0.0 {
         contaminant_timer

@@ -6,17 +6,18 @@ mod systems;
 
 use bevy::prelude::*;
 use resources::{
-    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, GameNotice,
-    LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
+    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
+    GameNotice, LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use setup::{apothecary_spawn_position, setup};
 use systems::{
     aim_apothecary, animate_apothecary_walk, apply_save_to_runtime, collect_pickups,
     fire_syringe_round, interact_with_terminals, move_apothecary, move_contaminants,
-    move_projectiles, quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
-    resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, sync_camera_to_level,
-    toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress, update_contaminant_hit_flash,
-    update_notice_text, update_section_text, update_status_text,
+    move_projectiles, quick_load_on_key, quick_save_on_key, quit_on_escape,
+    render_map_overlay_on_shift, report_exit_overlap, resolve_contaminant_contact,
+    resolve_projectile_hits, restart_current_level_on_death, spawn_contaminants,
+    sync_camera_to_level, toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress,
+    update_contaminant_hit_flash, update_notice_text, update_section_text, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -80,6 +81,7 @@ fn run_game() {
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
+        .insert_resource(CurrentLevelMap::default())
         .insert_resource(initial_save_slot())
         .insert_resource(GameNotice::default())
         .add_plugins(
@@ -121,10 +123,12 @@ fn run_game() {
                 interact_with_terminals,
                 report_exit_overlap,
                 update_campaign_progress,
+                restart_current_level_on_death,
                 update_status_text,
                 update_section_text,
                 update_notice_text,
                 sync_camera_to_level,
+                render_map_overlay_on_shift,
                 toggle_fullscreen_on_f11,
                 quit_on_escape,
             ),
@@ -141,6 +145,7 @@ fn run_headless_smoke() {
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
+        .insert_resource(CurrentLevelMap::default())
         .insert_resource(initial_save_slot())
         .insert_resource(GameNotice::default())
         .add_plugins(MinimalPlugins);

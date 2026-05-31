@@ -106,6 +106,8 @@ Controls:
 - `WASD` or arrow keys: move
 - mouse: aim
 - left mouse button or `Z`/`X`/`C`: fire reagent round
+- hold `Shift`: show map overlay
+- `R`: restart current section after health reaches 0
 - `F5`: quick save to `saves/slot1.ron`
 - `F9`: quick load from `saves/slot1.ron`
 - `F11`: toggle borderless fullscreen
@@ -119,6 +121,8 @@ Current prototype:
 - reagent projectiles
 - contaminant enemies that chase the player
 - health, ammo, and bio-sample counters
+- hold-to-view map overlay on `Shift`
+- death state with `R` restart for the current section
 - basic room walls, pickups, security keycard, locked door, terminal objective, objective-gated exits, level reloads, and collision
 - save files preserve run position and level-local progress per campaign level, including collected pickups, unlocked doors, activated terminals, and killed contaminants
 - autosave writes the current slot after successful level transitions

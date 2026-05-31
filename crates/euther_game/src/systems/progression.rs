@@ -2,11 +2,14 @@ use bevy::prelude::*;
 
 use crate::components::LevelEntity;
 use crate::resources::{
-    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, GameNotice,
-    LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
+    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
+    GameNotice, LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use crate::setup::{load_level_from_campaign, spawn_level, update_level_runtime};
 use crate::systems::save::{build_runtime_save, write_runtime_save};
+
+const RESTART_HEALTH: i32 = 100;
+const RESTART_AMMO: i32 = 48;
 
 pub fn update_campaign_progress(
     mut commands: Commands,
@@ -14,6 +17,7 @@ pub fn update_campaign_progress(
     mut signal: ResMut<CampaignSignal>,
     mut runtime: ResMut<CampaignRuntime>,
     mut level_runtime: ResMut<LevelRuntime>,
+    mut current_level_map: ResMut<CurrentLevelMap>,
     mut level_state: ResMut<LocalLevelState>,
     mut persistent_level_states: ResMut<PersistentLevelStates>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
@@ -78,7 +82,12 @@ pub fn update_campaign_progress(
         None,
     );
     level_runtime.loaded_level_id = Some(runtime.progress.current_level().to_string());
-    update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
+    update_level_runtime(
+        &mut level_runtime,
+        &mut current_level_map,
+        &level,
+        &mut contaminant_timer,
+    );
 
     let run_position =
         crate::setup::apothecary_spawn_position(&level, level_runtime.pending_entry_id.as_deref());
@@ -103,6 +112,57 @@ pub fn update_campaign_progress(
             );
         }
     }
+}
+
+pub fn restart_current_level_on_death(
+    mut commands: Commands,
+    input: Res<ButtonInput<KeyCode>>,
+    asset_server: Res<AssetServer>,
+    mut vitals: ResMut<ApothecaryVitals>,
+    runtime: Res<CampaignRuntime>,
+    mut level_runtime: ResMut<LevelRuntime>,
+    mut current_level_map: ResMut<CurrentLevelMap>,
+    mut level_state: ResMut<LocalLevelState>,
+    mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
+    mut notice: ResMut<GameNotice>,
+    level_entities: Query<Entity, With<LevelEntity>>,
+) {
+    if vitals.0.health > 0 {
+        return;
+    }
+
+    if !input.just_pressed(KeyCode::KeyR) {
+        notice.show("Suit breached - press R to restart section", 0.4);
+        return;
+    }
+
+    for entity in &level_entities {
+        commands.entity(entity).despawn();
+    }
+
+    vitals.0 = game_core::ApothecaryVitals::new(RESTART_HEALTH, RESTART_AMMO, 0);
+    level_state.0 = game_core::LevelState::default();
+    contaminant_timer.0.reset();
+
+    let level = load_level_from_campaign(&runtime, runtime.progress.current_level());
+    spawn_level(
+        &mut commands,
+        &asset_server,
+        &level,
+        &level_state.0,
+        None,
+        None,
+    );
+    level_runtime.loaded_level_id = Some(runtime.progress.current_level().to_string());
+    level_runtime.pending_entry_id = None;
+    update_level_runtime(
+        &mut level_runtime,
+        &mut current_level_map,
+        &level,
+        &mut contaminant_timer,
+    );
+
+    notice.show("Section restarted", 1.4);
 }
 
 fn load_level_local_state(

@@ -5,8 +5,8 @@ use bevy::prelude::*;
 
 use crate::components::{Apothecary, LevelEntity};
 use crate::resources::{
-    ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, GameNotice, LevelRuntime,
-    LocalLevelState, PersistentLevelStates, SaveSlot,
+    ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, CurrentLevelMap, GameNotice,
+    LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use crate::setup::{load_level_from_campaign, spawn_level, update_level_runtime};
 
@@ -58,6 +58,7 @@ pub fn quick_load_on_key(
     mut level_state: ResMut<LocalLevelState>,
     mut persistent_level_states: ResMut<PersistentLevelStates>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
+    mut current_level_map: ResMut<CurrentLevelMap>,
     mut level_runtime: ResMut<LevelRuntime>,
     mut notice: ResMut<GameNotice>,
     level_entities: Query<Entity, With<LevelEntity>>,
@@ -111,7 +112,12 @@ pub fn quick_load_on_key(
         Some(save.run_state.position),
     );
     level_runtime.loaded_level_id = Some(campaign_runtime.progress.current_level().to_string());
-    update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
+    update_level_runtime(
+        &mut level_runtime,
+        &mut current_level_map,
+        &level,
+        &mut contaminant_timer,
+    );
 
     notice.show("Loaded", 1.4);
     info!("quick load read from {}", save_slot.path.display());

@@ -14,6 +14,9 @@ pub struct ApothecaryAnimation {
 pub struct LevelEntity;
 
 #[derive(Component)]
+pub struct MapOverlay;
+
+#[derive(Component)]
 pub struct Projectile {
     pub velocity: Vec2,
     pub lifetime: Timer,
