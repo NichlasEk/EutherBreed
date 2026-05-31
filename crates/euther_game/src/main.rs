@@ -7,12 +7,13 @@ mod systems;
 use bevy::prelude::*;
 use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
-    LocalLevelState,
+    LocalLevelState, SaveSlot,
 };
 use setup::setup;
 use systems::{
-    aim_apothecary, collect_pickups, fire_syringe_round, interact_with_terminals, move_apothecary,
-    move_contaminants, move_projectiles, quit_on_escape, report_exit_overlap,
+    aim_apothecary, apply_save_to_runtime, collect_pickups, fire_syringe_round,
+    interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
+    quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
     resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, unlock_doors,
     update_campaign_progress, update_status_text,
 };
@@ -45,6 +46,11 @@ fn main() {
         return;
     }
 
+    if let Some(path) = argument_value("--runtime-save-smoke") {
+        run_runtime_save_smoke(path);
+        return;
+    }
+
     run_game();
 }
 
@@ -57,6 +63,7 @@ fn run_game() {
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
+        .insert_resource(initial_save_slot())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -78,6 +85,8 @@ fn run_game() {
                 resolve_projectile_hits,
                 resolve_contaminant_contact,
                 collect_pickups,
+                quick_save_on_key,
+                quick_load_on_key,
                 unlock_doors,
                 interact_with_terminals,
                 report_exit_overlap,
@@ -97,6 +106,7 @@ fn run_headless_smoke() {
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
+        .insert_resource(initial_save_slot())
         .add_plugins(MinimalPlugins);
 
     app.update();
@@ -187,22 +197,7 @@ fn run_load_file_smoke(path: String) {
     let mut campaign_runtime = initial_campaign_runtime();
     let mut level_state = LocalLevelState::default();
 
-    apply_save_to_runtime(&save, &mut vitals, &mut campaign_runtime, &mut level_state);
-
-    println!("load file smoke ok");
-    println!("path: {path}");
-    print_runtime_summary(&vitals, &campaign_runtime, &level_state);
-}
-
-fn apply_save_to_runtime(
-    save: &game_core::SaveGame,
-    vitals: &mut ApothecaryVitals,
-    campaign_runtime: &mut CampaignRuntime,
-    level_state: &mut LocalLevelState,
-) {
-    campaign_runtime
-        .progress
-        .travel_to(&campaign_runtime.definition, &save.run_state.current_level)
+    apply_save_to_runtime(&save, &mut vitals, &mut campaign_runtime, &mut level_state)
         .unwrap_or_else(|error| {
             panic!(
                 "failed to apply save level {}: {error:?}",
@@ -210,8 +205,51 @@ fn apply_save_to_runtime(
             )
         });
 
-    vitals.0 = save.run_state.vitals.clone();
-    level_state.0 = save.level_state.clone();
+    println!("load file smoke ok");
+    println!("path: {path}");
+    print_runtime_summary(&vitals, &campaign_runtime, &level_state);
+}
+
+fn run_runtime_save_smoke(path: String) {
+    let vitals = initial_vitals();
+    let campaign_runtime = initial_campaign_runtime();
+    let mut level_state = LocalLevelState::default();
+    level_state.0.grant_clearance("quarantine_green");
+    level_state
+        .0
+        .complete_objective("analyze_contaminant_sample");
+
+    let save = systems::save::build_runtime_save(&vitals, &campaign_runtime, &level_state);
+    systems::save::write_runtime_save(&path, &save).unwrap_or_else(|error| {
+        panic!("failed to write runtime save smoke file {path}: {error:?}")
+    });
+
+    let loaded = game_core::SaveGame::read_from_file(&path)
+        .unwrap_or_else(|error| panic!("failed to read runtime save smoke file {path}: {error:?}"));
+    let mut loaded_vitals = initial_vitals();
+    let mut loaded_campaign_runtime = initial_campaign_runtime();
+    let mut loaded_level_state = LocalLevelState::default();
+
+    apply_save_to_runtime(
+        &loaded,
+        &mut loaded_vitals,
+        &mut loaded_campaign_runtime,
+        &mut loaded_level_state,
+    )
+    .unwrap_or_else(|error| {
+        panic!(
+            "failed to apply runtime save level {}: {error:?}",
+            loaded.run_state.current_level
+        )
+    });
+
+    println!("runtime save smoke ok");
+    println!("path: {path}");
+    print_runtime_summary(
+        &loaded_vitals,
+        &loaded_campaign_runtime,
+        &loaded_level_state,
+    );
 }
 
 fn save_smoke_roundtrip() -> game_core::SaveGame {
@@ -283,5 +321,11 @@ fn argument_value(flag: &str) -> Option<String> {
 fn initial_level_runtime() -> LevelRuntime {
     LevelRuntime {
         loaded_level_id: None,
+    }
+}
+
+fn initial_save_slot() -> SaveSlot {
+    SaveSlot {
+        path: systems::save::default_save_path(),
     }
 }

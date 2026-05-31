@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use game_core::{
     ApothecaryVitals as CoreApothecaryVitals, CampaignDefinition, CampaignProgress, LevelState,
 };
+use std::path::PathBuf;
 
 #[derive(Resource)]
 pub struct ApothecaryVitals(pub CoreApothecaryVitals);
@@ -26,4 +27,9 @@ pub struct CampaignRuntime {
 #[derive(Resource)]
 pub struct LevelRuntime {
     pub loaded_level_id: Option<String>,
+}
+
+#[derive(Resource)]
+pub struct SaveSlot {
+    pub path: PathBuf,
 }

@@ -49,6 +49,7 @@ Run save/load serialization smoke test:
 cargo run -p euther_game -- --save-smoke
 cargo run -p euther_game -- --save-file-smoke /tmp/euther_save_smoke.ron
 cargo run -p euther_game -- --load-file-smoke /tmp/euther_save_smoke.ron
+cargo run -p euther_game -- --runtime-save-smoke /tmp/euther_runtime_save_smoke.ron
 ```
 
 ## Scripts
@@ -95,6 +96,8 @@ Controls:
 - `WASD` or arrow keys: move
 - mouse: aim
 - left mouse button: fire reagent round
+- `F5`: quick save to `saves/slot1.ron`
+- `F9`: quick load from `saves/slot1.ron`
 - `Esc`: quit
 
 Current prototype:
