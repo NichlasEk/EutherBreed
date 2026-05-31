@@ -67,7 +67,7 @@ pub fn unlock_doors(
 
         door.locked = false;
         level_state.0.unlock_door(door.id.clone());
-        sprite.color = Color::srgba(0.20, 0.58, 0.62, 0.25);
+        sprite.color = Color::srgba(0.55, 0.85, 0.80, 0.36);
         commands.entity(entity).remove::<Wall>();
         notice.show("Door unlocked", 1.4);
     }

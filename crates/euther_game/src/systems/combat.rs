@@ -12,6 +12,7 @@ const PROJECTILE_RADIUS: f32 = 5.0;
 
 pub fn fire_syringe_round(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
     camera_query: Single<(&Camera, &GlobalTransform)>,
@@ -50,16 +51,18 @@ pub fn fire_syringe_round(
 
     vitals.0.spend_round();
 
+    let mut sprite =
+        Sprite::from_image(asset_server.load("sprites/biomech/projectile_reagent.png"));
+    sprite.custom_size = Some(Vec2::new(30.0, 9.0));
+
     commands.spawn((
-        Sprite::from_color(
-            Color::srgb(0.90, 0.98, 0.76),
-            Vec2::splat(PROJECTILE_RADIUS * 2.0),
-        ),
+        sprite,
         Transform::from_xyz(
             origin.x + direction.x * 28.0,
             origin.y + direction.y * 28.0,
             20.0,
-        ),
+        )
+        .with_rotation(Quat::from_rotation_z(direction.y.atan2(direction.x))),
         Projectile {
             velocity: direction * PROJECTILE_SPEED,
             lifetime: Timer::from_seconds(PROJECTILE_LIFETIME, TimerMode::Once),
@@ -109,7 +112,7 @@ pub fn resolve_projectile_hits(
 
             contaminant.health -= 1;
             contaminant.hit_flash = Timer::from_seconds(0.12, TimerMode::Once);
-            sprite.color = Color::srgb(1.0, 0.72, 0.78);
+            sprite.color = Color::srgb(1.0, 0.55, 0.52);
             commands.entity(projectile_entity).despawn();
 
             if contaminant.health <= 0 {
@@ -139,7 +142,7 @@ pub fn update_contaminant_hit_flash(
         contaminant.hit_flash.tick(time.delta());
 
         if contaminant.hit_flash.is_finished() {
-            sprite.color = Color::srgb(0.78, 0.26, 0.42);
+            sprite.color = Color::WHITE;
         }
     }
 }

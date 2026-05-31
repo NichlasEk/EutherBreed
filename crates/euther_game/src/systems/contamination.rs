@@ -11,6 +11,7 @@ const MAX_DYNAMIC_CONTAMINANTS: usize = 4;
 
 pub fn spawn_contaminants(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     time: Res<Time>,
     mut timer: ResMut<ContaminantSpawnTimer>,
     mut level_runtime: ResMut<LevelRuntime>,
@@ -41,11 +42,11 @@ pub fn spawn_contaminants(
         [level_runtime.dynamic_spawn_cursor % level_runtime.dynamic_spawn_points.len()];
     level_runtime.dynamic_spawn_cursor += 1;
 
+    let mut sprite = Sprite::from_image(asset_server.load("sprites/biomech/contaminant.png"));
+    sprite.custom_size = Some(Vec2::new(54.0, 44.0));
+
     commands.spawn((
-        Sprite::from_color(
-            Color::srgb(0.78, 0.26, 0.42),
-            Vec2::splat(CONTAMINANT_RADIUS * 2.0),
-        ),
+        sprite,
         Transform::from_xyz(position.x, position.y, 15.0),
         Contaminant {
             id: None,

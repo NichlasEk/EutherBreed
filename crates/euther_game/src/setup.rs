@@ -114,7 +114,12 @@ pub fn spawn_level(
         run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
 
     commands.spawn((
-        Sprite::from_color(level_floor_color(&level.name), Vec2::new(900.0, 520.0)),
+        image_sprite(
+            asset_server,
+            "sprites/biomech/tile_floor_biomech.png",
+            Vec2::new(900.0, 520.0),
+            level_floor_tint(&level.name),
+        ),
         Transform::from_xyz(0.0, 0.0, -10.0),
         LevelEntity,
     ));
@@ -127,7 +132,13 @@ pub fn spawn_level(
     ));
 
     for wall in &level.walls {
-        spawn_wall(commands, wall.center, wall.half_extents * 2.0, &level.name);
+        spawn_wall(
+            commands,
+            asset_server,
+            wall.center,
+            wall.half_extents * 2.0,
+            &level.name,
+        );
     }
 
     for contaminant in &level.contaminants {
@@ -135,7 +146,12 @@ pub fn spawn_level(
             continue;
         }
 
-        spawn_contaminant(commands, Some(contaminant.id.clone()), contaminant.position);
+        spawn_contaminant(
+            commands,
+            asset_server,
+            Some(contaminant.id.clone()),
+            contaminant.position,
+        );
     }
 
     for pickup in &level.pickups {
@@ -145,6 +161,7 @@ pub fn spawn_level(
 
         spawn_pickup(
             commands,
+            asset_server,
             pickup.id.clone(),
             pickup.position,
             pickup.kind.clone(),
@@ -157,6 +174,7 @@ pub fn spawn_level(
             && !level_state.has_clearance(&door.clearance_id);
         spawn_door(
             commands,
+            asset_server,
             door.id.clone(),
             door.position,
             door.half_extents * 2.0,
@@ -168,6 +186,7 @@ pub fn spawn_level(
     for terminal in &level.terminals {
         spawn_terminal(
             commands,
+            asset_server,
             terminal.id.clone(),
             terminal.position,
             terminal.kind.clone(),
@@ -177,9 +196,11 @@ pub fn spawn_level(
 
     for exit in &level.exits {
         commands.spawn((
-            Sprite::from_color(
-                Color::srgba(0.30, 0.72, 0.95, 0.55),
+            image_sprite(
+                asset_server,
+                "sprites/biomech/exit_marker.png",
                 exit.half_extents * 2.0,
+                Color::srgba(0.72, 1.0, 0.95, 0.90),
             ),
             Transform::from_xyz(exit.position.x, exit.position.y, 2.0),
             ExitZone {
@@ -211,6 +232,18 @@ fn apothecary_sprite(asset_server: &AssetServer) -> Sprite {
     sprite
 }
 
+fn image_sprite(
+    asset_server: &AssetServer,
+    path: &'static str,
+    size: Vec2,
+    color: Color,
+) -> Sprite {
+    let mut sprite = Sprite::from_image(asset_server.load(path));
+    sprite.custom_size = Some(size);
+    sprite.color = color;
+    sprite
+}
+
 pub fn update_level_runtime(
     level_runtime: &mut LevelRuntime,
     level: &LevelDefinition,
@@ -230,9 +263,20 @@ pub fn update_level_runtime(
     contaminant_timer.0.reset();
 }
 
-fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2, level_name: &str) {
+fn spawn_wall(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    center: Vec2,
+    size: Vec2,
+    level_name: &str,
+) {
     commands.spawn((
-        Sprite::from_color(level_wall_color(level_name), size),
+        image_sprite(
+            asset_server,
+            "sprites/biomech/tile_wall_biomech.png",
+            size,
+            level_wall_tint(level_name),
+        ),
         Transform::from_xyz(center.x, center.y, -5.0),
         Wall {
             half_extents: size * 0.5,
@@ -241,25 +285,35 @@ fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2, level_name: &st
     ));
 }
 
-fn level_floor_color(level_name: &str) -> Color {
+fn level_floor_tint(level_name: &str) -> Color {
     match level_name {
-        "lab_access_corridor" => Color::srgb(0.030, 0.042, 0.054),
-        "triage_vault" => Color::srgb(0.044, 0.038, 0.052),
-        _ => Color::srgb(0.038, 0.048, 0.060),
+        "lab_access_corridor" => Color::srgba(0.22, 0.32, 0.36, 0.82),
+        "triage_vault" => Color::srgba(0.30, 0.24, 0.34, 0.82),
+        _ => Color::srgba(0.25, 0.30, 0.34, 0.82),
     }
 }
 
-fn level_wall_color(level_name: &str) -> Color {
+fn level_wall_tint(level_name: &str) -> Color {
     match level_name {
-        "lab_access_corridor" => Color::srgb(0.115, 0.185, 0.205),
-        "triage_vault" => Color::srgb(0.170, 0.135, 0.205),
-        _ => Color::srgb(0.135, 0.165, 0.195),
+        "lab_access_corridor" => Color::srgba(0.42, 0.62, 0.66, 0.92),
+        "triage_vault" => Color::srgba(0.58, 0.46, 0.66, 0.92),
+        _ => Color::srgba(0.50, 0.56, 0.62, 0.92),
     }
 }
 
-fn spawn_contaminant(commands: &mut Commands, id: Option<String>, position: Vec2) {
+fn spawn_contaminant(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    id: Option<String>,
+    position: Vec2,
+) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.78, 0.26, 0.42), Vec2::splat(36.0)),
+        image_sprite(
+            asset_server,
+            "sprites/biomech/contaminant.png",
+            Vec2::new(54.0, 44.0),
+            Color::WHITE,
+        ),
         Transform::from_xyz(position.x, position.y, 15.0),
         Contaminant {
             id,
@@ -270,16 +324,31 @@ fn spawn_contaminant(commands: &mut Commands, id: Option<String>, position: Vec2
     ));
 }
 
-fn spawn_pickup(commands: &mut Commands, id: String, position: Vec2, kind: PickupKind) {
-    let color = match kind {
-        PickupKind::ReagentRounds(_) => Color::srgb(0.90, 0.86, 0.42),
-        PickupKind::MedGel(_) => Color::srgb(0.28, 0.88, 0.64),
-        PickupKind::BioSample => Color::srgb(0.72, 0.36, 0.90),
-        PickupKind::SecurityKeycard(_) => Color::srgb(0.36, 0.62, 0.96),
+fn spawn_pickup(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    id: String,
+    position: Vec2,
+    kind: PickupKind,
+) {
+    let (path, size) = match kind {
+        PickupKind::ReagentRounds(_) => (
+            "sprites/biomech/pickup_reagent_rounds.png",
+            Vec2::new(22.0, 32.0),
+        ),
+        PickupKind::MedGel(_) => ("sprites/biomech/pickup_med_gel.png", Vec2::new(22.0, 34.0)),
+        PickupKind::BioSample => (
+            "sprites/biomech/pickup_bio_sample.png",
+            Vec2::new(20.0, 40.0),
+        ),
+        PickupKind::SecurityKeycard(_) => (
+            "sprites/biomech/pickup_security_keycard.png",
+            Vec2::new(34.0, 26.0),
+        ),
     };
 
     commands.spawn((
-        Sprite::from_color(color, Vec2::splat(18.0)),
+        image_sprite(asset_server, path, size, Color::WHITE),
         Transform::from_xyz(position.x, position.y, 6.0),
         Pickup { id, kind },
         LevelEntity,
@@ -288,6 +357,7 @@ fn spawn_pickup(commands: &mut Commands, id: String, position: Vec2, kind: Picku
 
 fn spawn_door(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     id: String,
     center: Vec2,
     size: Vec2,
@@ -295,13 +365,18 @@ fn spawn_door(
     locked: bool,
 ) {
     let color = if locked {
-        Color::srgb(0.20, 0.58, 0.62)
+        Color::WHITE
     } else {
-        Color::srgba(0.20, 0.58, 0.62, 0.25)
+        Color::srgba(0.55, 0.85, 0.80, 0.36)
     };
 
     let mut entity = commands.spawn((
-        Sprite::from_color(color, size),
+        image_sprite(
+            asset_server,
+            "sprites/biomech/door_quarantine.png",
+            size,
+            color,
+        ),
         Transform::from_xyz(center.x, center.y, -3.0),
         Door {
             id,
@@ -320,19 +395,25 @@ fn spawn_door(
 
 fn spawn_terminal(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     id: String,
     position: Vec2,
     kind: TerminalKind,
     objective_id: Option<String>,
 ) {
-    let color = match kind {
-        TerminalKind::LabAnalyzer => Color::srgb(0.35, 0.82, 0.72),
-        TerminalKind::ShipLog => Color::srgb(0.50, 0.64, 0.95),
-        TerminalKind::SupplyConsole => Color::srgb(0.84, 0.72, 0.35),
+    let (path, color) = match kind {
+        TerminalKind::LabAnalyzer => ("sprites/biomech/terminal_lab_analyzer.png", Color::WHITE),
+        TerminalKind::ShipLog => (
+            "sprites/biomech/terminal_lab_analyzer.png",
+            Color::srgba(0.78, 0.88, 1.0, 1.0),
+        ),
+        TerminalKind::SupplyConsole => {
+            ("sprites/biomech/terminal_supply_console.png", Color::WHITE)
+        }
     };
 
     commands.spawn((
-        Sprite::from_color(color, Vec2::new(30.0, 22.0)),
+        image_sprite(asset_server, path, Vec2::new(42.0, 40.0), color),
         Transform::from_xyz(position.x, position.y, 4.0),
         Terminal {
             id,

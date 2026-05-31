@@ -46,6 +46,8 @@ First build a small but cohesive prototype atlas:
 - `assets/sprites/source/apothecary_hero_concept_chroma.png`: generated chroma-key source for the concept image.
 - `assets/sprites/apothecary_topdown.png`: first transparent runtime sprite pass for the player character. It is wired into the prototype and should be judged in motion.
 - `assets/sprites/source/apothecary_topdown_chroma.png`: generated chroma-key source for the runtime sprite.
+- `assets/sprites/biomech/`: first cohesive biomechanical runtime sprite pass for contaminants, reagent projectiles, pickups, terminals, doors, exits, floor panels, and wall panels.
+- `assets/sprites/source/biomech_sheet_chroma.png`: generated chroma-key source for the biomechanical runtime sprite pass.
 
 ## Suggested Resolutions
 
