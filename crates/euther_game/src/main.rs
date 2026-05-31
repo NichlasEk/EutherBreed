@@ -14,7 +14,7 @@ use systems::{
     aim_apothecary, apply_save_to_runtime, collect_pickups, fire_syringe_round,
     interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
     quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
-    resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants,
+    resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, sync_camera_to_level,
     toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress, update_contaminant_hit_flash,
     update_notice_text, update_section_text, update_status_text,
 };
@@ -125,6 +125,7 @@ fn run_game() {
                 update_status_text,
                 update_section_text,
                 update_notice_text,
+                sync_camera_to_level,
                 toggle_fullscreen_on_f11,
                 quit_on_escape,
             ),
@@ -512,6 +513,8 @@ fn initial_level_runtime() -> LevelRuntime {
     LevelRuntime {
         loaded_level_id: None,
         pending_entry_id: None,
+        camera_center: Vec2::ZERO,
+        camera_size: Vec2::new(900.0, 520.0),
         dynamic_spawn_points: Vec::new(),
         dynamic_spawn_cursor: 0,
         dynamic_spawn_interval_seconds: CONTAMINANT_SPAWN_SECONDS,

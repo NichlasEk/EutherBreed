@@ -289,6 +289,8 @@ pub fn update_level_runtime(
     contaminant_timer: &mut ContaminantSpawnTimer,
 ) {
     let interval = level.spawn_interval_seconds.unwrap_or(0.0);
+    level_runtime.camera_center = level.bounds.center;
+    level_runtime.camera_size = level.bounds.half_extents * 2.0;
     level_runtime.dynamic_spawn_points = level.spawn_points.clone();
     level_runtime.dynamic_spawn_cursor = 0;
     level_runtime.dynamic_spawn_interval_seconds = interval;
