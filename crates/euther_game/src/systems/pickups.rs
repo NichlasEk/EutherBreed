@@ -2,7 +2,9 @@ use bevy::prelude::*;
 use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
-use crate::resources::{ApothecaryVitals, CampaignSignal, LocalLevelState, PendingExit};
+use crate::resources::{
+    ApothecaryVitals, CampaignSignal, GameNotice, LocalLevelState, PendingExit,
+};
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
@@ -13,6 +15,7 @@ pub fn collect_pickups(
     pickup_query: Query<(Entity, &Transform, &Pickup)>,
     mut vitals: ResMut<ApothecaryVitals>,
     mut level_state: ResMut<LocalLevelState>,
+    mut notice: ResMut<GameNotice>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
 
@@ -24,11 +27,21 @@ pub fn collect_pickups(
         }
 
         match pickup.kind {
-            PickupKind::ReagentRounds(amount) => vitals.0.add_ammo(amount),
-            PickupKind::MedGel(amount) => vitals.0.heal(amount, 100),
-            PickupKind::BioSample => vitals.0.collect_bio_sample(),
+            PickupKind::ReagentRounds(amount) => {
+                vitals.0.add_ammo(amount);
+                notice.show(format!("Reagent rounds +{amount}"), 1.4);
+            }
+            PickupKind::MedGel(amount) => {
+                vitals.0.heal(amount, 100);
+                notice.show(format!("Med-gel +{amount}"), 1.4);
+            }
+            PickupKind::BioSample => {
+                vitals.0.collect_bio_sample();
+                notice.show("Bio-sample secured", 1.4);
+            }
             PickupKind::SecurityKeycard(ref clearance_id) => {
                 level_state.0.grant_clearance(clearance_id.clone());
+                notice.show("Security clearance acquired", 1.6);
             }
         }
 
@@ -41,6 +54,7 @@ pub fn unlock_doors(
     mut commands: Commands,
     mut level_state: ResMut<LocalLevelState>,
     mut door_query: Query<(Entity, &mut Door, &mut Sprite), With<Wall>>,
+    mut notice: ResMut<GameNotice>,
 ) {
     if !level_state.is_changed() {
         return;
@@ -55,6 +69,7 @@ pub fn unlock_doors(
         level_state.0.unlock_door(door.id.clone());
         sprite.color = Color::srgba(0.20, 0.58, 0.62, 0.25);
         commands.entity(entity).remove::<Wall>();
+        notice.show("Door unlocked", 1.4);
     }
 }
 
@@ -63,6 +78,7 @@ pub fn report_exit_overlap(
     exit_query: Query<(&Transform, &ExitZone)>,
     level_state: Res<LocalLevelState>,
     mut campaign_signal: ResMut<CampaignSignal>,
+    mut notice: ResMut<GameNotice>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
 
@@ -91,6 +107,7 @@ pub fn report_exit_overlap(
                 }
             }
             ExitReadiness::Blocked { missing } => {
+                notice.show("Exit locked: objective incomplete", 1.6);
                 debug!(
                     "exit target={} is locked by objectives {:?}",
                     exit.target, missing

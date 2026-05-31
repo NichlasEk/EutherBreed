@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::components::{Apothecary, Terminal};
-use crate::resources::LocalLevelState;
+use crate::resources::{GameNotice, LocalLevelState};
 
 const TERMINAL_INTERACTION_RADIUS: f32 = 42.0;
 
@@ -10,6 +10,7 @@ pub fn interact_with_terminals(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     terminal_query: Query<(&Transform, &Terminal)>,
     mut level_state: ResMut<LocalLevelState>,
+    mut notice: ResMut<GameNotice>,
 ) {
     if !input.just_pressed(KeyCode::KeyE) {
         return;
@@ -23,16 +24,20 @@ pub fn interact_with_terminals(
         }
 
         if !level_state.0.activate_terminal(terminal.id.clone()) {
+            notice.show("Terminal already processed", 1.4);
             continue;
         }
 
         if let Some(objective_id) = &terminal.objective_id {
             if level_state.0.complete_objective(objective_id.clone()) {
+                notice.show("Objective complete", 1.6);
                 info!(
                     "terminal {:?} completed objective {}",
                     terminal.kind, objective_id
                 );
             }
+        } else {
+            notice.show("Terminal accessed", 1.4);
         }
     }
 }
