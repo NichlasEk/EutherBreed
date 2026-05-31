@@ -8,6 +8,8 @@ use crate::components::{
 };
 use crate::resources::{CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState};
 
+const FLOOR_VISUAL_BLEED: Vec2 = Vec2::new(960.0, 480.0);
+
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -112,23 +114,21 @@ pub fn spawn_level(
 ) {
     let apothecary_start =
         run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
+    let floor_size = visual_floor_size(level.bounds.half_extents * 2.0);
 
     spawn_tiled_area(
         commands,
         asset_server,
         "sprites/biomech/tile_floor_biomech.png",
         level.bounds.center,
-        level.bounds.half_extents * 2.0,
+        floor_size,
         Vec2::splat(128.0),
         -10.0,
         level_floor_tint(&level.name),
     );
 
     commands.spawn((
-        Sprite::from_color(
-            Color::srgba(0.0, 0.0, 0.0, 0.18),
-            level.bounds.half_extents * 2.0,
-        ),
+        Sprite::from_color(Color::srgba(0.0, 0.0, 0.0, 0.18), floor_size),
         Transform::from_xyz(level.bounds.center.x, level.bounds.center.y, -9.0),
         LevelEntity,
     ));
@@ -281,6 +281,10 @@ fn spawn_tiled_area(
             ));
         }
     }
+}
+
+fn visual_floor_size(playable_size: Vec2) -> Vec2 {
+    playable_size + FLOOR_VISUAL_BLEED
 }
 
 pub fn update_level_runtime(
