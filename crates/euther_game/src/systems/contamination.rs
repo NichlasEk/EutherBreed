@@ -63,6 +63,7 @@ pub fn spawn_contaminants(
 
 pub fn move_contaminants(
     time: Res<Time>,
+    vitals: Res<ApothecaryVitals>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     wall_query: Query<(&Transform, &Wall), Without<Contaminant>>,
     mut contaminant_query: Query<
@@ -70,6 +71,10 @@ pub fn move_contaminants(
         (With<Contaminant>, Without<Apothecary>),
     >,
 ) {
+    if vitals.0.health == 0 {
+        return;
+    }
+
     let target = apothecary_query.translation.xy();
 
     for (mut transform, mut sprite, mut animation) in &mut contaminant_query {
@@ -147,6 +152,10 @@ pub fn resolve_contaminant_contact(
     mut vitals: ResMut<ApothecaryVitals>,
     mut notice: ResMut<GameNotice>,
 ) {
+    if vitals.0.health == 0 {
+        return;
+    }
+
     let apothecary_position = apothecary_query.translation.xy();
 
     for (entity, transform) in &contaminant_query {

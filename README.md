@@ -120,9 +120,11 @@ Current prototype:
 - three connected prototype sections: quarantine ward, lab access corridor, and triage vault
 - reagent projectiles
 - contaminant enemies that chase the player
+- muzzle/impact/death flashes for combat feedback
 - health, ammo, and bio-sample counters
 - hold-to-view map overlay on `Shift`
 - death state with `R` restart for the current section
+- quarantine ward has a first designed loop with keycard pressure, terminal pressure, and exit routing
 - basic room walls, pickups, security keycard, locked door, terminal objective, objective-gated exits, level reloads, and collision
 - save files preserve run position and level-local progress per campaign level, including collected pickups, unlocked doors, activated terminals, and killed contaminants
 - autosave writes the current slot after successful level transitions

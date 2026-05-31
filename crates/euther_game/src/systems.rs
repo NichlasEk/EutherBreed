@@ -16,6 +16,7 @@ pub use apothecary::{
 pub use camera::sync_camera_to_level;
 pub use combat::{
     fire_syringe_round, move_projectiles, resolve_projectile_hits, update_contaminant_hit_flash,
+    update_effect_lifetimes,
 };
 pub use contamination::{move_contaminants, resolve_contaminant_contact, spawn_contaminants};
 pub use map::render_map_overlay_on_shift;

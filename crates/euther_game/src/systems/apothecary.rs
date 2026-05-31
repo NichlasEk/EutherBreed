@@ -3,6 +3,7 @@ use bevy::window::{MonitorSelection, PrimaryWindow, WindowMode};
 
 use crate::components::{Apothecary, ApothecaryAnimation, Wall};
 use crate::geometry::circle_hits_any_wall;
+use crate::resources::ApothecaryVitals;
 
 const APOTHECARY_SPEED: f32 = 260.0;
 const APOTHECARY_RADIUS: f32 = 22.0;
@@ -13,9 +14,14 @@ const APOTHECARY_WALK_SIDE_OFFSET: f32 = 3.2;
 pub fn move_apothecary(
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
+    vitals: Res<ApothecaryVitals>,
     wall_query: Query<(&Transform, &Wall), Without<Apothecary>>,
     mut query: Query<&mut Transform, With<Apothecary>>,
 ) {
+    if vitals.0.health == 0 {
+        return;
+    }
+
     let mut movement = Vec2::ZERO;
 
     if input.pressed(KeyCode::KeyW) || input.pressed(KeyCode::ArrowUp) {

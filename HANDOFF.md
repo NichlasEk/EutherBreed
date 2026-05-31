@@ -9,7 +9,7 @@ Repository:
 - Path: `/home/nichlas/EutherBreed`
 - Remote: `https://github.com/NichlasEk/EutherBreed`
 - Branch: `main`
-- Latest gameplay commit before this handoff: `e9e8715 Add level spawns and combat feedback`
+- Latest gameplay commit before this handoff: `e718af4 Add map overlay and section restart`
 - Local branch is ahead of `origin/main`.
 
 The project is a Rust/Bevy prototype for an original top-down sci-fi survival shooter. The game is inspired by the structure and tension of Alien Breed: Tower Assault, but it must not reuse the original name, story, graphics, audio, maps, or extracted assets.
@@ -43,6 +43,27 @@ The player character is the ship's apothecary: a medical and biochemical special
   - capped temporary contaminants
   - dynamic contaminants do not pollute persistent killed-enemy state
 - Basic level theme tinting and section/exit HUD text.
+- Hold-to-view map overlay:
+  - `Shift`: shows a simple generated map for the current level
+  - built from EutherBreed level data, not copied from original game resources
+- Death/restart:
+  - health 0 shows a restart prompt
+  - `R`: restarts the current section with fresh local state
+- First visible character/enemy/tile sprite pass is in place.
+- Current apothecary walk sprite frames are intentionally left for manual replacement; code supports frame cycling.
+
+## Explicitly Deferred
+
+Do **not** spend the next pass polishing the map UI. The map is intentionally functional only for now.
+
+Deferred map work:
+
+- fog of war / known-vs-unknown rooms
+- map labels and icon polish
+- nicer frame, legend, blinking player marker
+- extracted/reference-informed map renderer work
+
+Next effort should drive the playable slice: level flow, pressure, combat feel, enemy pacing, objectives, and balancing.
 
 ## Important Commands
 
@@ -80,9 +101,19 @@ cargo run -p euther_game -- --notice-smoke
 
 ## Last Verification
 
-`./scripts/check.sh` passed after commit `e9e8715`.
+The most recent focused verification passed after the map/restart pass:
 
-The suite included:
+- `cargo fmt --check`
+- `cargo check -p euther_game`
+- `cargo run -p euther_game -- --validate-content`
+- `cargo run -p euther_game -- --headless-smoke`
+- `cargo run -p euther_game -- --save-smoke`
+- `cargo run -p euther_game -- --entry-smoke`
+- `cargo test -p euther_game`
+
+Older full-suite verification via `./scripts/check.sh` passed after commit `e9e8715`.
+
+That suite included:
 
 - `cargo fmt --check`
 - `cargo check`
@@ -129,20 +160,27 @@ env WGPU_BACKEND=gl cargo run -p euther_game
 
 ## Recommended Next Development Pass
 
-Focus on a real visual foundation before deeper gameplay:
+Keep driving the first playable slice:
 
-- Replace colored rectangles with a small original sprite set:
-  - apothecary
-  - contaminant
-  - wall/floor tiles
-  - door
-  - terminal
-  - pickups
-  - exit marker
-- Keep sprites high-readable rather than detailed at first.
-- Add a simple sprite atlas or asset convention under `assets/`.
-- Preserve the current Bevy gameplay systems while swapping visuals underneath.
-- Avoid importing assets from `/home/nichlas/AlienBrT/`; use it only as local reference.
+- Improve `prototype_quarantine_ward` layout into a real loop:
+  - start pressure
+  - risky keycard side room
+  - locked route / shortcut
+  - terminal objective deeper in the section
+  - exit pressure after objective completion
+- Tune contamination pressure:
+  - slower before keycard
+  - faster after keycard
+  - strongest after terminal objective
+- Add combat feel:
+  - muzzle flash
+  - impact flash
+  - enemy death pop / sample pickup feedback
+- Balance:
+  - ammo and med-gel amounts
+  - spawn interval
+  - starting enemy positions
+  - exit distance and objective friction
 
 ## Useful Design Notes
 
@@ -155,4 +193,3 @@ Focus on a real visual foundation before deeper gameplay:
   - med/logistics supplies
 - The current goal is still a playable vertical slice, not a full remake.
 - Tauri remains planned, but the Bevy prototype should become credible first.
-

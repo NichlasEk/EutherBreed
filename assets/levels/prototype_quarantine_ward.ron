@@ -4,41 +4,64 @@
         center: (0.0, 0.0),
         half_extents: (450.0, 260.0),
     ),
-    apothecary_start: (-300.0, -170.0),
+    apothecary_start: (-360.0, -205.0),
     walls: [
         (center: (0.0, 274.0), half_extents: (460.0, 14.0)),
         (center: (0.0, -274.0), half_extents: (460.0, 14.0)),
         (center: (-474.0, 0.0), half_extents: (14.0, 274.0)),
         (center: (474.0, 0.0), half_extents: (14.0, 274.0)),
-        (center: (0.0, 82.0), half_extents: (115.0, 13.0)),
-        (center: (-180.0, -110.0), half_extents: (90.0, 12.0)),
-        (center: (220.0, -64.0), half_extents: (13.0, 90.0)),
+        (center: (0.0, 82.0), half_extents: (128.0, 13.0)),
+        (center: (-270.0, -74.0), half_extents: (13.0, 135.0)),
+        (center: (-150.0, -154.0), half_extents: (105.0, 12.0)),
+        (center: (-92.0, 18.0), half_extents: (13.0, 78.0)),
+        (center: (118.0, -28.0), half_extents: (132.0, 12.0)),
+        (center: (230.0, -112.0), half_extents: (13.0, 92.0)),
+        (center: (308.0, 68.0), half_extents: (118.0, 12.0)),
+        (center: (342.0, -174.0), half_extents: (88.0, 12.0)),
     ],
     contaminants: [
         (
             id: "ward_contaminant_alpha",
-            position: (320.0, 180.0),
+            position: (242.0, 154.0),
         ),
         (
             id: "ward_contaminant_beta",
-            position: (380.0, -185.0),
+            position: (370.0, -210.0),
+        ),
+        (
+            id: "ward_contaminant_gamma",
+            position: (-338.0, 126.0),
+        ),
+        (
+            id: "ward_contaminant_delta",
+            position: (52.0, -204.0),
         ),
     ],
     pickups: [
         (
             id: "ward_rounds_a",
-            position: (-70.0, -190.0),
-            kind: ReagentRounds(12),
+            position: (-198.0, -216.0),
+            kind: ReagentRounds(10),
         ),
         (
             id: "ward_medgel_a",
-            position: (310.0, 80.0),
-            kind: MedGel(25),
+            position: (350.0, 116.0),
+            kind: MedGel(20),
         ),
         (
             id: "ward_quarantine_green_keycard",
-            position: (-310.0, 165.0),
+            position: (-362.0, 172.0),
             kind: SecurityKeycard("quarantine_green"),
+        ),
+        (
+            id: "ward_rounds_b",
+            position: (98.0, -204.0),
+            kind: ReagentRounds(8),
+        ),
+        (
+            id: "ward_bio_sample_a",
+            position: (356.0, -132.0),
+            kind: BioSample,
         ),
     ],
     doors: [
@@ -53,7 +76,7 @@
     terminals: [
         (
             id: "ward_lab_analyzer",
-            position: (360.0, -96.0),
+            position: (360.0, -216.0),
             kind: LabAnalyzer,
             objective_id: Some("analyze_contaminant_sample"),
         ),
@@ -85,6 +108,8 @@
     spawn_points: [
         (-405.0, 205.0),
         (405.0, -205.0),
+        (-40.0, -205.0),
+        (405.0, 112.0),
     ],
-    spawn_interval_seconds: Some(4.5),
+    spawn_interval_seconds: Some(5.5),
 )

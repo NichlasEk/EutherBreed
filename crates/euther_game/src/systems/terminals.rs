@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::components::{Apothecary, Terminal};
-use crate::resources::{GameNotice, LocalLevelState};
+use crate::resources::{ContaminantSpawnTimer, GameNotice, LevelRuntime, LocalLevelState};
 
 const TERMINAL_INTERACTION_RADIUS: f32 = 42.0;
 
@@ -10,6 +10,8 @@ pub fn interact_with_terminals(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     terminal_query: Query<(&Transform, &Terminal)>,
     mut level_state: ResMut<LocalLevelState>,
+    mut level_runtime: ResMut<LevelRuntime>,
+    mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
     mut notice: ResMut<GameNotice>,
 ) {
     if !input.just_pressed(KeyCode::KeyE) {
@@ -30,7 +32,17 @@ pub fn interact_with_terminals(
 
         if let Some(objective_id) = &terminal.objective_id {
             if level_state.0.complete_objective(objective_id.clone()) {
-                notice.show("Objective complete", 1.6);
+                if level_runtime.dynamic_spawn_interval_seconds > 0.0 {
+                    level_runtime.dynamic_spawn_interval_seconds =
+                        level_runtime.dynamic_spawn_interval_seconds.min(2.2);
+                    contaminant_timer
+                        .0
+                        .set_duration(std::time::Duration::from_secs_f32(
+                            level_runtime.dynamic_spawn_interval_seconds,
+                        ));
+                    contaminant_timer.0.reset();
+                }
+                notice.show("Objective complete - contamination surge", 1.8);
                 info!(
                     "terminal {:?} completed objective {}",
                     terminal.kind, objective_id

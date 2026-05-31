@@ -23,6 +23,9 @@ pub struct Projectile {
 }
 
 #[derive(Component)]
+pub struct EffectLifetime(pub Timer);
+
+#[derive(Component)]
 pub struct Contaminant {
     pub id: Option<String>,
     pub health: i32,

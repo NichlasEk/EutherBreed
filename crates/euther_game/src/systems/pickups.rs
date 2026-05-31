@@ -3,7 +3,8 @@ use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
 use crate::resources::{
-    ApothecaryVitals, CampaignSignal, GameNotice, LocalLevelState, PendingExit,
+    ApothecaryVitals, CampaignSignal, ContaminantSpawnTimer, GameNotice, LevelRuntime,
+    LocalLevelState, PendingExit,
 };
 
 const APOTHECARY_RADIUS: f32 = 22.0;
@@ -15,6 +16,8 @@ pub fn collect_pickups(
     pickup_query: Query<(Entity, &Transform, &Pickup)>,
     mut vitals: ResMut<ApothecaryVitals>,
     mut level_state: ResMut<LocalLevelState>,
+    mut level_runtime: ResMut<LevelRuntime>,
+    mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
     mut notice: ResMut<GameNotice>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
@@ -41,6 +44,15 @@ pub fn collect_pickups(
             }
             PickupKind::SecurityKeycard(ref clearance_id) => {
                 level_state.0.grant_clearance(clearance_id.clone());
+                if level_runtime.dynamic_spawn_interval_seconds > 0.0 {
+                    level_runtime.dynamic_spawn_interval_seconds =
+                        level_runtime.dynamic_spawn_interval_seconds.min(3.0);
+                    contaminant_timer
+                        .0
+                        .set_duration(std::time::Duration::from_secs_f32(
+                            level_runtime.dynamic_spawn_interval_seconds,
+                        ));
+                }
                 notice.show("Security clearance acquired", 1.6);
             }
         }
