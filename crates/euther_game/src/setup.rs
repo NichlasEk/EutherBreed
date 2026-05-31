@@ -86,7 +86,7 @@ pub fn spawn_level(
         run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.08, 0.10, 0.13), Vec2::new(900.0, 520.0)),
+        Sprite::from_color(level_floor_color(&level.name), Vec2::new(900.0, 520.0)),
         Transform::from_xyz(0.0, 0.0, -10.0),
         LevelEntity,
     ));
@@ -99,7 +99,7 @@ pub fn spawn_level(
     ));
 
     for wall in &level.walls {
-        spawn_wall(commands, wall.center, wall.half_extents * 2.0);
+        spawn_wall(commands, wall.center, wall.half_extents * 2.0, &level.name);
     }
 
     for contaminant in &level.contaminants {
@@ -176,15 +176,31 @@ pub fn apothecary_spawn_position(level: &LevelDefinition, entry_id: Option<&str>
         .unwrap_or(level.apothecary_start)
 }
 
-fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2) {
+fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2, level_name: &str) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.23, 0.28, 0.32), size),
+        Sprite::from_color(level_wall_color(level_name), size),
         Transform::from_xyz(center.x, center.y, -5.0),
         Wall {
             half_extents: size * 0.5,
         },
         LevelEntity,
     ));
+}
+
+fn level_floor_color(level_name: &str) -> Color {
+    match level_name {
+        "lab_access_corridor" => Color::srgb(0.055, 0.075, 0.095),
+        "triage_vault" => Color::srgb(0.075, 0.070, 0.085),
+        _ => Color::srgb(0.08, 0.10, 0.13),
+    }
+}
+
+fn level_wall_color(level_name: &str) -> Color {
+    match level_name {
+        "lab_access_corridor" => Color::srgb(0.20, 0.31, 0.34),
+        "triage_vault" => Color::srgb(0.30, 0.25, 0.34),
+        _ => Color::srgb(0.23, 0.28, 0.32),
+    }
 }
 
 fn spawn_contaminant(commands: &mut Commands, id: Option<String>, position: Vec2) {
