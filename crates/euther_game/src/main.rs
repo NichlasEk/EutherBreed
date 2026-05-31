@@ -372,15 +372,25 @@ fn run_entry_smoke() {
     let campaign_runtime = initial_campaign_runtime();
     let ward = setup::load_level_from_campaign(&campaign_runtime, "prototype_quarantine_ward");
     let lab = setup::load_level_from_campaign(&campaign_runtime, "lab_access_corridor");
+    let triage = setup::load_level_from_campaign(&campaign_runtime, "triage_vault");
     let lab_entry = apothecary_spawn_position(&lab, Some("from_quarantine_ward"));
     let ward_entry = apothecary_spawn_position(&ward, Some("from_lab_access_corridor"));
+    let triage_entry = apothecary_spawn_position(&triage, Some("from_lab_access_corridor"));
+    let lab_from_triage = apothecary_spawn_position(&lab, Some("from_triage_vault"));
 
     assert_eq!(lab_entry, Vec2::new(-390.0, 0.0));
     assert_eq!(ward_entry, Vec2::new(390.0, 0.0));
+    assert_eq!(triage_entry, Vec2::new(-390.0, -168.0));
+    assert_eq!(lab_from_triage, Vec2::new(390.0, -168.0));
 
     println!("entry smoke ok");
     println!("lab_from_ward: {},{}", lab_entry.x, lab_entry.y);
     println!("ward_from_lab: {},{}", ward_entry.x, ward_entry.y);
+    println!("triage_from_lab: {},{}", triage_entry.x, triage_entry.y);
+    println!(
+        "lab_from_triage: {},{}",
+        lab_from_triage.x, lab_from_triage.y
+    );
 }
 
 fn run_notice_smoke() {

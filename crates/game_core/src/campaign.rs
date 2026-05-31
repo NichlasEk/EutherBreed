@@ -309,9 +309,11 @@ mod tests {
         let corridor =
             LevelDefinition::from_ron_file("../../assets/levels/lab_access_corridor.ron")
                 .expect("corridor level should load");
+        let triage = LevelDefinition::from_ron_file("../../assets/levels/triage_vault.ron")
+            .expect("triage level should load");
 
         assert_eq!(
-            campaign.validate_level_routes([&quarantine, &corridor]),
+            campaign.validate_level_routes([&quarantine, &corridor, &triage]),
             Ok(())
         );
     }
@@ -324,7 +326,7 @@ mod tests {
             .load_and_validate_levels_from_base("../..")
             .expect("prototype campaign content should validate");
 
-        assert_eq!(levels.len(), 2);
+        assert_eq!(levels.len(), 3);
     }
 
     #[test]

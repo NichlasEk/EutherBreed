@@ -1,0 +1,73 @@
+(
+    name: "triage_vault",
+    bounds: (
+        center: (0.0, 0.0),
+        half_extents: (450.0, 260.0),
+    ),
+    apothecary_start: (-390.0, -168.0),
+    walls: [
+        (center: (0.0, 274.0), half_extents: (460.0, 14.0)),
+        (center: (0.0, -274.0), half_extents: (460.0, 14.0)),
+        (center: (-474.0, 0.0), half_extents: (14.0, 274.0)),
+        (center: (474.0, 0.0), half_extents: (14.0, 274.0)),
+        (center: (-90.0, 72.0), half_extents: (140.0, 12.0)),
+        (center: (170.0, -42.0), half_extents: (130.0, 12.0)),
+        (center: (20.0, -150.0), half_extents: (12.0, 88.0)),
+    ],
+    contaminants: [
+        (
+            id: "triage_contaminant_alpha",
+            position: (160.0, 150.0),
+        ),
+        (
+            id: "triage_contaminant_beta",
+            position: (330.0, -150.0),
+        ),
+        (
+            id: "triage_contaminant_gamma",
+            position: (-170.0, 115.0),
+        ),
+    ],
+    pickups: [
+        (
+            id: "triage_medgel_a",
+            position: (-260.0, -180.0),
+            kind: MedGel(35),
+        ),
+        (
+            id: "triage_rounds_a",
+            position: (72.0, 172.0),
+            kind: ReagentRounds(16),
+        ),
+        (
+            id: "triage_bio_sample_a",
+            position: (320.0, 92.0),
+            kind: BioSample,
+        ),
+    ],
+    doors: [],
+    terminals: [
+        (
+            id: "triage_supply_console_a",
+            position: (-338.0, 142.0),
+            kind: SupplyConsole,
+            objective_id: None,
+        ),
+    ],
+    objectives: [],
+    entry_points: [
+        (
+            id: "from_lab_access_corridor",
+            position: (-390.0, -168.0),
+        ),
+    ],
+    exits: [
+        (
+            position: (-432.0, -168.0),
+            half_extents: (22.0, 38.0),
+            target: "lab_access_corridor",
+            entry_id: "from_triage_vault",
+            required_objectives: [],
+        ),
+    ],
+)

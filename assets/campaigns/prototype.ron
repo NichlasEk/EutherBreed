@@ -10,5 +10,9 @@
             id: "lab_access_corridor",
             path: "assets/levels/lab_access_corridor.ron",
         ),
+        (
+            id: "triage_vault",
+            path: "assets/levels/triage_vault.ron",
+        ),
     ],
 )

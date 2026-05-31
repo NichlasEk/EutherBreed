@@ -107,6 +107,7 @@ Current prototype:
 
 - apothecary movement and mouse aim
 - prototype quarantine ward loaded from level data
+- three connected prototype sections: quarantine ward, lab access corridor, and triage vault
 - reagent projectiles
 - contaminant enemies that chase the player
 - health, ammo, and bio-sample counters
