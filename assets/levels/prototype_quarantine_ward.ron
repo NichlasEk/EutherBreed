@@ -1,0 +1,50 @@
+(
+    name: "prototype_quarantine_ward",
+    bounds: (
+        center: (0.0, 0.0),
+        half_extents: (450.0, 260.0),
+    ),
+    apothecary_start: (-300.0, -170.0),
+    walls: [
+        (center: (0.0, 274.0), half_extents: (460.0, 14.0)),
+        (center: (0.0, -274.0), half_extents: (460.0, 14.0)),
+        (center: (-474.0, 0.0), half_extents: (14.0, 274.0)),
+        (center: (474.0, 0.0), half_extents: (14.0, 274.0)),
+        (center: (0.0, 82.0), half_extents: (115.0, 13.0)),
+        (center: (-180.0, -110.0), half_extents: (90.0, 12.0)),
+        (center: (220.0, -64.0), half_extents: (13.0, 90.0)),
+    ],
+    contaminants: [
+        (320.0, 180.0),
+        (380.0, -185.0),
+    ],
+    pickups: [
+        (
+            position: (-70.0, -190.0),
+            kind: ReagentRounds(12),
+        ),
+        (
+            position: (310.0, 80.0),
+            kind: MedGel(25),
+        ),
+        (
+            position: (-310.0, 165.0),
+            kind: SecurityKeycard("quarantine_green"),
+        ),
+    ],
+    doors: [
+        (
+            position: (0.0, 82.0),
+            half_extents: (32.0, 13.0),
+            clearance_id: "quarantine_green",
+            starts_locked: true,
+        ),
+    ],
+    exits: [
+        (
+            position: (432.0, 205.0),
+            half_extents: (22.0, 46.0),
+            target: "lab_access_corridor",
+        ),
+    ],
+)

@@ -5,12 +5,12 @@ mod setup;
 mod systems;
 
 use bevy::prelude::*;
-use resources::{ApothecaryVitals, ContaminantSpawnTimer};
+use resources::{AccessInventory, ApothecaryVitals, ContaminantSpawnTimer};
 use setup::setup;
 use systems::{
     aim_apothecary, collect_pickups, fire_syringe_round, move_apothecary, move_contaminants,
     move_projectiles, quit_on_escape, report_exit_overlap, resolve_contaminant_contact,
-    resolve_projectile_hits, spawn_contaminants, update_status_text,
+    resolve_projectile_hits, spawn_contaminants, unlock_doors, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -29,6 +29,7 @@ fn run_game() {
         .insert_resource(ClearColor(Color::srgb(0.015, 0.018, 0.025)))
         .insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
+        .insert_resource(AccessInventory::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -50,6 +51,7 @@ fn run_game() {
                 resolve_projectile_hits,
                 resolve_contaminant_contact,
                 collect_pickups,
+                unlock_doors,
                 report_exit_overlap,
                 update_status_text,
                 quit_on_escape,
@@ -62,6 +64,7 @@ fn run_headless_smoke() {
     let mut app = App::new();
     app.insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
+        .insert_resource(AccessInventory::default())
         .add_plugins(MinimalPlugins);
 
     app.update();

@@ -19,6 +19,7 @@ crates/
   euther_game/   First playable Bevy prototype
   abta_tools/    Local-only research tools for original format inspection
 assets/          Original EutherBreed assets
+assets/levels/   RON level definitions
 research/        Notes and non-shipping research output
 PLAN.md          Project plan and milestone outline
 ```
@@ -81,7 +82,7 @@ Current prototype:
 - reagent projectiles
 - contaminant enemies that chase the player
 - health, ammo, and bio-sample counters
-- basic room walls, pickups, exit marker, and collision
+- basic room walls, pickups, security keycard, locked door, exit marker, and collision
 
 ## Non-Goals
 

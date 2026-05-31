@@ -1,10 +1,14 @@
 use bevy::prelude::*;
 use game_core::{LevelDefinition, PickupKind};
 
-use crate::components::{Apothecary, Contaminant, ExitZone, Pickup, StatusText, Wall};
+use crate::components::{Apothecary, Contaminant, Door, ExitZone, Pickup, StatusText, Wall};
 
 pub fn setup(mut commands: Commands) {
-    let level = LevelDefinition::prototype_quarantine_ward();
+    let level = LevelDefinition::from_ron_file("assets/levels/prototype_quarantine_ward.ron")
+        .unwrap_or_else(|error| panic!("failed to load prototype level: {error:?}"));
+    level
+        .validate()
+        .unwrap_or_else(|error| panic!("invalid prototype level: {error:?}"));
 
     commands.spawn(Camera2d);
 
@@ -28,7 +32,17 @@ pub fn setup(mut commands: Commands) {
     }
 
     for pickup in &level.pickups {
-        spawn_pickup(&mut commands, pickup.position, pickup.kind);
+        spawn_pickup(&mut commands, pickup.position, pickup.kind.clone());
+    }
+
+    for door in &level.doors {
+        spawn_door(
+            &mut commands,
+            door.position,
+            door.half_extents * 2.0,
+            door.clearance_id.clone(),
+            door.starts_locked,
+        );
     }
 
     for exit in &level.exits {
@@ -39,7 +53,7 @@ pub fn setup(mut commands: Commands) {
             ),
             Transform::from_xyz(exit.position.x, exit.position.y, 2.0),
             ExitZone {
-                target: exit.target,
+                target: exit.target.clone(),
             },
         ));
     }
@@ -84,11 +98,32 @@ fn spawn_pickup(commands: &mut Commands, position: Vec2, kind: PickupKind) {
         PickupKind::ReagentRounds(_) => Color::srgb(0.90, 0.86, 0.42),
         PickupKind::MedGel(_) => Color::srgb(0.28, 0.88, 0.64),
         PickupKind::BioSample => Color::srgb(0.72, 0.36, 0.90),
+        PickupKind::SecurityKeycard(_) => Color::srgb(0.36, 0.62, 0.96),
     };
 
     commands.spawn((
         Sprite::from_color(color, Vec2::splat(18.0)),
         Transform::from_xyz(position.x, position.y, 6.0),
         Pickup { kind },
+    ));
+}
+
+fn spawn_door(
+    commands: &mut Commands,
+    center: Vec2,
+    size: Vec2,
+    clearance_id: String,
+    locked: bool,
+) {
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.20, 0.58, 0.62), size),
+        Transform::from_xyz(center.x, center.y, -3.0),
+        Wall {
+            half_extents: size * 0.5,
+        },
+        Door {
+            clearance_id,
+            locked,
+        },
     ));
 }

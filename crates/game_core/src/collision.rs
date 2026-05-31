@@ -1,6 +1,7 @@
 use glam::Vec2;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub struct AxisAlignedBox {
     pub center: Vec2,
     pub half_extents: Vec2,

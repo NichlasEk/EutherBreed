@@ -29,5 +29,11 @@ pub struct Pickup {
 
 #[derive(Component)]
 pub struct ExitZone {
-    pub target: &'static str,
+    pub target: String,
+}
+
+#[derive(Component)]
+pub struct Door {
+    pub clearance_id: String,
+    pub locked: bool,
 }

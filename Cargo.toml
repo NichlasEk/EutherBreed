@@ -13,4 +13,6 @@ repository = "https://github.com/NichlasEk/EutherBreed"
 
 [workspace.dependencies]
 bevy = "0.18.1"
-glam = "0.30.10"
+glam = { version = "0.30.10", features = ["serde"] }
+ron = "0.12.1"
+serde = { version = "1.0.228", features = ["derive"] }
