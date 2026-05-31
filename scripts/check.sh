@@ -12,6 +12,8 @@ cargo run -p euther_game -- --save-smoke
 cargo run -p euther_game -- --save-file-smoke /tmp/euther_save_smoke.ron
 cargo run -p euther_game -- --load-file-smoke /tmp/euther_save_smoke.ron
 cargo run -p euther_game -- --runtime-save-smoke /tmp/euther_runtime_save_smoke.ron
+cargo run -p euther_game -- --autosave-smoke /tmp/euther_autosave_smoke.ron
 rm -f /tmp/euther_save_smoke.ron
 rm -f /tmp/euther_runtime_save_smoke.ron
+rm -f /tmp/euther_autosave_smoke.ron
 cargo run -p euther_game -- --headless-smoke

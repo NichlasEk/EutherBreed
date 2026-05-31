@@ -50,6 +50,7 @@ cargo run -p euther_game -- --save-smoke
 cargo run -p euther_game -- --save-file-smoke /tmp/euther_save_smoke.ron
 cargo run -p euther_game -- --load-file-smoke /tmp/euther_save_smoke.ron
 cargo run -p euther_game -- --runtime-save-smoke /tmp/euther_runtime_save_smoke.ron
+cargo run -p euther_game -- --autosave-smoke /tmp/euther_autosave_smoke.ron
 ```
 
 ## Scripts
@@ -109,6 +110,7 @@ Current prototype:
 - health, ammo, and bio-sample counters
 - basic room walls, pickups, security keycard, locked door, terminal objective, objective-gated exits, level reloads, and collision
 - save files preserve level-local progress per campaign level, including collected pickups, unlocked doors, and activated terminals
+- autosave writes the current slot after successful level transitions
 
 ## Non-Goals
 

@@ -51,6 +51,11 @@ fn main() {
         return;
     }
 
+    if let Some(path) = argument_value("--autosave-smoke") {
+        run_autosave_smoke(path);
+        return;
+    }
+
     run_game();
 }
 
@@ -278,6 +283,58 @@ fn run_runtime_save_smoke(path: String) {
         &loaded_vitals,
         &loaded_campaign_runtime,
         &loaded_level_state,
+    );
+}
+
+fn run_autosave_smoke(path: String) {
+    let vitals = initial_vitals();
+    let mut campaign_runtime = initial_campaign_runtime();
+    let mut level_state = LocalLevelState::default();
+    let mut persistent_level_states = PersistentLevelStates::default();
+
+    level_state.0.grant_clearance("quarantine_green");
+    level_state
+        .0
+        .complete_objective("analyze_contaminant_sample");
+    level_state.0.collect_pickup("ward_rounds_a");
+
+    let previous_level = campaign_runtime.progress.current_level().to_string();
+    campaign_runtime
+        .progress
+        .travel_to(&campaign_runtime.definition, "lab_access_corridor")
+        .unwrap_or_else(|error| panic!("failed to travel during autosave smoke: {error:?}"));
+    persistent_level_states
+        .0
+        .insert(previous_level, level_state.0);
+    let next_level_state = persistent_level_states
+        .0
+        .get(campaign_runtime.progress.current_level())
+        .cloned()
+        .unwrap_or_default();
+    let level_state = LocalLevelState(next_level_state);
+
+    let save = systems::save::build_runtime_save(
+        &vitals,
+        &campaign_runtime,
+        &level_state,
+        &persistent_level_states,
+    );
+    systems::save::write_runtime_save(&path, &save)
+        .unwrap_or_else(|error| panic!("failed to write autosave smoke file {path}: {error:?}"));
+
+    let loaded = game_core::SaveGame::read_from_file(&path)
+        .unwrap_or_else(|error| panic!("failed to read autosave smoke file {path}: {error:?}"));
+
+    println!("autosave smoke ok");
+    println!("path: {path}");
+    println!("current_level: {}", loaded.run_state.current_level);
+    println!("level_states: {}", loaded.level_states.len());
+    println!(
+        "previous_pickups: {}",
+        loaded
+            .level_state("prototype_quarantine_ward")
+            .collected_pickups
+            .len()
     );
 }
 
