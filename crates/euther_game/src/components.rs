@@ -20,6 +20,13 @@ pub struct Contaminant {
 }
 
 #[derive(Component)]
+pub struct ContaminantAnimation {
+    pub base_image: Handle<Image>,
+    pub stride_image: Handle<Image>,
+    pub phase: f32,
+}
+
+#[derive(Component)]
 pub struct Wall {
     pub half_extents: Vec2,
 }

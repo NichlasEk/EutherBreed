@@ -3,12 +3,18 @@ use game_core::{LevelDefinition, PickupKind, TerminalKind};
 use std::time::Duration;
 
 use crate::components::{
-    Apothecary, Contaminant, Door, ExitZone, LevelEntity, NoticeText, Pickup, SectionText,
-    StatusText, Terminal, Wall,
+    Apothecary, Contaminant, ContaminantAnimation, Door, ExitZone, LevelEntity, NoticeText, Pickup,
+    SectionText, StatusText, Terminal, Wall,
 };
 use crate::resources::{CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState};
 
 const FLOOR_VISUAL_BLEED: Vec2 = Vec2::new(960.0, 480.0);
+const FLOOR_TILE_PATHS: [&str; 4] = [
+    "sprites/biomech/tile_floor_biomech.png",
+    "sprites/biomech/tile_floor_biomech_b.png",
+    "sprites/biomech/tile_floor_biomech_c.png",
+    "sprites/biomech/tile_floor_biomech_d.png",
+];
 
 pub fn setup(
     mut commands: Commands,
@@ -116,10 +122,9 @@ pub fn spawn_level(
         run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
     let floor_size = visual_floor_size(level.bounds.half_extents * 2.0);
 
-    spawn_tiled_area(
+    spawn_floor_area(
         commands,
         asset_server,
-        "sprites/biomech/tile_floor_biomech.png",
         level.bounds.center,
         floor_size,
         Vec2::splat(128.0),
@@ -283,6 +288,41 @@ fn spawn_tiled_area(
     }
 }
 
+fn spawn_floor_area(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    center: Vec2,
+    size: Vec2,
+    tile_size: Vec2,
+    z: f32,
+    color: Color,
+) {
+    let columns = (size.x / tile_size.x).ceil() as i32;
+    let rows = (size.y / tile_size.y).ceil() as i32;
+    let origin = center - Vec2::new(columns as f32 * tile_size.x, rows as f32 * tile_size.y) * 0.5;
+
+    for y in 0..rows {
+        for x in 0..columns {
+            let position = origin
+                + Vec2::new(
+                    x as f32 * tile_size.x + tile_size.x * 0.5,
+                    y as f32 * tile_size.y + tile_size.y * 0.5,
+                );
+            let path = FLOOR_TILE_PATHS[tile_variant_index(x, y)];
+            commands.spawn((
+                image_sprite(asset_server, path, tile_size, color),
+                Transform::from_xyz(position.x, position.y, z),
+                LevelEntity,
+            ));
+        }
+    }
+}
+
+fn tile_variant_index(x: i32, y: i32) -> usize {
+    let hash = x.wrapping_mul(73_856_093) ^ y.wrapping_mul(19_349_663);
+    hash.unsigned_abs() as usize % FLOOR_TILE_PATHS.len()
+}
+
 fn visual_floor_size(playable_size: Vec2) -> Vec2 {
     playable_size + FLOOR_VISUAL_BLEED
 }
@@ -375,8 +415,17 @@ fn spawn_contaminant(
             health: 2,
             hit_flash: Timer::from_seconds(0.0, TimerMode::Once),
         },
+        contaminant_animation(asset_server),
         LevelEntity,
     ));
+}
+
+pub fn contaminant_animation(asset_server: &AssetServer) -> ContaminantAnimation {
+    ContaminantAnimation {
+        base_image: asset_server.load("sprites/biomech/contaminant.png"),
+        stride_image: asset_server.load("sprites/biomech/contaminant_stride.png"),
+        phase: 0.0,
+    }
 }
 
 fn spawn_pickup(

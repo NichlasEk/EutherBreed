@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 
-use crate::components::{Apothecary, Contaminant, LevelEntity, Wall};
+use crate::components::{Apothecary, Contaminant, ContaminantAnimation, LevelEntity, Wall};
 use crate::geometry::circle_hits_any_wall;
 use crate::resources::{ApothecaryVitals, ContaminantSpawnTimer, GameNotice, LevelRuntime};
+use crate::setup::contaminant_animation;
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const CONTAMINANT_RADIUS: f32 = 18.0;
 const CONTAMINANT_SPEED: f32 = 92.0;
+const CONTAMINANT_WALK_PHASE_PER_UNIT: f32 = 0.22;
+const CONTAMINANT_WALK_WOBBLE: f32 = 0.13;
 const MAX_DYNAMIC_CONTAMINANTS: usize = 4;
 
 pub fn spawn_contaminants(
@@ -53,6 +56,7 @@ pub fn spawn_contaminants(
             health: 2,
             hit_flash: Timer::from_seconds(0.0, TimerMode::Once),
         },
+        contaminant_animation(&asset_server),
         LevelEntity,
     ));
 }
@@ -61,11 +65,14 @@ pub fn move_contaminants(
     time: Res<Time>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     wall_query: Query<(&Transform, &Wall), Without<Contaminant>>,
-    mut contaminant_query: Query<&mut Transform, (With<Contaminant>, Without<Apothecary>)>,
+    mut contaminant_query: Query<
+        (&mut Transform, &mut Sprite, &mut ContaminantAnimation),
+        (With<Contaminant>, Without<Apothecary>),
+    >,
 ) {
     let target = apothecary_query.translation.xy();
 
-    for mut transform in &mut contaminant_query {
+    for (mut transform, mut sprite, mut animation) in &mut contaminant_query {
         let current = transform.translation.xy();
         let direction = (target - transform.translation.xy()).normalize_or_zero();
         let delta = direction * CONTAMINANT_SPEED * time.delta_secs();
@@ -73,22 +80,64 @@ pub fn move_contaminants(
 
         if !circle_hits_any_wall(next, CONTAMINANT_RADIUS, &wall_query) {
             transform.translation = next.extend(transform.translation.z);
-            transform.rotation = Quat::from_rotation_z(direction.y.atan2(direction.x));
+            apply_contaminant_walk(
+                &mut transform,
+                &mut sprite,
+                &mut animation,
+                direction,
+                delta.length(),
+            );
             continue;
         }
+
+        let mut moved = Vec2::ZERO;
 
         let x_only = Vec2::new(next.x, current.y);
         if !circle_hits_any_wall(x_only, CONTAMINANT_RADIUS, &wall_query) {
             transform.translation.x = x_only.x;
-            transform.rotation = Quat::from_rotation_z(delta.y.atan2(delta.x));
+            moved.x = x_only.x - current.x;
         }
 
         let y_only = Vec2::new(transform.translation.x, next.y);
         if !circle_hits_any_wall(y_only, CONTAMINANT_RADIUS, &wall_query) {
             transform.translation.y = y_only.y;
-            transform.rotation = Quat::from_rotation_z(delta.y.atan2(delta.x));
+            moved.y = y_only.y - current.y;
+        }
+
+        if moved.length_squared() > 0.001 {
+            apply_contaminant_walk(
+                &mut transform,
+                &mut sprite,
+                &mut animation,
+                moved.normalize(),
+                moved.length(),
+            );
+        } else {
+            transform.scale = Vec3::ONE;
         }
     }
+}
+
+fn apply_contaminant_walk(
+    transform: &mut Transform,
+    sprite: &mut Sprite,
+    animation: &mut ContaminantAnimation,
+    direction: Vec2,
+    distance: f32,
+) {
+    animation.phase += distance * CONTAMINANT_WALK_PHASE_PER_UNIT;
+
+    let stride = animation.phase.sin();
+    sprite.image = if stride >= 0.0 {
+        animation.stride_image.clone()
+    } else {
+        animation.base_image.clone()
+    };
+
+    let facing = direction.y.atan2(direction.x);
+    let wobble = stride * CONTAMINANT_WALK_WOBBLE;
+    transform.rotation = Quat::from_rotation_z(facing + wobble);
+    transform.scale = Vec3::new(1.0, 1.0 + stride.abs() * 0.04, 1.0);
 }
 
 pub fn resolve_contaminant_contact(
