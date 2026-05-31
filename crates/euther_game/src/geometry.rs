@@ -1,12 +1,13 @@
+use bevy::ecs::query::QueryFilter;
 use bevy::prelude::*;
 use game_core::AxisAlignedBox;
 
 use crate::components::Wall;
 
-pub fn circle_hits_any_wall(
+pub fn circle_hits_any_wall<F: QueryFilter>(
     center: Vec2,
     radius: f32,
-    wall_query: &Query<(&Transform, &Wall)>,
+    wall_query: &Query<(&Transform, &Wall), F>,
 ) -> bool {
     wall_query.iter().any(|(transform, wall)| {
         game_core::circle_intersects_aabb(

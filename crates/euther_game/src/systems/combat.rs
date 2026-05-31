@@ -60,7 +60,7 @@ pub fn fire_syringe_round(
 pub fn move_projectiles(
     mut commands: Commands,
     time: Res<Time>,
-    wall_query: Query<(&Transform, &Wall)>,
+    wall_query: Query<(&Transform, &Wall), Without<Projectile>>,
     mut query: Query<(Entity, &mut Projectile, &mut Transform)>,
 ) {
     for (entity, mut projectile, mut transform) in &mut query {

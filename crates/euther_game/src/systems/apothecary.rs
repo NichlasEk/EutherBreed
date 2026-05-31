@@ -10,7 +10,7 @@ const APOTHECARY_RADIUS: f32 = 22.0;
 pub fn move_apothecary(
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    wall_query: Query<(&Transform, &Wall)>,
+    wall_query: Query<(&Transform, &Wall), Without<Apothecary>>,
     mut query: Query<&mut Transform, With<Apothecary>>,
 ) {
     let mut movement = Vec2::ZERO;
