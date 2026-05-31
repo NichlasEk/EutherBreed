@@ -22,6 +22,10 @@ pub fn interact_with_terminals(
             continue;
         }
 
+        if !level_state.0.activate_terminal(terminal.id.clone()) {
+            continue;
+        }
+
         if let Some(objective_id) = &terminal.objective_id {
             if level_state.0.complete_objective(objective_id.clone()) {
                 info!(

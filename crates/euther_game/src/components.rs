@@ -27,6 +27,7 @@ pub struct StatusText;
 
 #[derive(Component)]
 pub struct Pickup {
+    pub id: String,
     pub kind: game_core::PickupKind,
 }
 
@@ -38,12 +39,14 @@ pub struct ExitZone {
 
 #[derive(Component)]
 pub struct Door {
+    pub id: String,
     pub clearance_id: String,
     pub locked: bool,
 }
 
 #[derive(Component)]
 pub struct Terminal {
+    pub id: String,
     pub kind: game_core::TerminalKind,
     pub objective_id: Option<String>,
 }

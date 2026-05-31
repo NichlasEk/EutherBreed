@@ -20,20 +20,24 @@
     ],
     pickups: [
         (
+            id: "ward_rounds_a",
             position: (-70.0, -190.0),
             kind: ReagentRounds(12),
         ),
         (
+            id: "ward_medgel_a",
             position: (310.0, 80.0),
             kind: MedGel(25),
         ),
         (
+            id: "ward_quarantine_green_keycard",
             position: (-310.0, 165.0),
             kind: SecurityKeycard("quarantine_green"),
         ),
     ],
     doors: [
         (
+            id: "ward_quarantine_green_door",
             position: (0.0, 82.0),
             half_extents: (32.0, 13.0),
             clearance_id: "quarantine_green",
@@ -42,6 +46,7 @@
     ],
     terminals: [
         (
+            id: "ward_lab_analyzer",
             position: (360.0, -96.0),
             kind: LabAnalyzer,
             objective_id: Some("analyze_contaminant_sample"),

@@ -56,7 +56,7 @@ pub fn update_campaign_progress(
     contaminant_timer.0.reset();
 
     let level = load_level_from_campaign(&runtime, runtime.progress.current_level());
-    spawn_level(&mut commands, &level);
+    spawn_level(&mut commands, &level, &level_state.0);
     level_runtime.loaded_level_id = Some(runtime.progress.current_level().to_string());
 }
 

@@ -4,11 +4,12 @@ use game_core::{LevelDefinition, PickupKind, TerminalKind};
 use crate::components::{
     Apothecary, Contaminant, Door, ExitZone, LevelEntity, Pickup, StatusText, Terminal, Wall,
 };
-use crate::resources::{CampaignRuntime, LevelRuntime};
+use crate::resources::{CampaignRuntime, LevelRuntime, LocalLevelState};
 
 pub fn setup(
     mut commands: Commands,
     campaign_runtime: Res<CampaignRuntime>,
+    level_state: Res<LocalLevelState>,
     mut level_runtime: ResMut<LevelRuntime>,
 ) {
     commands.spawn(Camera2d);
@@ -31,7 +32,7 @@ pub fn setup(
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
-    spawn_level(&mut commands, &level);
+    spawn_level(&mut commands, &level, &level_state.0);
 
     level_runtime.loaded_level_id = Some(current_level_id);
 }
@@ -57,7 +58,11 @@ pub fn load_level_from_campaign(
     level
 }
 
-pub fn spawn_level(commands: &mut Commands, level: &LevelDefinition) {
+pub fn spawn_level(
+    commands: &mut Commands,
+    level: &LevelDefinition,
+    level_state: &game_core::LevelState,
+) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.08, 0.10, 0.13), Vec2::new(900.0, 520.0)),
         Transform::from_xyz(0.0, 0.0, -10.0),
@@ -80,22 +85,36 @@ pub fn spawn_level(commands: &mut Commands, level: &LevelDefinition) {
     }
 
     for pickup in &level.pickups {
-        spawn_pickup(commands, pickup.position, pickup.kind.clone());
+        if level_state.has_collected_pickup(&pickup.id) {
+            continue;
+        }
+
+        spawn_pickup(
+            commands,
+            pickup.id.clone(),
+            pickup.position,
+            pickup.kind.clone(),
+        );
     }
 
     for door in &level.doors {
+        let locked = door.starts_locked
+            && !level_state.has_unlocked_door(&door.id)
+            && !level_state.has_clearance(&door.clearance_id);
         spawn_door(
             commands,
+            door.id.clone(),
             door.position,
             door.half_extents * 2.0,
             door.clearance_id.clone(),
-            door.starts_locked,
+            locked,
         );
     }
 
     for terminal in &level.terminals {
         spawn_terminal(
             commands,
+            terminal.id.clone(),
             terminal.position,
             terminal.kind.clone(),
             terminal.objective_id.clone(),
@@ -138,7 +157,7 @@ fn spawn_contaminant(commands: &mut Commands, position: Vec2) {
     ));
 }
 
-fn spawn_pickup(commands: &mut Commands, position: Vec2, kind: PickupKind) {
+fn spawn_pickup(commands: &mut Commands, id: String, position: Vec2, kind: PickupKind) {
     let color = match kind {
         PickupKind::ReagentRounds(_) => Color::srgb(0.90, 0.86, 0.42),
         PickupKind::MedGel(_) => Color::srgb(0.28, 0.88, 0.64),
@@ -149,34 +168,46 @@ fn spawn_pickup(commands: &mut Commands, position: Vec2, kind: PickupKind) {
     commands.spawn((
         Sprite::from_color(color, Vec2::splat(18.0)),
         Transform::from_xyz(position.x, position.y, 6.0),
-        Pickup { kind },
+        Pickup { id, kind },
         LevelEntity,
     ));
 }
 
 fn spawn_door(
     commands: &mut Commands,
+    id: String,
     center: Vec2,
     size: Vec2,
     clearance_id: String,
     locked: bool,
 ) {
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.20, 0.58, 0.62), size),
+    let color = if locked {
+        Color::srgb(0.20, 0.58, 0.62)
+    } else {
+        Color::srgba(0.20, 0.58, 0.62, 0.25)
+    };
+
+    let mut entity = commands.spawn((
+        Sprite::from_color(color, size),
         Transform::from_xyz(center.x, center.y, -3.0),
-        Wall {
-            half_extents: size * 0.5,
-        },
         Door {
+            id,
             clearance_id,
             locked,
         },
         LevelEntity,
     ));
+
+    if locked {
+        entity.insert(Wall {
+            half_extents: size * 0.5,
+        });
+    }
 }
 
 fn spawn_terminal(
     commands: &mut Commands,
+    id: String,
     position: Vec2,
     kind: TerminalKind,
     objective_id: Option<String>,
@@ -190,7 +221,11 @@ fn spawn_terminal(
     commands.spawn((
         Sprite::from_color(color, Vec2::new(30.0, 22.0)),
         Transform::from_xyz(position.x, position.y, 4.0),
-        Terminal { kind, objective_id },
+        Terminal {
+            id,
+            kind,
+            objective_id,
+        },
         LevelEntity,
     ));
 }

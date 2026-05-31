@@ -108,7 +108,7 @@ Current prototype:
 - contaminant enemies that chase the player
 - health, ammo, and bio-sample counters
 - basic room walls, pickups, security keycard, locked door, terminal objective, objective-gated exits, level reloads, and collision
-- save files preserve level-local progress per campaign level
+- save files preserve level-local progress per campaign level, including collected pickups, unlocked doors, and activated terminals
 
 ## Non-Goals
 

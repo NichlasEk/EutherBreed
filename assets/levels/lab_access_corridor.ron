@@ -19,10 +19,12 @@
     ],
     pickups: [
         (
+            id: "lab_rounds_a",
             position: (-220.0, 165.0),
             kind: ReagentRounds(18),
         ),
         (
+            id: "lab_bio_sample_a",
             position: (235.0, -175.0),
             kind: BioSample,
         ),
@@ -30,6 +32,7 @@
     doors: [],
     terminals: [
         (
+            id: "lab_ship_log_a",
             position: (330.0, 165.0),
             kind: ShipLog,
             objective_id: None,

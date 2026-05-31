@@ -32,13 +32,14 @@ pub fn collect_pickups(
             }
         }
 
+        level_state.0.collect_pickup(pickup.id.clone());
         commands.entity(entity).despawn();
     }
 }
 
 pub fn unlock_doors(
     mut commands: Commands,
-    level_state: Res<LocalLevelState>,
+    mut level_state: ResMut<LocalLevelState>,
     mut door_query: Query<(Entity, &mut Door, &mut Sprite), With<Wall>>,
 ) {
     if !level_state.is_changed() {
@@ -51,6 +52,7 @@ pub fn unlock_doors(
         }
 
         door.locked = false;
+        level_state.0.unlock_door(door.id.clone());
         sprite.color = Color::srgba(0.20, 0.58, 0.62, 0.25);
         commands.entity(entity).remove::<Wall>();
     }

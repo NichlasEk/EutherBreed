@@ -1,5 +1,6 @@
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -21,6 +22,7 @@ pub struct LevelDefinition {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct PrototypeEntity<T> {
+    pub id: String,
     pub position: Vec2,
     pub kind: T,
 }
@@ -43,6 +45,7 @@ pub struct LevelExit {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct DoorDefinition {
+    pub id: String,
     pub position: Vec2,
     pub half_extents: Vec2,
     pub clearance_id: String,
@@ -51,6 +54,7 @@ pub struct DoorDefinition {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct TerminalDefinition {
+    pub id: String,
     pub position: Vec2,
     pub kind: TerminalKind,
     pub objective_id: Option<String>,
@@ -93,7 +97,12 @@ impl LevelDefinition {
             return Err(LevelValidationError::StartOutsideBounds);
         }
 
+        let mut pickup_ids = HashSet::new();
         for pickup in &self.pickups {
+            if pickup.id.trim().is_empty() || !pickup_ids.insert(pickup.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
+
             match pickup.kind {
                 PickupKind::ReagentRounds(amount) | PickupKind::MedGel(amount) if amount <= 0 => {
                     return Err(LevelValidationError::InvalidPickupAmount);
@@ -105,21 +114,31 @@ impl LevelDefinition {
             }
         }
 
+        let mut door_ids = HashSet::new();
         for door in &self.doors {
+            if door.id.trim().is_empty() || !door_ids.insert(door.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
+
             if door.clearance_id.trim().is_empty() {
                 return Err(LevelValidationError::InvalidClearanceId);
             }
         }
 
-        for objective in &self.objectives {
-            if objective.id.trim().is_empty() || objective.label.trim().is_empty() {
+        let mut terminal_ids = HashSet::new();
+        for terminal in &self.terminals {
+            if terminal.id.trim().is_empty() || !terminal_ids.insert(terminal.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
+
+            if matches!(terminal.objective_id, Some(ref objective_id) if objective_id.trim().is_empty())
+            {
                 return Err(LevelValidationError::InvalidObjective);
             }
         }
 
-        for terminal in &self.terminals {
-            if matches!(terminal.objective_id, Some(ref objective_id) if objective_id.trim().is_empty())
-            {
+        for objective in &self.objectives {
+            if objective.id.trim().is_empty() || objective.label.trim().is_empty() {
                 return Err(LevelValidationError::InvalidObjective);
             }
         }
@@ -158,25 +177,30 @@ impl LevelDefinition {
             contaminants: vec![Vec2::new(320.0, 180.0), Vec2::new(380.0, -185.0)],
             pickups: vec![
                 PrototypeEntity {
+                    id: "ward_rounds_a".to_string(),
                     position: Vec2::new(-70.0, -190.0),
                     kind: PickupKind::ReagentRounds(12),
                 },
                 PrototypeEntity {
+                    id: "ward_medgel_a".to_string(),
                     position: Vec2::new(310.0, 80.0),
                     kind: PickupKind::MedGel(25),
                 },
                 PrototypeEntity {
+                    id: "ward_quarantine_green_keycard".to_string(),
                     position: Vec2::new(-310.0, 165.0),
                     kind: PickupKind::SecurityKeycard("quarantine_green".to_string()),
                 },
             ],
             doors: vec![DoorDefinition {
+                id: "ward_quarantine_green_door".to_string(),
                 position: Vec2::new(0.0, 82.0),
                 half_extents: Vec2::new(32.0, 13.0),
                 clearance_id: "quarantine_green".to_string(),
                 starts_locked: true,
             }],
             terminals: vec![TerminalDefinition {
+                id: "ward_lab_analyzer".to_string(),
                 position: Vec2::new(360.0, -96.0),
                 kind: TerminalKind::LabAnalyzer,
                 objective_id: Some("analyze_contaminant_sample".to_string()),
@@ -209,6 +233,7 @@ pub enum LevelValidationError {
     NoExits,
     StartOutsideBounds,
     InvalidPickupAmount,
+    InvalidEntityId,
     InvalidClearanceId,
     InvalidObjective,
     InvalidExit,
@@ -287,5 +312,13 @@ mod tests {
         level.exits[0].target.clear();
 
         assert_eq!(level.validate(), Err(LevelValidationError::InvalidExit));
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_pickup_ids() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.pickups[1].id = level.pickups[0].id.clone();
+
+        assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
     }
 }
