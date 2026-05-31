@@ -48,6 +48,7 @@ Run save/load serialization smoke test:
 ```sh
 cargo run -p euther_game -- --save-smoke
 cargo run -p euther_game -- --save-file-smoke /tmp/euther_save_smoke.ron
+cargo run -p euther_game -- --load-file-smoke /tmp/euther_save_smoke.ron
 ```
 
 ## Scripts

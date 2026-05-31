@@ -40,6 +40,11 @@ fn main() {
         return;
     }
 
+    if let Some(path) = argument_value("--load-file-smoke") {
+        run_load_file_smoke(path);
+        return;
+    }
+
     run_game();
 }
 
@@ -175,6 +180,40 @@ fn run_save_file_smoke(path: String) {
     print_save_summary(&loaded);
 }
 
+fn run_load_file_smoke(path: String) {
+    let save = game_core::SaveGame::read_from_file(&path)
+        .unwrap_or_else(|error| panic!("failed to read save smoke file {path}: {error:?}"));
+    let mut vitals = initial_vitals();
+    let mut campaign_runtime = initial_campaign_runtime();
+    let mut level_state = LocalLevelState::default();
+
+    apply_save_to_runtime(&save, &mut vitals, &mut campaign_runtime, &mut level_state);
+
+    println!("load file smoke ok");
+    println!("path: {path}");
+    print_runtime_summary(&vitals, &campaign_runtime, &level_state);
+}
+
+fn apply_save_to_runtime(
+    save: &game_core::SaveGame,
+    vitals: &mut ApothecaryVitals,
+    campaign_runtime: &mut CampaignRuntime,
+    level_state: &mut LocalLevelState,
+) {
+    campaign_runtime
+        .progress
+        .travel_to(&campaign_runtime.definition, &save.run_state.current_level)
+        .unwrap_or_else(|error| {
+            panic!(
+                "failed to apply save level {}: {error:?}",
+                save.run_state.current_level
+            )
+        });
+
+    vitals.0 = save.run_state.vitals.clone();
+    level_state.0 = save.level_state.clone();
+}
+
 fn save_smoke_roundtrip() -> game_core::SaveGame {
     let save = sample_save_game();
     let content = save
@@ -205,6 +244,28 @@ fn print_save_summary(save: &game_core::SaveGame) {
     println!("health: {}", save.run_state.vitals.health);
     println!("ammo: {}", save.run_state.vitals.ammo);
     println!("bio_samples: {}", save.run_state.vitals.bio_samples);
+}
+
+fn print_runtime_summary(
+    vitals: &ApothecaryVitals,
+    campaign_runtime: &CampaignRuntime,
+    level_state: &LocalLevelState,
+) {
+    println!(
+        "current_level: {}",
+        campaign_runtime.progress.current_level()
+    );
+    println!("health: {}", vitals.0.health);
+    println!("ammo: {}", vitals.0.ammo);
+    println!("bio_samples: {}", vitals.0.bio_samples);
+    println!("clearances: {}", level_state.0.clearances.len());
+    println!(
+        "objective_ready: {}",
+        level_state
+            .0
+            .objectives
+            .is_complete("analyze_contaminant_sample")
+    );
 }
 
 fn argument_value(flag: &str) -> Option<String> {
