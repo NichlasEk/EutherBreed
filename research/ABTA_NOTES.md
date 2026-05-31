@@ -24,6 +24,19 @@ https://github.com/mrpetro/OpenBreed
 
 The goal is to understand useful structures such as archive entries, map dimensions, tile references, action codes, and progression patterns. Extracted commercial assets should not be committed or shipped.
 
+## EPF Header Findings
+
+Initial inspection of `/home/nichlas/AlienBrT/TA.EPF`:
+
+```text
+magic: EPFS
+size_bytes: 2267004
+directory_offset: 2263044
+directory_size_bytes: 3960
+```
+
+The bytes at `directory_offset` contain readable resource names such as `LEVEL1.BLK`, `MAP.01`, `HERO1.SPR`, and `TITLEBAC.LBM`. `abta_tools list` currently uses a heuristic parser for this directory. It is useful for orientation, but the entry metadata is not fully understood yet and some offset/size rows may be wrong until the EPF table format is confirmed.
+
 ## Local Runtime Note
 
 On 2026-05-31, GUI smoke testing exposed a local NVIDIA driver mismatch:
