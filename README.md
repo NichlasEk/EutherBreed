@@ -73,6 +73,7 @@ ABTA research helper:
 
 ```sh
 cargo run -p abta_tools -- inspect /home/nichlas/AlienBrT/TA.EPF
+cargo run -p abta_tools -- list /home/nichlas/AlienBrT/TA.EPF --ext BLK
 ```
 
 Controls:

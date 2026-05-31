@@ -21,11 +21,18 @@ fn main() {
         }
         Some(arg) if arg == "list" => {
             let Some(path) = arguments.next().map(PathBuf::from) else {
-                eprintln!("Usage: abta_tools list <path-to-TA.EPF>");
+                eprintln!("Usage: abta_tools list <path-to-TA.EPF> [--ext EXT]");
                 std::process::exit(2);
             };
+            let filter = match parse_list_filter(arguments.collect()) {
+                Ok(filter) => filter,
+                Err(error) => {
+                    eprintln!("error: {error}");
+                    std::process::exit(2);
+                }
+            };
 
-            if let Err(error) = list_archive(path) {
+            if let Err(error) = list_archive(path, filter) {
                 eprintln!("error: {error}");
                 std::process::exit(1);
             }
@@ -47,7 +54,7 @@ fn main() {
 fn print_help() {
     println!("Usage:");
     println!("  abta_tools inspect <path-to-TA.EPF>");
-    println!("  abta_tools list <path-to-TA.EPF>");
+    println!("  abta_tools list <path-to-TA.EPF> [--ext EXT]");
     println!("  abta_tools <path-to-TA.EPF>");
     println!();
     println!("Local-only research tooling for ABTA resource inspection.");
@@ -89,7 +96,7 @@ fn inspect_archive(path: PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn list_archive(path: PathBuf) -> Result<(), String> {
+fn list_archive(path: PathBuf, filter: ListFilter) -> Result<(), String> {
     let bytes = std::fs::read(&path).map_err(|error| format!("failed to read file: {error}"))?;
 
     if bytes.len() < 8 {
@@ -104,15 +111,17 @@ fn list_archive(path: PathBuf) -> Result<(), String> {
 
     let directory_offset = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as usize;
     let entries = parse_directory(&bytes, directory_offset)?;
+    let filtered_entries = filter_entries(&entries, &filter);
 
     println!("archive: {}", path.display());
     println!("entries: {}", entries.len());
+    println!("listed_entries: {}", filtered_entries.len());
     println!("extensions: {}", extension_summary(&entries));
     println!("parse: heuristic_partial");
     println!();
     println!("name\tmeta_hex\toffset\tsize");
 
-    for entry in entries {
+    for entry in filtered_entries {
         println!(
             "{}\t{}\t{}\t{}",
             entry.name,
@@ -123,6 +132,30 @@ fn list_archive(path: PathBuf) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn parse_list_filter(args: Vec<std::ffi::OsString>) -> Result<ListFilter, String> {
+    let mut filter = ListFilter::default();
+    let mut args = args.into_iter();
+
+    while let Some(arg) = args.next() {
+        if arg == "--ext" {
+            let Some(extension) = args.next() else {
+                return Err("--ext requires a value".to_string());
+            };
+
+            filter.extension = Some(
+                extension
+                    .to_string_lossy()
+                    .trim_start_matches('.')
+                    .to_ascii_uppercase(),
+            );
+        } else {
+            return Err(format!("unknown list option: {}", arg.to_string_lossy()));
+        }
+    }
+
+    Ok(filter)
 }
 
 fn hex_prefix(bytes: &[u8], len: usize) -> String {
@@ -140,6 +173,24 @@ struct EpfEntry {
     metadata: Vec<u8>,
     offset: u32,
     size: u32,
+}
+
+#[derive(Debug, Default)]
+struct ListFilter {
+    extension: Option<String>,
+}
+
+fn filter_entries<'a>(entries: &'a [EpfEntry], filter: &ListFilter) -> Vec<&'a EpfEntry> {
+    entries
+        .iter()
+        .filter(|entry| {
+            let Some(extension) = &filter.extension else {
+                return true;
+            };
+
+            entry_extension(&entry.name).as_deref() == Some(extension.as_str())
+        })
+        .collect()
 }
 
 fn parse_directory(bytes: &[u8], directory_offset: usize) -> Result<Vec<EpfEntry>, String> {
@@ -237,12 +288,7 @@ fn extension_summary(entries: &[EpfEntry]) -> String {
     let mut extensions = std::collections::BTreeMap::<String, usize>::new();
 
     for entry in entries {
-        let extension = entry
-            .name
-            .rsplit_once('.')
-            .map(|(_, extension)| extension)
-            .unwrap_or("<none>")
-            .to_ascii_uppercase();
+        let extension = entry_extension(&entry.name).unwrap_or_else(|| "<NONE>".to_string());
         *extensions.entry(extension).or_default() += 1;
     }
 
@@ -251,4 +297,9 @@ fn extension_summary(entries: &[EpfEntry]) -> String {
         .map(|(extension, count)| format!("{extension}:{count}"))
         .collect::<Vec<_>>()
         .join(",")
+}
+
+fn entry_extension(name: &str) -> Option<String> {
+    name.rsplit_once('.')
+        .map(|(_, extension)| extension.to_ascii_uppercase())
 }
