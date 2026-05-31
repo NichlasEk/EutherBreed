@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use crate::components::LevelEntity;
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState,
-    SaveSlot,
+    PersistentLevelStates, SaveSlot,
 };
 use crate::setup::{load_level_from_campaign, spawn_level};
 
@@ -16,12 +16,18 @@ pub fn quick_save_on_key(
     vitals: Res<ApothecaryVitals>,
     campaign_runtime: Res<CampaignRuntime>,
     level_state: Res<LocalLevelState>,
+    persistent_level_states: Res<PersistentLevelStates>,
 ) {
     if !input.just_pressed(KeyCode::F5) {
         return;
     }
 
-    let save = build_runtime_save(&vitals, &campaign_runtime, &level_state);
+    let save = build_runtime_save(
+        &vitals,
+        &campaign_runtime,
+        &level_state,
+        &persistent_level_states,
+    );
 
     match write_runtime_save(&save_slot.path, &save) {
         Ok(()) => info!("quick save written to {}", save_slot.path.display()),
@@ -40,6 +46,7 @@ pub fn quick_load_on_key(
     mut vitals: ResMut<ApothecaryVitals>,
     mut campaign_runtime: ResMut<CampaignRuntime>,
     mut level_state: ResMut<LocalLevelState>,
+    mut persistent_level_states: ResMut<PersistentLevelStates>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
     mut level_runtime: ResMut<LevelRuntime>,
     level_entities: Query<Entity, With<LevelEntity>>,
@@ -60,13 +67,19 @@ pub fn quick_load_on_key(
         }
     };
 
-    apply_save_to_runtime(&save, &mut vitals, &mut campaign_runtime, &mut level_state)
-        .unwrap_or_else(|error| {
-            panic!(
-                "failed to apply save level {}: {error:?}",
-                save.run_state.current_level
-            )
-        });
+    apply_save_to_runtime(
+        &save,
+        &mut vitals,
+        &mut campaign_runtime,
+        &mut level_state,
+        &mut persistent_level_states,
+    )
+    .unwrap_or_else(|error| {
+        panic!(
+            "failed to apply save level {}: {error:?}",
+            save.run_state.current_level
+        )
+    });
 
     for entity in &level_entities {
         commands.entity(entity).despawn();
@@ -86,13 +99,20 @@ pub fn build_runtime_save(
     vitals: &ApothecaryVitals,
     campaign_runtime: &CampaignRuntime,
     level_state: &LocalLevelState,
+    persistent_level_states: &PersistentLevelStates,
 ) -> game_core::SaveGame {
-    game_core::SaveGame::new(
+    let mut level_states = persistent_level_states.0.clone();
+    level_states.insert(
+        campaign_runtime.progress.current_level().to_string(),
+        level_state.0.clone(),
+    );
+
+    game_core::SaveGame::with_level_states(
         game_core::RunState::new(
             vitals.0.clone(),
             campaign_runtime.progress.current_level().to_string(),
         ),
-        level_state.0.clone(),
+        level_states,
     )
 }
 
@@ -101,13 +121,15 @@ pub fn apply_save_to_runtime(
     vitals: &mut ApothecaryVitals,
     campaign_runtime: &mut CampaignRuntime,
     level_state: &mut LocalLevelState,
+    persistent_level_states: &mut PersistentLevelStates,
 ) -> Result<(), game_core::CampaignTravelError> {
     campaign_runtime
         .progress
         .travel_to(&campaign_runtime.definition, &save.run_state.current_level)?;
 
     vitals.0 = save.run_state.vitals.clone();
-    level_state.0 = save.level_state.clone();
+    persistent_level_states.0 = save.level_states.clone();
+    level_state.0 = save.current_level_state();
 
     Ok(())
 }

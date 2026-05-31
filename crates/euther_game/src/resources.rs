@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use game_core::{
     ApothecaryVitals as CoreApothecaryVitals, CampaignDefinition, CampaignProgress, LevelState,
 };
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Resource)]
@@ -12,6 +13,9 @@ pub struct ContaminantSpawnTimer(pub Timer);
 
 #[derive(Resource, Default)]
 pub struct LocalLevelState(pub LevelState);
+
+#[derive(Resource, Default)]
+pub struct PersistentLevelStates(pub HashMap<String, LevelState>);
 
 #[derive(Resource, Default)]
 pub struct CampaignSignal {

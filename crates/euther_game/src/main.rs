@@ -7,7 +7,7 @@ mod systems;
 use bevy::prelude::*;
 use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
-    LocalLevelState, SaveSlot,
+    LocalLevelState, PersistentLevelStates, SaveSlot,
 };
 use setup::setup;
 use systems::{
@@ -60,6 +60,7 @@ fn run_game() {
         .insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(LocalLevelState::default())
+        .insert_resource(PersistentLevelStates::default())
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
@@ -103,6 +104,7 @@ fn run_headless_smoke() {
     app.insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(LocalLevelState::default())
+        .insert_resource(PersistentLevelStates::default())
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
@@ -196,14 +198,21 @@ fn run_load_file_smoke(path: String) {
     let mut vitals = initial_vitals();
     let mut campaign_runtime = initial_campaign_runtime();
     let mut level_state = LocalLevelState::default();
+    let mut persistent_level_states = PersistentLevelStates::default();
 
-    apply_save_to_runtime(&save, &mut vitals, &mut campaign_runtime, &mut level_state)
-        .unwrap_or_else(|error| {
-            panic!(
-                "failed to apply save level {}: {error:?}",
-                save.run_state.current_level
-            )
-        });
+    apply_save_to_runtime(
+        &save,
+        &mut vitals,
+        &mut campaign_runtime,
+        &mut level_state,
+        &mut persistent_level_states,
+    )
+    .unwrap_or_else(|error| {
+        panic!(
+            "failed to apply save level {}: {error:?}",
+            save.run_state.current_level
+        )
+    });
 
     println!("load file smoke ok");
     println!("path: {path}");
@@ -214,12 +223,23 @@ fn run_runtime_save_smoke(path: String) {
     let vitals = initial_vitals();
     let campaign_runtime = initial_campaign_runtime();
     let mut level_state = LocalLevelState::default();
+    let mut persistent_level_states = PersistentLevelStates::default();
     level_state.0.grant_clearance("quarantine_green");
     level_state
         .0
         .complete_objective("analyze_contaminant_sample");
+    let mut lab_state = game_core::LevelState::default();
+    lab_state.grant_clearance("lab_blue");
+    persistent_level_states
+        .0
+        .insert("lab_access_corridor".to_string(), lab_state);
 
-    let save = systems::save::build_runtime_save(&vitals, &campaign_runtime, &level_state);
+    let save = systems::save::build_runtime_save(
+        &vitals,
+        &campaign_runtime,
+        &level_state,
+        &persistent_level_states,
+    );
     systems::save::write_runtime_save(&path, &save).unwrap_or_else(|error| {
         panic!("failed to write runtime save smoke file {path}: {error:?}")
     });
@@ -229,12 +249,14 @@ fn run_runtime_save_smoke(path: String) {
     let mut loaded_vitals = initial_vitals();
     let mut loaded_campaign_runtime = initial_campaign_runtime();
     let mut loaded_level_state = LocalLevelState::default();
+    let mut loaded_persistent_level_states = PersistentLevelStates::default();
 
     apply_save_to_runtime(
         &loaded,
         &mut loaded_vitals,
         &mut loaded_campaign_runtime,
         &mut loaded_level_state,
+        &mut loaded_persistent_level_states,
     )
     .unwrap_or_else(|error| {
         panic!(
@@ -245,6 +267,10 @@ fn run_runtime_save_smoke(path: String) {
 
     println!("runtime save smoke ok");
     println!("path: {path}");
+    println!(
+        "persistent_level_states: {}",
+        loaded_persistent_level_states.0.len()
+    );
     print_runtime_summary(
         &loaded_vitals,
         &loaded_campaign_runtime,
@@ -279,6 +305,7 @@ fn sample_save_game() -> game_core::SaveGame {
 fn print_save_summary(save: &game_core::SaveGame) {
     println!("version: {}", save.version);
     println!("current_level: {}", save.run_state.current_level);
+    println!("level_states: {}", save.level_states.len());
     println!("health: {}", save.run_state.vitals.health);
     println!("ammo: {}", save.run_state.vitals.ammo);
     println!("bio_samples: {}", save.run_state.vitals.bio_samples);
