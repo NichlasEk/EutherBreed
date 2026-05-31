@@ -9,7 +9,7 @@ use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
     LocalLevelState, PersistentLevelStates, SaveSlot,
 };
-use setup::setup;
+use setup::{apothecary_spawn_position, setup};
 use systems::{
     aim_apothecary, apply_save_to_runtime, collect_pickups, fire_syringe_round,
     interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
@@ -53,6 +53,11 @@ fn main() {
 
     if let Some(path) = argument_value("--autosave-smoke") {
         run_autosave_smoke(path);
+        return;
+    }
+
+    if std::env::args().any(|arg| arg == "--entry-smoke") {
+        run_entry_smoke();
         return;
     }
 
@@ -338,6 +343,21 @@ fn run_autosave_smoke(path: String) {
     );
 }
 
+fn run_entry_smoke() {
+    let campaign_runtime = initial_campaign_runtime();
+    let ward = setup::load_level_from_campaign(&campaign_runtime, "prototype_quarantine_ward");
+    let lab = setup::load_level_from_campaign(&campaign_runtime, "lab_access_corridor");
+    let lab_entry = apothecary_spawn_position(&lab, Some("from_quarantine_ward"));
+    let ward_entry = apothecary_spawn_position(&ward, Some("from_lab_access_corridor"));
+
+    assert_eq!(lab_entry, Vec2::new(-390.0, 0.0));
+    assert_eq!(ward_entry, Vec2::new(390.0, 0.0));
+
+    println!("entry smoke ok");
+    println!("lab_from_ward: {},{}", lab_entry.x, lab_entry.y);
+    println!("ward_from_lab: {},{}", ward_entry.x, ward_entry.y);
+}
+
 fn save_smoke_roundtrip() -> game_core::SaveGame {
     let save = sample_save_game();
     let content = save
@@ -417,6 +437,7 @@ fn argument_value(flag: &str) -> Option<String> {
 fn initial_level_runtime() -> LevelRuntime {
     LevelRuntime {
         loaded_level_id: None,
+        pending_entry_id: None,
     }
 }
 

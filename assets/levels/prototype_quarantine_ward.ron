@@ -59,11 +59,18 @@
             required: true,
         ),
     ],
+    entry_points: [
+        (
+            id: "from_lab_access_corridor",
+            position: (390.0, 0.0),
+        ),
+    ],
     exits: [
         (
             position: (432.0, 205.0),
             half_extents: (22.0, 46.0),
             target: "lab_access_corridor",
+            entry_id: "from_quarantine_ward",
             required_objectives: [
                 "analyze_contaminant_sample",
             ],

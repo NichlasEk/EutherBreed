@@ -39,11 +39,18 @@
         ),
     ],
     objectives: [],
+    entry_points: [
+        (
+            id: "from_quarantine_ward",
+            position: (-390.0, 0.0),
+        ),
+    ],
     exits: [
         (
             position: (432.0, 0.0),
             half_extents: (22.0, 46.0),
             target: "prototype_quarantine_ward",
+            entry_id: "from_lab_access_corridor",
             required_objectives: [],
         ),
     ],

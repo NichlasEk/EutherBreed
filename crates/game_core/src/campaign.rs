@@ -53,11 +53,27 @@ impl CampaignDefinition {
         self.validate()?;
 
         let ids = self.level_ids()?;
+        let levels: Vec<&LevelDefinition> = levels.into_iter().collect();
 
-        for level in levels {
+        for level in &levels {
             for exit in &level.exits {
                 if !ids.contains(&exit.target) {
                     return Err(CampaignValidationError::UnknownExitTarget);
+                }
+
+                let Some(target_level) = levels
+                    .iter()
+                    .find(|candidate| candidate.name == exit.target)
+                else {
+                    return Err(CampaignValidationError::UnknownExitTarget);
+                };
+
+                if !target_level
+                    .entry_points
+                    .iter()
+                    .any(|entry_point| entry_point.id == exit.entry_id)
+                {
+                    return Err(CampaignValidationError::UnknownExitEntryPoint);
                 }
             }
         }
@@ -207,6 +223,7 @@ pub enum CampaignValidationError {
     DuplicateLevelId,
     UnknownStartLevel,
     UnknownExitTarget,
+    UnknownExitEntryPoint,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -265,6 +282,20 @@ mod tests {
         assert_eq!(
             campaign.validate_level_routes([&level]),
             Err(CampaignValidationError::UnknownExitTarget)
+        );
+    }
+
+    #[test]
+    fn campaign_rejects_unknown_exit_entry_points() {
+        let campaign = campaign();
+        let quarantine = LevelDefinition::prototype_quarantine_ward();
+        let mut corridor = LevelDefinition::prototype_quarantine_ward();
+        corridor.name = "lab_access_corridor".to_string();
+        corridor.entry_points.clear();
+
+        assert_eq!(
+            campaign.validate_level_routes([&quarantine, &corridor]),
+            Err(CampaignValidationError::UnknownExitEntryPoint)
         );
     }
 

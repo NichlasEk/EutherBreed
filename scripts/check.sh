@@ -8,6 +8,7 @@ cargo check
 cargo test -p game_core
 cargo run -p abta_tools -- --help
 cargo run -p euther_game -- --validate-content
+cargo run -p euther_game -- --entry-smoke
 cargo run -p euther_game -- --save-smoke
 cargo run -p euther_game -- --save-file-smoke /tmp/euther_save_smoke.ron
 cargo run -p euther_game -- --load-file-smoke /tmp/euther_save_smoke.ron

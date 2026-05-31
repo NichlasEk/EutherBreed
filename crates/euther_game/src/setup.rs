@@ -32,7 +32,7 @@ pub fn setup(
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
-    spawn_level(&mut commands, &level, &level_state.0);
+    spawn_level(&mut commands, &level, &level_state.0, None);
 
     level_runtime.loaded_level_id = Some(current_level_id);
 }
@@ -62,7 +62,10 @@ pub fn spawn_level(
     commands: &mut Commands,
     level: &LevelDefinition,
     level_state: &game_core::LevelState,
+    entry_id: Option<&str>,
 ) {
+    let apothecary_start = apothecary_spawn_position(level, entry_id);
+
     commands.spawn((
         Sprite::from_color(Color::srgb(0.08, 0.10, 0.13), Vec2::new(900.0, 520.0)),
         Transform::from_xyz(0.0, 0.0, -10.0),
@@ -71,7 +74,7 @@ pub fn spawn_level(
 
     commands.spawn((
         Sprite::from_color(Color::srgb(0.45, 0.85, 0.72), Vec2::new(34.0, 48.0)),
-        Transform::from_xyz(level.apothecary_start.x, level.apothecary_start.y, 10.0),
+        Transform::from_xyz(apothecary_start.x, apothecary_start.y, 10.0),
         Apothecary,
         LevelEntity,
     ));
@@ -130,11 +133,24 @@ pub fn spawn_level(
             Transform::from_xyz(exit.position.x, exit.position.y, 2.0),
             ExitZone {
                 target: exit.target.clone(),
+                entry_id: exit.entry_id.clone(),
                 required_objectives: exit.required_objectives.clone(),
             },
             LevelEntity,
         ));
     }
+}
+
+pub fn apothecary_spawn_position(level: &LevelDefinition, entry_id: Option<&str>) -> Vec2 {
+    entry_id
+        .and_then(|entry_id| {
+            level
+                .entry_points
+                .iter()
+                .find(|entry_point| entry_point.id == entry_id)
+        })
+        .map(|entry_point| entry_point.position)
+        .unwrap_or(level.apothecary_start)
 }
 
 fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2) {

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
-use crate::resources::{ApothecaryVitals, CampaignSignal, LocalLevelState};
+use crate::resources::{ApothecaryVitals, CampaignSignal, LocalLevelState, PendingExit};
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
@@ -77,9 +77,17 @@ pub fn report_exit_overlap(
             .exit_readiness(&exit.required_objectives)
         {
             ExitReadiness::Ready => {
-                if campaign_signal.pending_exit_target.as_ref() != Some(&exit.target) {
-                    campaign_signal.pending_exit_target = Some(exit.target.clone());
-                    info!("exit target={} is ready", exit.target);
+                if campaign_signal.pending_exit.as_ref().is_none_or(|pending| {
+                    pending.target != exit.target || pending.entry_id != exit.entry_id
+                }) {
+                    campaign_signal.pending_exit = Some(PendingExit {
+                        target: exit.target.clone(),
+                        entry_id: exit.entry_id.clone(),
+                    });
+                    info!(
+                        "exit target={} entry={} is ready",
+                        exit.target, exit.entry_id
+                    );
                 }
             }
             ExitReadiness::Blocked { missing } => {

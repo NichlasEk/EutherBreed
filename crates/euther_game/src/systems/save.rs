@@ -89,7 +89,8 @@ pub fn quick_load_on_key(
 
     let level =
         load_level_from_campaign(&campaign_runtime, campaign_runtime.progress.current_level());
-    spawn_level(&mut commands, &level, &level_state.0);
+    level_runtime.pending_entry_id = None;
+    spawn_level(&mut commands, &level, &level_state.0, None);
     level_runtime.loaded_level_id = Some(campaign_runtime.progress.current_level().to_string());
 
     info!("quick load read from {}", save_slot.path.display());

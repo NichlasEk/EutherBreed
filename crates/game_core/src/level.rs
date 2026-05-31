@@ -17,6 +17,7 @@ pub struct LevelDefinition {
     pub doors: Vec<DoorDefinition>,
     pub terminals: Vec<TerminalDefinition>,
     pub objectives: Vec<ObjectiveDefinition>,
+    pub entry_points: Vec<LevelEntryPoint>,
     pub exits: Vec<LevelExit>,
 }
 
@@ -40,7 +41,14 @@ pub struct LevelExit {
     pub position: Vec2,
     pub half_extents: Vec2,
     pub target: String,
+    pub entry_id: String,
     pub required_objectives: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct LevelEntryPoint {
+    pub id: String,
+    pub position: Vec2,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -143,8 +151,19 @@ impl LevelDefinition {
             }
         }
 
+        let mut entry_ids = HashSet::new();
+        for entry_point in &self.entry_points {
+            if entry_point.id.trim().is_empty() || !entry_ids.insert(entry_point.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
+
+            if !point_inside_box(entry_point.position, self.bounds) {
+                return Err(LevelValidationError::EntryOutsideBounds);
+            }
+        }
+
         for exit in &self.exits {
-            if exit.target.trim().is_empty() {
+            if exit.target.trim().is_empty() || exit.entry_id.trim().is_empty() {
                 return Err(LevelValidationError::InvalidExit);
             }
 
@@ -210,10 +229,15 @@ impl LevelDefinition {
                 label: "Analyze contaminant sample".to_string(),
                 required: true,
             }],
+            entry_points: vec![LevelEntryPoint {
+                id: "from_lab_access_corridor".to_string(),
+                position: Vec2::new(390.0, 0.0),
+            }],
             exits: vec![LevelExit {
                 position: Vec2::new(432.0, 205.0),
                 half_extents: Vec2::new(22.0, 46.0),
                 target: "lab_access_corridor".to_string(),
+                entry_id: "from_quarantine_ward".to_string(),
                 required_objectives: vec!["analyze_contaminant_sample".to_string()],
             }],
         }
@@ -232,6 +256,7 @@ pub enum LevelValidationError {
     NoWalls,
     NoExits,
     StartOutsideBounds,
+    EntryOutsideBounds,
     InvalidPickupAmount,
     InvalidEntityId,
     InvalidClearanceId,
@@ -265,6 +290,7 @@ mod tests {
         assert!(!level.doors.is_empty());
         assert!(!level.terminals.is_empty());
         assert!(!level.objectives.is_empty());
+        assert!(!level.entry_points.is_empty());
         assert!(!level.exits.is_empty());
     }
 
@@ -315,9 +341,25 @@ mod tests {
     }
 
     #[test]
+    fn validation_rejects_empty_exit_entry_id() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.exits[0].entry_id.clear();
+
+        assert_eq!(level.validate(), Err(LevelValidationError::InvalidExit));
+    }
+
+    #[test]
     fn validation_rejects_duplicate_pickup_ids() {
         let mut level = LevelDefinition::prototype_quarantine_ward();
         level.pickups[1].id = level.pickups[0].id.clone();
+
+        assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_entry_ids() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.entry_points.push(level.entry_points[0].clone());
 
         assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
     }

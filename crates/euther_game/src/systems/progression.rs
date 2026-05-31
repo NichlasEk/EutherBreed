@@ -20,10 +20,11 @@ pub fn update_campaign_progress(
     save_slot: Res<SaveSlot>,
     level_entities: Query<Entity, With<LevelEntity>>,
 ) {
-    let Some(target) = signal.pending_exit_target.take() else {
+    let Some(pending_exit) = signal.pending_exit.take() else {
         return;
     };
 
+    let target = pending_exit.target;
     let is_known_level = runtime.definition.contains_level(&target);
     let previous_level = runtime.progress.current_level().to_string();
 
@@ -65,7 +66,13 @@ pub fn update_campaign_progress(
     contaminant_timer.0.reset();
 
     let level = load_level_from_campaign(&runtime, runtime.progress.current_level());
-    spawn_level(&mut commands, &level, &level_state.0);
+    level_runtime.pending_entry_id = Some(pending_exit.entry_id);
+    spawn_level(
+        &mut commands,
+        &level,
+        &level_state.0,
+        level_runtime.pending_entry_id.as_deref(),
+    );
     level_runtime.loaded_level_id = Some(runtime.progress.current_level().to_string());
 
     let save = build_runtime_save(&vitals, &runtime, &level_state, &persistent_level_states);

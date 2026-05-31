@@ -19,7 +19,13 @@ pub struct PersistentLevelStates(pub HashMap<String, LevelState>);
 
 #[derive(Resource, Default)]
 pub struct CampaignSignal {
-    pub pending_exit_target: Option<String>,
+    pub pending_exit: Option<PendingExit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingExit {
+    pub target: String,
+    pub entry_id: String,
 }
 
 #[derive(Resource)]
@@ -31,6 +37,7 @@ pub struct CampaignRuntime {
 #[derive(Resource)]
 pub struct LevelRuntime {
     pub loaded_level_id: Option<String>,
+    pub pending_entry_id: Option<String>,
 }
 
 #[derive(Resource)]
