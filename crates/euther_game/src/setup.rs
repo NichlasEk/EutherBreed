@@ -113,14 +113,23 @@ pub fn spawn_level(
     let apothecary_start =
         run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
 
+    spawn_tiled_area(
+        commands,
+        asset_server,
+        "sprites/biomech/tile_floor_biomech.png",
+        level.bounds.center,
+        level.bounds.half_extents * 2.0,
+        Vec2::splat(128.0),
+        -10.0,
+        level_floor_tint(&level.name),
+    );
+
     commands.spawn((
-        image_sprite(
-            asset_server,
-            "sprites/biomech/tile_floor_biomech.png",
-            Vec2::new(900.0, 520.0),
-            level_floor_tint(&level.name),
+        Sprite::from_color(
+            Color::srgba(0.0, 0.0, 0.0, 0.18),
+            level.bounds.half_extents * 2.0,
         ),
-        Transform::from_xyz(0.0, 0.0, -10.0),
+        Transform::from_xyz(level.bounds.center.x, level.bounds.center.y, -9.0),
         LevelEntity,
     ));
 
@@ -244,6 +253,36 @@ fn image_sprite(
     sprite
 }
 
+fn spawn_tiled_area(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    path: &'static str,
+    center: Vec2,
+    size: Vec2,
+    tile_size: Vec2,
+    z: f32,
+    color: Color,
+) {
+    let columns = (size.x / tile_size.x).ceil() as i32;
+    let rows = (size.y / tile_size.y).ceil() as i32;
+    let origin = center - Vec2::new(columns as f32 * tile_size.x, rows as f32 * tile_size.y) * 0.5;
+
+    for y in 0..rows {
+        for x in 0..columns {
+            let position = origin
+                + Vec2::new(
+                    x as f32 * tile_size.x + tile_size.x * 0.5,
+                    y as f32 * tile_size.y + tile_size.y * 0.5,
+                );
+            commands.spawn((
+                image_sprite(asset_server, path, tile_size, color),
+                Transform::from_xyz(position.x, position.y, z),
+                LevelEntity,
+            ));
+        }
+    }
+}
+
 pub fn update_level_runtime(
     level_runtime: &mut LevelRuntime,
     level: &LevelDefinition,
@@ -270,14 +309,24 @@ fn spawn_wall(
     size: Vec2,
     level_name: &str,
 ) {
+    spawn_tiled_area(
+        commands,
+        asset_server,
+        "sprites/biomech/tile_wall_biomech.png",
+        center,
+        size,
+        if size.x >= size.y {
+            Vec2::new(96.0, size.y.max(18.0))
+        } else {
+            Vec2::new(size.x.max(18.0), 96.0)
+        },
+        -5.0,
+        level_wall_tint(level_name),
+    );
+
     commands.spawn((
-        image_sprite(
-            asset_server,
-            "sprites/biomech/tile_wall_biomech.png",
-            size,
-            level_wall_tint(level_name),
-        ),
-        Transform::from_xyz(center.x, center.y, -5.0),
+        Sprite::from_color(Color::NONE, size),
+        Transform::from_xyz(center.x, center.y, -4.8),
         Wall {
             half_extents: size * 0.5,
         },
@@ -311,7 +360,7 @@ fn spawn_contaminant(
         image_sprite(
             asset_server,
             "sprites/biomech/contaminant.png",
-            Vec2::new(54.0, 44.0),
+            Vec2::new(64.0, 50.0),
             Color::WHITE,
         ),
         Transform::from_xyz(position.x, position.y, 15.0),

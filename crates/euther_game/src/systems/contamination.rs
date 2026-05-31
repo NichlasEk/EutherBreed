@@ -43,7 +43,7 @@ pub fn spawn_contaminants(
     level_runtime.dynamic_spawn_cursor += 1;
 
     let mut sprite = Sprite::from_image(asset_server.load("sprites/biomech/contaminant.png"));
-    sprite.custom_size = Some(Vec2::new(54.0, 44.0));
+    sprite.custom_size = Some(Vec2::new(64.0, 50.0));
 
     commands.spawn((
         sprite,
@@ -73,17 +73,20 @@ pub fn move_contaminants(
 
         if !circle_hits_any_wall(next, CONTAMINANT_RADIUS, &wall_query) {
             transform.translation = next.extend(transform.translation.z);
+            transform.rotation = Quat::from_rotation_z(direction.y.atan2(direction.x));
             continue;
         }
 
         let x_only = Vec2::new(next.x, current.y);
         if !circle_hits_any_wall(x_only, CONTAMINANT_RADIUS, &wall_query) {
             transform.translation.x = x_only.x;
+            transform.rotation = Quat::from_rotation_z(delta.y.atan2(delta.x));
         }
 
         let y_only = Vec2::new(transform.translation.x, next.y);
         if !circle_hits_any_wall(y_only, CONTAMINANT_RADIUS, &wall_query) {
             transform.translation.y = y_only.y;
+            transform.rotation = Quat::from_rotation_z(delta.y.atan2(delta.x));
         }
     }
 }

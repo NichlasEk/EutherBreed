@@ -108,6 +108,7 @@ Controls:
 - left mouse button or `Z`/`X`/`C`: fire reagent round
 - `F5`: quick save to `saves/slot1.ron`
 - `F9`: quick load from `saves/slot1.ron`
+- `F11`: toggle borderless fullscreen
 - `Esc`: quit
 
 Current prototype:

@@ -32,7 +32,7 @@ The player character is an adult female ship apothecary: attractive, confident, 
 First build a small but cohesive prototype atlas:
 
 - apothecary player sprite with clear facing/readability
-- contaminant enemy sprite with hit-flash compatible palette
+- contaminant enemy sprite with two strong arms, clear travel-facing rotation, and hit-flash compatible palette
 - floor tile variants for quarantine ward, lab corridor, and triage vault
 - wall tile variants: straight, corner, cap, bulkhead detail
 - locked/unlocked quarantine door states
@@ -48,6 +48,7 @@ First build a small but cohesive prototype atlas:
 - `assets/sprites/source/apothecary_topdown_chroma.png`: generated chroma-key source for the runtime sprite.
 - `assets/sprites/biomech/`: first cohesive biomechanical runtime sprite pass for contaminants, reagent projectiles, pickups, terminals, doors, exits, floor panels, and wall panels.
 - `assets/sprites/source/biomech_sheet_chroma.png`: generated chroma-key source for the biomechanical runtime sprite pass.
+- `assets/sprites/source/biomech_enemy_tiles_chroma.png`: generated chroma-key source for the two-armed contaminant refresh and darker repeated floor/wall tile pass.
 
 ## Suggested Resolutions
 

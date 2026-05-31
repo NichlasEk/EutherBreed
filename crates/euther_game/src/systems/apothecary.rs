@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::window::{MonitorSelection, PrimaryWindow, WindowMode};
 
 use crate::components::{Apothecary, Wall};
 use crate::geometry::circle_hits_any_wall;
@@ -85,4 +85,18 @@ pub fn quit_on_escape(input: Res<ButtonInput<KeyCode>>, mut exit: MessageWriter<
     if input.just_pressed(KeyCode::Escape) {
         exit.write(AppExit::Success);
     }
+}
+
+pub fn toggle_fullscreen_on_f11(
+    input: Res<ButtonInput<KeyCode>>,
+    mut window_query: Single<&mut Window, With<PrimaryWindow>>,
+) {
+    if !input.just_pressed(KeyCode::F11) {
+        return;
+    }
+
+    window_query.mode = match window_query.mode {
+        WindowMode::Windowed => WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+        _ => WindowMode::Windowed,
+    };
 }

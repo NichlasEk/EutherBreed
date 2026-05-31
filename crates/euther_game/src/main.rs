@@ -14,9 +14,9 @@ use systems::{
     aim_apothecary, apply_save_to_runtime, collect_pickups, fire_syringe_round,
     interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
     quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
-    resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, unlock_doors,
-    update_campaign_progress, update_contaminant_hit_flash, update_notice_text,
-    update_section_text, update_status_text,
+    resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants,
+    toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress, update_contaminant_hit_flash,
+    update_notice_text, update_section_text, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -111,6 +111,11 @@ fn run_game() {
                 update_contaminant_hit_flash,
                 resolve_contaminant_contact,
                 collect_pickups,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
                 quick_save_on_key,
                 quick_load_on_key,
                 unlock_doors,
@@ -120,6 +125,7 @@ fn run_game() {
                 update_status_text,
                 update_section_text,
                 update_notice_text,
+                toggle_fullscreen_on_f11,
                 quit_on_escape,
             ),
         )
