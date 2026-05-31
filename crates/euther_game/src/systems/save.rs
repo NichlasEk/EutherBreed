@@ -50,6 +50,7 @@ pub fn quick_save_on_key(
 
 pub fn quick_load_on_key(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     input: Res<ButtonInput<KeyCode>>,
     save_slot: Res<SaveSlot>,
     mut vitals: ResMut<ApothecaryVitals>,
@@ -103,6 +104,7 @@ pub fn quick_load_on_key(
     level_runtime.pending_entry_id = None;
     spawn_level(
         &mut commands,
+        &asset_server,
         &level,
         &level_state.0,
         None,

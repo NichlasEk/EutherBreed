@@ -44,6 +44,8 @@ First build a small but cohesive prototype atlas:
 
 - `assets/concepts/apothecary_hero_concept.png`: first transparent concept pass for the adult female apothecary hero. Use as direction reference, not final runtime sprite.
 - `assets/sprites/source/apothecary_hero_concept_chroma.png`: generated chroma-key source for the concept image.
+- `assets/sprites/apothecary_topdown.png`: first transparent runtime sprite pass for the player character. It is wired into the prototype and should be judged in motion.
+- `assets/sprites/source/apothecary_topdown_chroma.png`: generated chroma-key source for the runtime sprite.
 
 ## Suggested Resolutions
 

@@ -10,6 +10,7 @@ use crate::systems::save::{build_runtime_save, write_runtime_save};
 
 pub fn update_campaign_progress(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mut signal: ResMut<CampaignSignal>,
     mut runtime: ResMut<CampaignRuntime>,
     mut level_runtime: ResMut<LevelRuntime>,
@@ -70,6 +71,7 @@ pub fn update_campaign_progress(
     level_runtime.pending_entry_id = Some(pending_exit.entry_id);
     spawn_level(
         &mut commands,
+        &asset_server,
         &level,
         &level_state.0,
         level_runtime.pending_entry_id.as_deref(),

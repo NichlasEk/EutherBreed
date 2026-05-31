@@ -82,14 +82,21 @@ fn run_game() {
         .insert_resource(initial_level_runtime())
         .insert_resource(initial_save_slot())
         .insert_resource(GameNotice::default())
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "EutherBreed Prototype".to_string(),
-                resolution: (1280, 720).into(),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "EutherBreed Prototype".to_string(),
+                        resolution: (1280, 720).into(),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    file_path: "../../assets".to_string(),
+                    ..default()
+                }),
+        )
         .add_systems(Startup, setup)
         .add_systems(
             Update,

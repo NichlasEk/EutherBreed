@@ -10,6 +10,7 @@ use crate::resources::{CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, Loc
 
 pub fn setup(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     campaign_runtime: Res<CampaignRuntime>,
     level_state: Res<LocalLevelState>,
     mut level_runtime: ResMut<LevelRuntime>,
@@ -67,7 +68,14 @@ pub fn setup(
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
-    spawn_level(&mut commands, &level, &level_state.0, None, None);
+    spawn_level(
+        &mut commands,
+        &asset_server,
+        &level,
+        &level_state.0,
+        None,
+        None,
+    );
     update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
 
     level_runtime.loaded_level_id = Some(current_level_id);
@@ -96,6 +104,7 @@ pub fn load_level_from_campaign(
 
 pub fn spawn_level(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     level: &LevelDefinition,
     level_state: &game_core::LevelState,
     entry_id: Option<&str>,
@@ -111,7 +120,7 @@ pub fn spawn_level(
     ));
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.45, 0.85, 0.72), Vec2::new(34.0, 48.0)),
+        apothecary_sprite(asset_server),
         Transform::from_xyz(apothecary_start.x, apothecary_start.y, 10.0),
         Apothecary,
         LevelEntity,
@@ -193,6 +202,13 @@ pub fn apothecary_spawn_position(level: &LevelDefinition, entry_id: Option<&str>
         })
         .map(|entry_point| entry_point.position)
         .unwrap_or(level.apothecary_start)
+}
+
+fn apothecary_sprite(asset_server: &AssetServer) -> Sprite {
+    let mut sprite = Sprite::from_image(asset_server.load("sprites/apothecary_topdown.png"));
+    sprite.rect = Some(Rect::new(377.0, 84.0, 1102.0, 1122.0));
+    sprite.custom_size = Some(Vec2::new(80.0, 114.0));
+    sprite
 }
 
 pub fn update_level_runtime(
