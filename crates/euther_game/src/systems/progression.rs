@@ -72,10 +72,19 @@ pub fn update_campaign_progress(
         &level,
         &level_state.0,
         level_runtime.pending_entry_id.as_deref(),
+        None,
     );
     level_runtime.loaded_level_id = Some(runtime.progress.current_level().to_string());
 
-    let save = build_runtime_save(&vitals, &runtime, &level_state, &persistent_level_states);
+    let run_position =
+        crate::setup::apothecary_spawn_position(&level, level_runtime.pending_entry_id.as_deref());
+    let save = build_runtime_save(
+        &vitals,
+        &runtime,
+        &level_state,
+        &persistent_level_states,
+        run_position,
+    );
     match write_runtime_save(&save_slot.path, &save) {
         Ok(()) => info!("autosave written to {}", save_slot.path.display()),
         Err(error) => warn!(

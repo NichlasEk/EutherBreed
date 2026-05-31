@@ -4,9 +4,9 @@ use std::path::Path;
 
 use crate::{LevelState, RunState};
 
-pub const SAVE_GAME_VERSION: u32 = 2;
+pub const SAVE_GAME_VERSION: u32 = 3;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct SaveGame {
     pub version: u32,
     pub run_state: RunState,
@@ -53,11 +53,15 @@ impl SaveGame {
         let save: Self = match ron::from_str(content) {
             Ok(save) => save,
             Err(error) => {
-                return LegacySaveGame::from_ron_str(content)
+                return LegacySaveGameV1::from_ron_str(content)
                     .map(Self::from)
                     .map_err(|_| SaveLoadError::Deserialize(error));
             }
         };
+
+        if save.version == 2 {
+            return Ok(Self::with_level_states(save.run_state, save.level_states));
+        }
 
         if save.version != SAVE_GAME_VERSION {
             return Err(SaveLoadError::UnsupportedVersion(save.version));
@@ -77,14 +81,14 @@ impl SaveGame {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-struct LegacySaveGame {
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+struct LegacySaveGameV1 {
     version: u32,
     run_state: RunState,
     level_state: LevelState,
 }
 
-impl LegacySaveGame {
+impl LegacySaveGameV1 {
     fn from_ron_str(content: &str) -> Result<Self, SaveLoadError> {
         let save: Self = ron::from_str(content).map_err(SaveLoadError::Deserialize)?;
 
@@ -96,8 +100,8 @@ impl LegacySaveGame {
     }
 }
 
-impl From<LegacySaveGame> for SaveGame {
-    fn from(save: LegacySaveGame) -> Self {
+impl From<LegacySaveGameV1> for SaveGame {
+    fn from(save: LegacySaveGameV1) -> Self {
         Self::new(save.run_state, save.level_state)
     }
 }
@@ -186,6 +190,22 @@ mod tests {
     }
 
     #[test]
+    fn save_game_preserves_run_position() {
+        let save = SaveGame::new(
+            RunState::new_at(
+                ApothecaryVitals::new(88, 19, 2),
+                "prototype_quarantine_ward",
+                glam::Vec2::new(12.0, -24.0),
+            ),
+            LevelState::default(),
+        );
+        let content = save.to_ron_string().expect("save should serialize");
+        let loaded = SaveGame::from_ron_str(&content).expect("save should deserialize");
+
+        assert_eq!(loaded.run_state.position, glam::Vec2::new(12.0, -24.0));
+    }
+
+    #[test]
     fn unsupported_save_version_is_rejected() {
         let mut save = save_game();
         save.version = SAVE_GAME_VERSION + 1;
@@ -218,6 +238,37 @@ mod tests {
         assert_eq!(save.version, SAVE_GAME_VERSION);
         assert_eq!(save.level_states.len(), 1);
         assert!(save.current_level_state().has_clearance("quarantine_green"));
+    }
+
+    #[test]
+    fn version_two_save_migrates_missing_position() {
+        let content = r#"(
+            version: 2,
+            run_state: (
+                vitals: (health: 88, ammo: 19, bio_samples: 2),
+                current_level: "prototype_quarantine_ward",
+            ),
+            level_states: {
+                "prototype_quarantine_ward": (
+                    clearances: ["quarantine_green"],
+                    objectives: (
+                        completed: ["analyze_contaminant_sample"],
+                    ),
+                    collected_pickups: ["ward_rounds_a"],
+                    unlocked_doors: [],
+                    activated_terminals: [],
+                ),
+            },
+        )"#;
+
+        let save = SaveGame::from_ron_str(content).expect("v2 save should migrate");
+
+        assert_eq!(save.version, SAVE_GAME_VERSION);
+        assert_eq!(save.run_state.position, glam::Vec2::ZERO);
+        assert!(
+            save.level_state("prototype_quarantine_ward")
+                .has_collected_pickup("ward_rounds_a")
+        );
     }
 
     #[test]

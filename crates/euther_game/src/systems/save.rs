@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use bevy::prelude::*;
 
-use crate::components::LevelEntity;
+use crate::components::{Apothecary, LevelEntity};
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState,
     PersistentLevelStates, SaveSlot,
@@ -17,6 +17,7 @@ pub fn quick_save_on_key(
     campaign_runtime: Res<CampaignRuntime>,
     level_state: Res<LocalLevelState>,
     persistent_level_states: Res<PersistentLevelStates>,
+    apothecary_query: Single<&Transform, With<Apothecary>>,
 ) {
     if !input.just_pressed(KeyCode::F5) {
         return;
@@ -27,6 +28,7 @@ pub fn quick_save_on_key(
         &campaign_runtime,
         &level_state,
         &persistent_level_states,
+        apothecary_query.translation.xy(),
     );
 
     match write_runtime_save(&save_slot.path, &save) {
@@ -90,7 +92,13 @@ pub fn quick_load_on_key(
     let level =
         load_level_from_campaign(&campaign_runtime, campaign_runtime.progress.current_level());
     level_runtime.pending_entry_id = None;
-    spawn_level(&mut commands, &level, &level_state.0, None);
+    spawn_level(
+        &mut commands,
+        &level,
+        &level_state.0,
+        None,
+        Some(save.run_state.position),
+    );
     level_runtime.loaded_level_id = Some(campaign_runtime.progress.current_level().to_string());
 
     info!("quick load read from {}", save_slot.path.display());
@@ -101,6 +109,7 @@ pub fn build_runtime_save(
     campaign_runtime: &CampaignRuntime,
     level_state: &LocalLevelState,
     persistent_level_states: &PersistentLevelStates,
+    position: Vec2,
 ) -> game_core::SaveGame {
     let mut level_states = persistent_level_states.0.clone();
     level_states.insert(
@@ -109,9 +118,10 @@ pub fn build_runtime_save(
     );
 
     game_core::SaveGame::with_level_states(
-        game_core::RunState::new(
+        game_core::RunState::new_at(
             vitals.0.clone(),
             campaign_runtime.progress.current_level().to_string(),
+            position,
         ),
         level_states,
     )

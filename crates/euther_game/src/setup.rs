@@ -32,7 +32,7 @@ pub fn setup(
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
-    spawn_level(&mut commands, &level, &level_state.0, None);
+    spawn_level(&mut commands, &level, &level_state.0, None, None);
 
     level_runtime.loaded_level_id = Some(current_level_id);
 }
@@ -63,8 +63,10 @@ pub fn spawn_level(
     level: &LevelDefinition,
     level_state: &game_core::LevelState,
     entry_id: Option<&str>,
+    run_position: Option<Vec2>,
 ) {
-    let apothecary_start = apothecary_spawn_position(level, entry_id);
+    let apothecary_start =
+        run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
 
     commands.spawn((
         Sprite::from_color(Color::srgb(0.08, 0.10, 0.13), Vec2::new(900.0, 520.0)),

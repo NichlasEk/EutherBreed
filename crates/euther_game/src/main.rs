@@ -252,6 +252,7 @@ fn run_runtime_save_smoke(path: String) {
         &campaign_runtime,
         &level_state,
         &persistent_level_states,
+        Vec2::new(42.0, -64.0),
     );
     systems::save::write_runtime_save(&path, &save).unwrap_or_else(|error| {
         panic!("failed to write runtime save smoke file {path}: {error:?}")
@@ -283,6 +284,10 @@ fn run_runtime_save_smoke(path: String) {
     println!(
         "persistent_level_states: {}",
         loaded_persistent_level_states.0.len()
+    );
+    println!(
+        "position: {},{}",
+        loaded.run_state.position.x, loaded.run_state.position.y
     );
     print_runtime_summary(
         &loaded_vitals,
@@ -323,6 +328,13 @@ fn run_autosave_smoke(path: String) {
         &campaign_runtime,
         &level_state,
         &persistent_level_states,
+        apothecary_spawn_position(
+            &setup::load_level_from_campaign(
+                &campaign_runtime,
+                campaign_runtime.progress.current_level(),
+            ),
+            Some("from_quarantine_ward"),
+        ),
     );
     systems::save::write_runtime_save(&path, &save)
         .unwrap_or_else(|error| panic!("failed to write autosave smoke file {path}: {error:?}"));
@@ -333,6 +345,10 @@ fn run_autosave_smoke(path: String) {
     println!("autosave smoke ok");
     println!("path: {path}");
     println!("current_level: {}", loaded.run_state.current_level);
+    println!(
+        "position: {},{}",
+        loaded.run_state.position.x, loaded.run_state.position.y
+    );
     println!("level_states: {}", loaded.level_states.len());
     println!(
         "previous_pickups: {}",
@@ -374,9 +390,10 @@ fn sample_save_game() -> game_core::SaveGame {
     level_state.complete_objective("analyze_contaminant_sample");
 
     game_core::SaveGame::new(
-        game_core::RunState::new(
+        game_core::RunState::new_at(
             game_core::ApothecaryVitals::new(100, 48, 0),
             "prototype_quarantine_ward",
+            Vec2::new(-300.0, -170.0),
         ),
         level_state,
     )
@@ -385,6 +402,10 @@ fn sample_save_game() -> game_core::SaveGame {
 fn print_save_summary(save: &game_core::SaveGame) {
     println!("version: {}", save.version);
     println!("current_level: {}", save.run_state.current_level);
+    println!(
+        "position: {},{}",
+        save.run_state.position.x, save.run_state.position.y
+    );
     println!("level_states: {}", save.level_states.len());
     println!("health: {}", save.run_state.vitals.health);
     println!("ammo: {}", save.run_state.vitals.ammo);

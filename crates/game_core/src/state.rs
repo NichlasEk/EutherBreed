@@ -1,19 +1,31 @@
 use std::collections::HashSet;
 
 use crate::{ApothecaryVitals, ObjectiveProgress};
+use glam::Vec2;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct RunState {
     pub vitals: ApothecaryVitals,
     pub current_level: String,
+    #[serde(default)]
+    pub position: Vec2,
 }
 
 impl RunState {
     pub fn new(vitals: ApothecaryVitals, current_level: impl Into<String>) -> Self {
+        Self::new_at(vitals, current_level, Vec2::ZERO)
+    }
+
+    pub fn new_at(
+        vitals: ApothecaryVitals,
+        current_level: impl Into<String>,
+        position: Vec2,
+    ) -> Self {
         Self {
             vitals,
             current_level: current_level.into(),
+            position,
         }
     }
 
@@ -136,6 +148,13 @@ mod tests {
 
         assert_eq!(run.current_level, "b");
         assert_eq!(run.vitals, ApothecaryVitals::new(74, 12, 3));
+    }
+
+    #[test]
+    fn run_state_tracks_position() {
+        let run = RunState::new_at(ApothecaryVitals::new(74, 12, 3), "a", Vec2::new(4.0, -8.0));
+
+        assert_eq!(run.position, Vec2::new(4.0, -8.0));
     }
 
     #[test]
