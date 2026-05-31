@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
-use crate::components::{Apothecary, Contaminant, Projectile, Wall};
+use crate::components::{Apothecary, Contaminant, LevelEntity, Projectile, Wall};
 use crate::geometry::circle_hits_any_wall;
 use crate::resources::ApothecaryVitals;
 
@@ -53,6 +53,7 @@ pub fn fire_syringe_round(
             velocity: direction * PROJECTILE_SPEED,
             lifetime: Timer::from_seconds(PROJECTILE_LIFETIME, TimerMode::Once),
         },
+        LevelEntity,
     ));
 }
 

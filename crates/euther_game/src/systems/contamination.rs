@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::components::{Apothecary, Contaminant, Wall};
+use crate::components::{Apothecary, Contaminant, LevelEntity, Wall};
 use crate::geometry::circle_hits_any_wall;
 use crate::resources::{ApothecaryVitals, ContaminantSpawnTimer};
 
@@ -38,6 +38,7 @@ pub fn spawn_contaminants(
         ),
         Transform::from_xyz(x, y, 15.0),
         Contaminant { health: 2 },
+        LevelEntity,
     ));
 }
 
