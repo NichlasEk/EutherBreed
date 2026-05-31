@@ -25,6 +25,11 @@ fn main() {
         return;
     }
 
+    if std::env::args().any(|arg| arg == "--validate-content") {
+        validate_content();
+        return;
+    }
+
     run_game();
 }
 
@@ -113,6 +118,33 @@ fn initial_campaign_runtime() -> CampaignRuntime {
     CampaignRuntime {
         definition,
         progress,
+    }
+}
+
+fn validate_content() {
+    let definition = game_core::CampaignDefinition::from_ron_file("assets/campaigns/prototype.ron")
+        .unwrap_or_else(|error| panic!("failed to load prototype campaign: {error:?}"));
+    let levels = definition
+        .load_and_validate_levels()
+        .unwrap_or_else(|error| panic!("invalid prototype campaign content: {error:?}"));
+
+    println!("content validation ok");
+    println!("campaign: {}", definition.name);
+    println!("start_level: {}", definition.start_level);
+    println!("levels: {}", levels.len());
+
+    for level in levels {
+        println!(
+            "level: {} walls={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={}",
+            level.name,
+            level.walls.len(),
+            level.contaminants.len(),
+            level.pickups.len(),
+            level.doors.len(),
+            level.terminals.len(),
+            level.objectives.len(),
+            level.exits.len(),
+        );
     }
 }
 

@@ -37,6 +37,12 @@ Headless smoke test, useful when GPU/Vulkan is unavailable:
 cargo run -p euther_game -- --headless-smoke
 ```
 
+Validate campaign and level content:
+
+```sh
+cargo run -p euther_game -- --validate-content
+```
+
 ## Scripts
 
 ```sh
