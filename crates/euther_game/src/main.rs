@@ -35,6 +35,11 @@ fn main() {
         return;
     }
 
+    if let Some(path) = argument_value("--save-file-smoke") {
+        run_save_file_smoke(path);
+        return;
+    }
+
     run_game();
 }
 
@@ -152,29 +157,66 @@ fn validate_content() {
 }
 
 fn run_save_smoke() {
+    let loaded = save_smoke_roundtrip();
+
+    println!("save smoke ok");
+    print_save_summary(&loaded);
+}
+
+fn run_save_file_smoke(path: String) {
+    let save = sample_save_game();
+    save.write_to_file(&path)
+        .unwrap_or_else(|error| panic!("failed to write save smoke file {path}: {error:?}"));
+    let loaded = game_core::SaveGame::read_from_file(&path)
+        .unwrap_or_else(|error| panic!("failed to read save smoke file {path}: {error:?}"));
+
+    println!("save file smoke ok");
+    println!("path: {path}");
+    print_save_summary(&loaded);
+}
+
+fn save_smoke_roundtrip() -> game_core::SaveGame {
+    let save = sample_save_game();
+    let content = save
+        .to_ron_string()
+        .unwrap_or_else(|error| panic!("failed to serialize save smoke: {error:?}"));
+
+    game_core::SaveGame::from_ron_str(&content)
+        .unwrap_or_else(|error| panic!("failed to deserialize save smoke: {error:?}"))
+}
+
+fn sample_save_game() -> game_core::SaveGame {
     let mut level_state = game_core::LevelState::default();
     level_state.grant_clearance("quarantine_green");
     level_state.complete_objective("analyze_contaminant_sample");
 
-    let save = game_core::SaveGame::new(
+    game_core::SaveGame::new(
         game_core::RunState::new(
             game_core::ApothecaryVitals::new(100, 48, 0),
             "prototype_quarantine_ward",
         ),
         level_state,
-    );
-    let content = save
-        .to_ron_string()
-        .unwrap_or_else(|error| panic!("failed to serialize save smoke: {error:?}"));
-    let loaded = game_core::SaveGame::from_ron_str(&content)
-        .unwrap_or_else(|error| panic!("failed to deserialize save smoke: {error:?}"));
+    )
+}
 
-    println!("save smoke ok");
-    println!("version: {}", loaded.version);
-    println!("current_level: {}", loaded.run_state.current_level);
-    println!("health: {}", loaded.run_state.vitals.health);
-    println!("ammo: {}", loaded.run_state.vitals.ammo);
-    println!("bio_samples: {}", loaded.run_state.vitals.bio_samples);
+fn print_save_summary(save: &game_core::SaveGame) {
+    println!("version: {}", save.version);
+    println!("current_level: {}", save.run_state.current_level);
+    println!("health: {}", save.run_state.vitals.health);
+    println!("ammo: {}", save.run_state.vitals.ammo);
+    println!("bio_samples: {}", save.run_state.vitals.bio_samples);
+}
+
+fn argument_value(flag: &str) -> Option<String> {
+    let mut args = std::env::args();
+
+    while let Some(arg) = args.next() {
+        if arg == flag {
+            return args.next();
+        }
+    }
+
+    None
 }
 
 fn initial_level_runtime() -> LevelRuntime {

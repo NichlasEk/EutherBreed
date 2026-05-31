@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 use crate::{LevelState, RunState};
 
@@ -34,10 +35,22 @@ impl SaveGame {
 
         Ok(save)
     }
+
+    pub fn write_to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveLoadError> {
+        let content = self.to_ron_string()?;
+        std::fs::write(path, content).map_err(SaveLoadError::Write)
+    }
+
+    pub fn read_from_file(path: impl AsRef<Path>) -> Result<Self, SaveLoadError> {
+        let content = std::fs::read_to_string(path).map_err(SaveLoadError::Read)?;
+        Self::from_ron_str(&content)
+    }
 }
 
 #[derive(Debug)]
 pub enum SaveLoadError {
+    Read(std::io::Error),
+    Write(std::io::Error),
     Serialize(ron::Error),
     Deserialize(ron::error::SpannedError),
     UnsupportedVersion(u32),
@@ -86,5 +99,18 @@ mod tests {
             SaveGame::from_ron_str(&content),
             Err(SaveLoadError::UnsupportedVersion(_))
         ));
+    }
+
+    #[test]
+    fn save_game_roundtrips_through_file() {
+        let save = save_game();
+        let path =
+            std::env::temp_dir().join(format!("euther_save_test_{}.ron", std::process::id()));
+
+        save.write_to_file(&path).expect("save should write");
+        let loaded = SaveGame::read_from_file(&path).expect("save should read");
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(loaded, save);
     }
 }
