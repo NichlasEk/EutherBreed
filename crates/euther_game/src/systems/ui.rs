@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::components::{NoticeText, StatusText};
-use crate::resources::{ApothecaryVitals, GameNotice};
+use crate::components::{NoticeText, SectionText, StatusText};
+use crate::resources::{ApothecaryVitals, CampaignRuntime, GameNotice, LevelRuntime};
 
 pub fn update_status_text(
     vitals: Res<ApothecaryVitals>,
@@ -15,6 +15,30 @@ pub fn update_status_text(
         **text = format!(
             "Health {} | Reagent rounds {} | Bio-samples {}",
             vitals.0.health, vitals.0.ammo, vitals.0.bio_samples
+        );
+    }
+}
+
+pub fn update_section_text(
+    runtime: Res<CampaignRuntime>,
+    level_runtime: Res<LevelRuntime>,
+    mut text_query: Query<&mut Text, With<SectionText>>,
+) {
+    if !runtime.is_changed() && !level_runtime.is_changed() {
+        return;
+    }
+
+    let exits = if level_runtime.available_exits.is_empty() {
+        "none".to_string()
+    } else {
+        level_runtime.available_exits.join(", ")
+    };
+
+    for mut text in &mut text_query {
+        **text = format!(
+            "Section {} | Exits {}",
+            runtime.progress.current_level(),
+            exits
         );
     }
 }

@@ -1,17 +1,19 @@
 use bevy::prelude::*;
 use game_core::{LevelDefinition, PickupKind, TerminalKind};
+use std::time::Duration;
 
 use crate::components::{
-    Apothecary, Contaminant, Door, ExitZone, LevelEntity, NoticeText, Pickup, StatusText, Terminal,
-    Wall,
+    Apothecary, Contaminant, Door, ExitZone, LevelEntity, NoticeText, Pickup, SectionText,
+    StatusText, Terminal, Wall,
 };
-use crate::resources::{CampaignRuntime, LevelRuntime, LocalLevelState};
+use crate::resources::{CampaignRuntime, ContaminantSpawnTimer, LevelRuntime, LocalLevelState};
 
 pub fn setup(
     mut commands: Commands,
     campaign_runtime: Res<CampaignRuntime>,
     level_state: Res<LocalLevelState>,
     mut level_runtime: ResMut<LevelRuntime>,
+    mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
 ) {
     commands.spawn(Camera2d);
 
@@ -47,9 +49,26 @@ pub fn setup(
         NoticeText,
     ));
 
+    commands.spawn((
+        Text::new(""),
+        TextFont {
+            font_size: 16.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.58, 0.72, 0.84)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(44),
+            left: px(16),
+            ..default()
+        },
+        SectionText,
+    ));
+
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
     spawn_level(&mut commands, &level, &level_state.0, None, None);
+    update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
 
     level_runtime.loaded_level_id = Some(current_level_id);
 }
@@ -176,6 +195,25 @@ pub fn apothecary_spawn_position(level: &LevelDefinition, entry_id: Option<&str>
         .unwrap_or(level.apothecary_start)
 }
 
+pub fn update_level_runtime(
+    level_runtime: &mut LevelRuntime,
+    level: &LevelDefinition,
+    contaminant_timer: &mut ContaminantSpawnTimer,
+) {
+    let interval = level.spawn_interval_seconds.unwrap_or(0.0);
+    level_runtime.dynamic_spawn_points = level.spawn_points.clone();
+    level_runtime.dynamic_spawn_cursor = 0;
+    level_runtime.dynamic_spawn_interval_seconds = interval;
+    level_runtime.available_exits = level.exits.iter().map(|exit| exit.target.clone()).collect();
+
+    if interval > 0.0 {
+        contaminant_timer
+            .0
+            .set_duration(Duration::from_secs_f32(interval));
+    }
+    contaminant_timer.0.reset();
+}
+
 fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2, level_name: &str) {
     commands.spawn((
         Sprite::from_color(level_wall_color(level_name), size),
@@ -207,7 +245,11 @@ fn spawn_contaminant(commands: &mut Commands, id: Option<String>, position: Vec2
     commands.spawn((
         Sprite::from_color(Color::srgb(0.78, 0.26, 0.42), Vec2::splat(36.0)),
         Transform::from_xyz(position.x, position.y, 15.0),
-        Contaminant { id, health: 2 },
+        Contaminant {
+            id,
+            health: 2,
+            hit_flash: Timer::from_seconds(0.0, TimerMode::Once),
+        },
         LevelEntity,
     ));
 }

@@ -5,7 +5,7 @@ use crate::resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, GameNotice,
     LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
 };
-use crate::setup::{load_level_from_campaign, spawn_level};
+use crate::setup::{load_level_from_campaign, spawn_level, update_level_runtime};
 use crate::systems::save::{build_runtime_save, write_runtime_save};
 
 pub fn update_campaign_progress(
@@ -76,6 +76,7 @@ pub fn update_campaign_progress(
         None,
     );
     level_runtime.loaded_level_id = Some(runtime.progress.current_level().to_string());
+    update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
 
     let run_position =
         crate::setup::apothecary_spawn_position(&level, level_runtime.pending_entry_id.as_deref());

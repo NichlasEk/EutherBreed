@@ -15,7 +15,8 @@ use systems::{
     interact_with_terminals, move_apothecary, move_contaminants, move_projectiles,
     quick_load_on_key, quick_save_on_key, quit_on_escape, report_exit_overlap,
     resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, unlock_doors,
-    update_campaign_progress, update_notice_text, update_status_text,
+    update_campaign_progress, update_contaminant_hit_flash, update_notice_text,
+    update_section_text, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -100,6 +101,7 @@ fn run_game() {
                 spawn_contaminants,
                 move_contaminants,
                 resolve_projectile_hits,
+                update_contaminant_hit_flash,
                 resolve_contaminant_contact,
                 collect_pickups,
                 quick_save_on_key,
@@ -109,6 +111,7 @@ fn run_game() {
                 report_exit_overlap,
                 update_campaign_progress,
                 update_status_text,
+                update_section_text,
                 update_notice_text,
                 quit_on_escape,
             ),
@@ -496,6 +499,10 @@ fn initial_level_runtime() -> LevelRuntime {
     LevelRuntime {
         loaded_level_id: None,
         pending_entry_id: None,
+        dynamic_spawn_points: Vec::new(),
+        dynamic_spawn_cursor: 0,
+        dynamic_spawn_interval_seconds: CONTAMINANT_SPAWN_SECONDS,
+        available_exits: Vec::new(),
     }
 }
 

@@ -38,6 +38,10 @@ pub struct CampaignRuntime {
 pub struct LevelRuntime {
     pub loaded_level_id: Option<String>,
     pub pending_entry_id: Option<String>,
+    pub dynamic_spawn_points: Vec<Vec2>,
+    pub dynamic_spawn_cursor: usize,
+    pub dynamic_spawn_interval_seconds: f32,
+    pub available_exits: Vec<String>,
 }
 
 #[derive(Resource)]

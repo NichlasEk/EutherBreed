@@ -2,44 +2,55 @@ use bevy::prelude::*;
 
 use crate::components::{Apothecary, Contaminant, LevelEntity, Wall};
 use crate::geometry::circle_hits_any_wall;
-use crate::resources::{ApothecaryVitals, ContaminantSpawnTimer};
+use crate::resources::{ApothecaryVitals, ContaminantSpawnTimer, GameNotice, LevelRuntime};
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const CONTAMINANT_RADIUS: f32 = 18.0;
 const CONTAMINANT_SPEED: f32 = 92.0;
+const MAX_DYNAMIC_CONTAMINANTS: usize = 4;
 
 pub fn spawn_contaminants(
     mut commands: Commands,
     time: Res<Time>,
     mut timer: ResMut<ContaminantSpawnTimer>,
+    mut level_runtime: ResMut<LevelRuntime>,
+    contaminant_query: Query<&Contaminant>,
 ) {
+    if level_runtime.dynamic_spawn_points.is_empty()
+        || level_runtime.dynamic_spawn_interval_seconds <= 0.0
+    {
+        return;
+    }
+
     timer.0.tick(time.delta());
 
     if !timer.0.just_finished() {
         return;
     }
 
-    let spawn_index = timer.0.times_finished_this_tick() as f32;
-    let x = if spawn_index.rem_euclid(2.0) == 0.0 {
-        -405.0
-    } else {
-        405.0
-    };
-    let y = if spawn_index.rem_euclid(3.0) == 0.0 {
-        -205.0
-    } else {
-        205.0
-    };
+    let dynamic_count = contaminant_query
+        .iter()
+        .filter(|contaminant| contaminant.id.is_none())
+        .count();
+
+    if dynamic_count >= MAX_DYNAMIC_CONTAMINANTS {
+        return;
+    }
+
+    let position = level_runtime.dynamic_spawn_points
+        [level_runtime.dynamic_spawn_cursor % level_runtime.dynamic_spawn_points.len()];
+    level_runtime.dynamic_spawn_cursor += 1;
 
     commands.spawn((
         Sprite::from_color(
             Color::srgb(0.78, 0.26, 0.42),
             Vec2::splat(CONTAMINANT_RADIUS * 2.0),
         ),
-        Transform::from_xyz(x, y, 15.0),
+        Transform::from_xyz(position.x, position.y, 15.0),
         Contaminant {
             id: None,
             health: 2,
+            hit_flash: Timer::from_seconds(0.0, TimerMode::Once),
         },
         LevelEntity,
     ));
@@ -81,6 +92,7 @@ pub fn resolve_contaminant_contact(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     contaminant_query: Query<(Entity, &Transform), With<Contaminant>>,
     mut vitals: ResMut<ApothecaryVitals>,
+    mut notice: ResMut<GameNotice>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
 
@@ -89,6 +101,7 @@ pub fn resolve_contaminant_contact(
 
         if distance <= APOTHECARY_RADIUS + CONTAMINANT_RADIUS {
             vitals.0.apply_damage(8);
+            notice.show("Suit breach: health -8", 1.5);
             commands.entity(entity).despawn();
         }
     }

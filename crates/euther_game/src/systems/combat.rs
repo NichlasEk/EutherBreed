@@ -3,7 +3,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::components::{Apothecary, Contaminant, LevelEntity, Projectile, Wall};
 use crate::geometry::circle_hits_any_wall;
-use crate::resources::{ApothecaryVitals, LocalLevelState};
+use crate::resources::{ApothecaryVitals, GameNotice, LocalLevelState};
 
 const PROJECTILE_SPEED: f32 = 720.0;
 const PROJECTILE_LIFETIME: f32 = 1.1;
@@ -78,12 +78,15 @@ pub fn move_projectiles(
 pub fn resolve_projectile_hits(
     mut commands: Commands,
     projectile_query: Query<(Entity, &Transform), With<Projectile>>,
-    mut contaminant_query: Query<(Entity, &Transform, &mut Contaminant)>,
+    mut contaminant_query: Query<(Entity, &Transform, &mut Contaminant, &mut Sprite)>,
     mut vitals: ResMut<ApothecaryVitals>,
     mut level_state: ResMut<LocalLevelState>,
+    mut notice: ResMut<GameNotice>,
 ) {
     for (projectile_entity, projectile_transform) in &projectile_query {
-        for (contaminant_entity, contaminant_transform, mut contaminant) in &mut contaminant_query {
+        for (contaminant_entity, contaminant_transform, mut contaminant, mut sprite) in
+            &mut contaminant_query
+        {
             let distance = projectile_transform
                 .translation
                 .xy()
@@ -94,6 +97,8 @@ pub fn resolve_projectile_hits(
             }
 
             contaminant.health -= 1;
+            contaminant.hit_flash = Timer::from_seconds(0.12, TimerMode::Once);
+            sprite.color = Color::srgb(1.0, 0.72, 0.78);
             commands.entity(projectile_entity).despawn();
 
             if contaminant.health <= 0 {
@@ -103,9 +108,27 @@ pub fn resolve_projectile_hits(
 
                 commands.entity(contaminant_entity).despawn();
                 vitals.0.collect_bio_sample();
+                notice.show("Contaminant neutralized", 1.4);
             }
 
             break;
+        }
+    }
+}
+
+pub fn update_contaminant_hit_flash(
+    time: Res<Time>,
+    mut contaminant_query: Query<(&mut Contaminant, &mut Sprite)>,
+) {
+    for (mut contaminant, mut sprite) in &mut contaminant_query {
+        if contaminant.hit_flash.is_finished() {
+            continue;
+        }
+
+        contaminant.hit_flash.tick(time.delta());
+
+        if contaminant.hit_flash.is_finished() {
+            sprite.color = Color::srgb(0.78, 0.26, 0.42);
         }
     }
 }

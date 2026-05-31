@@ -19,6 +19,10 @@ pub struct LevelDefinition {
     pub objectives: Vec<ObjectiveDefinition>,
     pub entry_points: Vec<LevelEntryPoint>,
     pub exits: Vec<LevelExit>,
+    #[serde(default)]
+    pub spawn_points: Vec<Vec2>,
+    #[serde(default)]
+    pub spawn_interval_seconds: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -189,6 +193,10 @@ impl LevelDefinition {
             }
         }
 
+        if matches!(self.spawn_interval_seconds, Some(seconds) if seconds <= 0.0) {
+            return Err(LevelValidationError::InvalidSpawnInterval);
+        }
+
         Ok(())
     }
 
@@ -262,6 +270,8 @@ impl LevelDefinition {
                 entry_id: "from_quarantine_ward".to_string(),
                 required_objectives: vec!["analyze_contaminant_sample".to_string()],
             }],
+            spawn_points: vec![Vec2::new(-405.0, 205.0), Vec2::new(405.0, -205.0)],
+            spawn_interval_seconds: Some(4.5),
         }
     }
 }
@@ -284,6 +294,7 @@ pub enum LevelValidationError {
     InvalidClearanceId,
     InvalidObjective,
     InvalidExit,
+    InvalidSpawnInterval,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -392,5 +403,16 @@ mod tests {
         level.entry_points.push(level.entry_points[0].clone());
 
         assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
+    }
+
+    #[test]
+    fn validation_rejects_invalid_spawn_interval() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.spawn_interval_seconds = Some(0.0);
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidSpawnInterval)
+        );
     }
 }

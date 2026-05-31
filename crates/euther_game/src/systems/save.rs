@@ -8,7 +8,7 @@ use crate::resources::{
     ApothecaryVitals, CampaignRuntime, ContaminantSpawnTimer, GameNotice, LevelRuntime,
     LocalLevelState, PersistentLevelStates, SaveSlot,
 };
-use crate::setup::{load_level_from_campaign, spawn_level};
+use crate::setup::{load_level_from_campaign, spawn_level, update_level_runtime};
 
 pub fn quick_save_on_key(
     input: Res<ButtonInput<KeyCode>>,
@@ -109,6 +109,7 @@ pub fn quick_load_on_key(
         Some(save.run_state.position),
     );
     level_runtime.loaded_level_id = Some(campaign_runtime.progress.current_level().to_string());
+    update_level_runtime(&mut level_runtime, &level, &mut contaminant_timer);
 
     notice.show("Loaded", 1.4);
     info!("quick load read from {}", save_slot.path.display());

@@ -16,6 +16,7 @@ pub struct Projectile {
 pub struct Contaminant {
     pub id: Option<String>,
     pub health: i32,
+    pub hit_flash: Timer,
 }
 
 #[derive(Component)]
@@ -28,6 +29,9 @@ pub struct StatusText;
 
 #[derive(Component)]
 pub struct NoticeText;
+
+#[derive(Component)]
+pub struct SectionText;
 
 #[derive(Component)]
 pub struct Pickup {

@@ -82,4 +82,9 @@
             ],
         ),
     ],
+    spawn_points: [
+        (-405.0, 205.0),
+        (405.0, -205.0),
+    ],
+    spawn_interval_seconds: Some(4.5),
 )
