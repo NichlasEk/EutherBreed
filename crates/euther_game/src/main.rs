@@ -6,14 +6,15 @@ mod systems;
 
 use bevy::prelude::*;
 use resources::{
-    AccessInventory, ApothecaryVitals, CampaignSignal, ContaminantSpawnTimer, ObjectiveState,
+    AccessInventory, ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer,
+    ObjectiveState,
 };
 use setup::setup;
 use systems::{
     aim_apothecary, collect_pickups, fire_syringe_round, interact_with_terminals, move_apothecary,
     move_contaminants, move_projectiles, quit_on_escape, report_exit_overlap,
     resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, unlock_doors,
-    update_status_text,
+    update_campaign_progress, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -35,6 +36,7 @@ fn run_game() {
         .insert_resource(AccessInventory::default())
         .insert_resource(ObjectiveState::default())
         .insert_resource(CampaignSignal::default())
+        .insert_resource(initial_campaign_runtime())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -59,6 +61,7 @@ fn run_game() {
                 unlock_doors,
                 interact_with_terminals,
                 report_exit_overlap,
+                update_campaign_progress,
                 update_status_text,
                 quit_on_escape,
             ),
@@ -73,6 +76,7 @@ fn run_headless_smoke() {
         .insert_resource(AccessInventory::default())
         .insert_resource(ObjectiveState::default())
         .insert_resource(CampaignSignal::default())
+        .insert_resource(initial_campaign_runtime())
         .add_plugins(MinimalPlugins);
 
     app.update();
@@ -93,4 +97,16 @@ fn initial_contaminant_timer() -> ContaminantSpawnTimer {
         CONTAMINANT_SPAWN_SECONDS,
         TimerMode::Repeating,
     ))
+}
+
+fn initial_campaign_runtime() -> CampaignRuntime {
+    let definition = game_core::CampaignDefinition::from_ron_file("assets/campaigns/prototype.ron")
+        .unwrap_or_else(|error| panic!("failed to load prototype campaign: {error:?}"));
+    let progress = game_core::CampaignProgress::start(&definition)
+        .unwrap_or_else(|error| panic!("invalid prototype campaign: {error:?}"));
+
+    CampaignRuntime {
+        definition,
+        progress,
+    }
 }

@@ -24,6 +24,10 @@ impl CampaignDefinition {
         ron::from_str(&content).map_err(CampaignLoadError::Parse)
     }
 
+    pub fn contains_level(&self, level_id: &str) -> bool {
+        self.levels.iter().any(|level| level.id == level_id)
+    }
+
     pub fn validate(&self) -> Result<(), CampaignValidationError> {
         if self.name.trim().is_empty() {
             return Err(CampaignValidationError::MissingName);
@@ -82,6 +86,50 @@ impl CampaignDefinition {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CampaignProgress {
+    current_level: String,
+}
+
+impl CampaignProgress {
+    pub fn start(campaign: &CampaignDefinition) -> Result<Self, CampaignValidationError> {
+        campaign.validate()?;
+
+        Ok(Self {
+            current_level: campaign.start_level.clone(),
+        })
+    }
+
+    pub fn current_level(&self) -> &str {
+        &self.current_level
+    }
+
+    pub fn travel_to(
+        &mut self,
+        campaign: &CampaignDefinition,
+        level_id: &str,
+    ) -> Result<bool, CampaignTravelError> {
+        self.travel_to_known_level(campaign.contains_level(level_id), level_id)
+    }
+
+    pub fn travel_to_known_level(
+        &mut self,
+        is_known_level: bool,
+        level_id: &str,
+    ) -> Result<bool, CampaignTravelError> {
+        if !is_known_level {
+            return Err(CampaignTravelError::UnknownLevel);
+        }
+
+        if self.current_level == level_id {
+            return Ok(false);
+        }
+
+        self.current_level = level_id.to_string();
+        Ok(true)
+    }
+}
+
 #[derive(Debug)]
 pub enum CampaignLoadError {
     Read(std::io::Error),
@@ -97,6 +145,11 @@ pub enum CampaignValidationError {
     DuplicateLevelId,
     UnknownStartLevel,
     UnknownExitTarget,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CampaignTravelError {
+    UnknownLevel,
 }
 
 #[cfg(test)]
@@ -162,5 +215,36 @@ mod tests {
                 .expect("prototype level should load");
 
         assert_eq!(campaign.validate_level_routes([&level]), Ok(()));
+    }
+
+    #[test]
+    fn campaign_progress_starts_at_start_level() {
+        let campaign = campaign();
+        let progress = CampaignProgress::start(&campaign).expect("campaign should start");
+
+        assert_eq!(progress.current_level(), "prototype_quarantine_ward");
+    }
+
+    #[test]
+    fn campaign_progress_travels_to_known_level() {
+        let campaign = campaign();
+        let mut progress = CampaignProgress::start(&campaign).expect("campaign should start");
+
+        assert_eq!(
+            progress.travel_to(&campaign, "lab_access_corridor"),
+            Ok(true)
+        );
+        assert_eq!(progress.current_level(), "lab_access_corridor");
+    }
+
+    #[test]
+    fn campaign_progress_rejects_unknown_level() {
+        let campaign = campaign();
+        let mut progress = CampaignProgress::start(&campaign).expect("campaign should start");
+
+        assert_eq!(
+            progress.travel_to(&campaign, "unknown"),
+            Err(CampaignTravelError::UnknownLevel)
+        );
     }
 }

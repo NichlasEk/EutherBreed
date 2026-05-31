@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use game_core::ApothecaryVitals as CoreApothecaryVitals;
 use game_core::ObjectiveProgress;
+use game_core::{ApothecaryVitals as CoreApothecaryVitals, CampaignDefinition, CampaignProgress};
 use std::collections::HashSet;
 
 #[derive(Resource)]
@@ -20,4 +20,10 @@ pub struct ObjectiveState(pub ObjectiveProgress);
 #[derive(Resource, Default)]
 pub struct CampaignSignal {
     pub pending_exit_target: Option<String>,
+}
+
+#[derive(Resource)]
+pub struct CampaignRuntime {
+    pub definition: CampaignDefinition,
+    pub progress: CampaignProgress,
 }
