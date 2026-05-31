@@ -12,3 +12,8 @@ pub struct ContaminantSpawnTimer(pub Timer);
 pub struct AccessInventory {
     pub clearances: HashSet<String>,
 }
+
+#[derive(Resource, Default)]
+pub struct ObjectiveState {
+    pub completed: HashSet<String>,
+}

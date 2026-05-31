@@ -82,7 +82,7 @@ Current prototype:
 - reagent projectiles
 - contaminant enemies that chase the player
 - health, ammo, and bio-sample counters
-- basic room walls, pickups, security keycard, locked door, exit marker, and collision
+- basic room walls, pickups, security keycard, locked door, terminal objective, exit marker, and collision
 
 ## Non-Goals
 

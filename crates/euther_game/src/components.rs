@@ -37,3 +37,9 @@ pub struct Door {
     pub clearance_id: String,
     pub locked: bool,
 }
+
+#[derive(Component)]
+pub struct Terminal {
+    pub kind: game_core::TerminalKind,
+    pub objective_id: Option<String>,
+}

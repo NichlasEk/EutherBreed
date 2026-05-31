@@ -1,7 +1,9 @@
 use bevy::prelude::*;
-use game_core::{LevelDefinition, PickupKind};
+use game_core::{LevelDefinition, PickupKind, TerminalKind};
 
-use crate::components::{Apothecary, Contaminant, Door, ExitZone, Pickup, StatusText, Wall};
+use crate::components::{
+    Apothecary, Contaminant, Door, ExitZone, Pickup, StatusText, Terminal, Wall,
+};
 
 pub fn setup(mut commands: Commands) {
     let level = LevelDefinition::from_ron_file("assets/levels/prototype_quarantine_ward.ron")
@@ -42,6 +44,15 @@ pub fn setup(mut commands: Commands) {
             door.half_extents * 2.0,
             door.clearance_id.clone(),
             door.starts_locked,
+        );
+    }
+
+    for terminal in &level.terminals {
+        spawn_terminal(
+            &mut commands,
+            terminal.position,
+            terminal.kind.clone(),
+            terminal.objective_id.clone(),
         );
     }
 
@@ -125,5 +136,24 @@ fn spawn_door(
             clearance_id,
             locked,
         },
+    ));
+}
+
+fn spawn_terminal(
+    commands: &mut Commands,
+    position: Vec2,
+    kind: TerminalKind,
+    objective_id: Option<String>,
+) {
+    let color = match kind {
+        TerminalKind::LabAnalyzer => Color::srgb(0.35, 0.82, 0.72),
+        TerminalKind::ShipLog => Color::srgb(0.50, 0.64, 0.95),
+        TerminalKind::SupplyConsole => Color::srgb(0.84, 0.72, 0.35),
+    };
+
+    commands.spawn((
+        Sprite::from_color(color, Vec2::new(30.0, 22.0)),
+        Transform::from_xyz(position.x, position.y, 4.0),
+        Terminal { kind, objective_id },
     ));
 }

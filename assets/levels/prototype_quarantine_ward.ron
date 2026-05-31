@@ -40,6 +40,20 @@
             starts_locked: true,
         ),
     ],
+    terminals: [
+        (
+            position: (360.0, -96.0),
+            kind: LabAnalyzer,
+            objective_id: Some("analyze_contaminant_sample"),
+        ),
+    ],
+    objectives: [
+        (
+            id: "analyze_contaminant_sample",
+            label: "Analyze contaminant sample",
+            required: true,
+        ),
+    ],
     exits: [
         (
             position: (432.0, 205.0),

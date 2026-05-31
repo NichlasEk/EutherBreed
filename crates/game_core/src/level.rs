@@ -14,6 +14,8 @@ pub struct LevelDefinition {
     pub contaminants: Vec<Vec2>,
     pub pickups: Vec<PrototypeEntity<PickupKind>>,
     pub doors: Vec<DoorDefinition>,
+    pub terminals: Vec<TerminalDefinition>,
+    pub objectives: Vec<ObjectiveDefinition>,
     pub exits: Vec<LevelExit>,
 }
 
@@ -44,6 +46,27 @@ pub struct DoorDefinition {
     pub half_extents: Vec2,
     pub clearance_id: String,
     pub starts_locked: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct TerminalDefinition {
+    pub position: Vec2,
+    pub kind: TerminalKind,
+    pub objective_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum TerminalKind {
+    LabAnalyzer,
+    ShipLog,
+    SupplyConsole,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ObjectiveDefinition {
+    pub id: String,
+    pub label: String,
+    pub required: bool,
 }
 
 impl LevelDefinition {
@@ -87,6 +110,19 @@ impl LevelDefinition {
             }
         }
 
+        for objective in &self.objectives {
+            if objective.id.trim().is_empty() || objective.label.trim().is_empty() {
+                return Err(LevelValidationError::InvalidObjective);
+            }
+        }
+
+        for terminal in &self.terminals {
+            if matches!(terminal.objective_id, Some(ref objective_id) if objective_id.trim().is_empty())
+            {
+                return Err(LevelValidationError::InvalidObjective);
+            }
+        }
+
         Ok(())
     }
 
@@ -125,6 +161,16 @@ impl LevelDefinition {
                 clearance_id: "quarantine_green".to_string(),
                 starts_locked: true,
             }],
+            terminals: vec![TerminalDefinition {
+                position: Vec2::new(360.0, -96.0),
+                kind: TerminalKind::LabAnalyzer,
+                objective_id: Some("analyze_contaminant_sample".to_string()),
+            }],
+            objectives: vec![ObjectiveDefinition {
+                id: "analyze_contaminant_sample".to_string(),
+                label: "Analyze contaminant sample".to_string(),
+                required: true,
+            }],
             exits: vec![LevelExit {
                 position: Vec2::new(432.0, 205.0),
                 half_extents: Vec2::new(22.0, 46.0),
@@ -148,6 +194,7 @@ pub enum LevelValidationError {
     StartOutsideBounds,
     InvalidPickupAmount,
     InvalidClearanceId,
+    InvalidObjective,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -174,6 +221,8 @@ mod tests {
         assert!(!level.contaminants.is_empty());
         assert!(!level.pickups.is_empty());
         assert!(!level.doors.is_empty());
+        assert!(!level.terminals.is_empty());
+        assert!(!level.objectives.is_empty());
         assert!(!level.exits.is_empty());
     }
 

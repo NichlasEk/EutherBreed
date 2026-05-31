@@ -5,12 +5,13 @@ mod setup;
 mod systems;
 
 use bevy::prelude::*;
-use resources::{AccessInventory, ApothecaryVitals, ContaminantSpawnTimer};
+use resources::{AccessInventory, ApothecaryVitals, ContaminantSpawnTimer, ObjectiveState};
 use setup::setup;
 use systems::{
-    aim_apothecary, collect_pickups, fire_syringe_round, move_apothecary, move_contaminants,
-    move_projectiles, quit_on_escape, report_exit_overlap, resolve_contaminant_contact,
-    resolve_projectile_hits, spawn_contaminants, unlock_doors, update_status_text,
+    aim_apothecary, collect_pickups, fire_syringe_round, interact_with_terminals, move_apothecary,
+    move_contaminants, move_projectiles, quit_on_escape, report_exit_overlap,
+    resolve_contaminant_contact, resolve_projectile_hits, spawn_contaminants, unlock_doors,
+    update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -30,6 +31,7 @@ fn run_game() {
         .insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(AccessInventory::default())
+        .insert_resource(ObjectiveState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -52,6 +54,7 @@ fn run_game() {
                 resolve_contaminant_contact,
                 collect_pickups,
                 unlock_doors,
+                interact_with_terminals,
                 report_exit_overlap,
                 update_status_text,
                 quit_on_escape,
@@ -65,6 +68,7 @@ fn run_headless_smoke() {
     app.insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(AccessInventory::default())
+        .insert_resource(ObjectiveState::default())
         .add_plugins(MinimalPlugins);
 
     app.update();
