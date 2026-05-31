@@ -23,11 +23,12 @@ pub fn interact_with_terminals(
         }
 
         if let Some(objective_id) = &terminal.objective_id {
-            objective_state.completed.insert(objective_id.clone());
-            info!(
-                "terminal {:?} completed objective {}",
-                terminal.kind, objective_id
-            );
+            if objective_state.0.complete(objective_id.clone()) {
+                info!(
+                    "terminal {:?} completed objective {}",
+                    terminal.kind, objective_id
+                );
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use game_core::ApothecaryVitals as CoreApothecaryVitals;
+use game_core::ObjectiveProgress;
 use std::collections::HashSet;
 
 #[derive(Resource)]
@@ -14,9 +15,7 @@ pub struct AccessInventory {
 }
 
 #[derive(Resource, Default)]
-pub struct ObjectiveState {
-    pub completed: HashSet<String>,
-}
+pub struct ObjectiveState(pub ObjectiveProgress);
 
 #[derive(Resource, Default)]
 pub struct CampaignSignal {

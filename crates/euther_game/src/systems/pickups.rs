@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::PickupKind;
+use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
 use crate::resources::{AccessInventory, ApothecaryVitals, CampaignSignal, ObjectiveState};
@@ -69,18 +69,19 @@ pub fn report_exit_overlap(
             continue;
         }
 
-        let requirements_met = exit
-            .required_objectives
-            .iter()
-            .all(|objective_id| objective_state.completed.contains(objective_id));
-
-        if requirements_met {
-            if campaign_signal.pending_exit_target.as_ref() != Some(&exit.target) {
-                campaign_signal.pending_exit_target = Some(exit.target.clone());
-                info!("exit target={} is ready", exit.target);
+        match objective_state.0.exit_readiness(&exit.required_objectives) {
+            ExitReadiness::Ready => {
+                if campaign_signal.pending_exit_target.as_ref() != Some(&exit.target) {
+                    campaign_signal.pending_exit_target = Some(exit.target.clone());
+                    info!("exit target={} is ready", exit.target);
+                }
             }
-        } else {
-            debug!("exit target={} is locked by objectives", exit.target);
+            ExitReadiness::Blocked { missing } => {
+                debug!(
+                    "exit target={} is locked by objectives {:?}",
+                    exit.target, missing
+                );
+            }
         }
     }
 }
