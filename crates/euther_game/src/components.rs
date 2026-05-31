@@ -14,6 +14,7 @@ pub struct Projectile {
 
 #[derive(Component)]
 pub struct Contaminant {
+    pub id: Option<String>,
     pub health: i32,
 }
 

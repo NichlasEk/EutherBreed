@@ -102,8 +102,12 @@ pub fn spawn_level(
         spawn_wall(commands, wall.center, wall.half_extents * 2.0);
     }
 
-    for position in &level.contaminants {
-        spawn_contaminant(commands, *position);
+    for contaminant in &level.contaminants {
+        if level_state.has_killed_contaminant(&contaminant.id) {
+            continue;
+        }
+
+        spawn_contaminant(commands, Some(contaminant.id.clone()), contaminant.position);
     }
 
     for pickup in &level.pickups {
@@ -183,11 +187,11 @@ fn spawn_wall(commands: &mut Commands, center: Vec2, size: Vec2) {
     ));
 }
 
-fn spawn_contaminant(commands: &mut Commands, position: Vec2) {
+fn spawn_contaminant(commands: &mut Commands, id: Option<String>, position: Vec2) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.78, 0.26, 0.42), Vec2::splat(36.0)),
         Transform::from_xyz(position.x, position.y, 15.0),
-        Contaminant { health: 2 },
+        Contaminant { id, health: 2 },
         LevelEntity,
     ));
 }

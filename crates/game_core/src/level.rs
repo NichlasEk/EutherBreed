@@ -12,7 +12,7 @@ pub struct LevelDefinition {
     pub bounds: AxisAlignedBox,
     pub apothecary_start: Vec2,
     pub walls: Vec<AxisAlignedBox>,
-    pub contaminants: Vec<Vec2>,
+    pub contaminants: Vec<ContaminantDefinition>,
     pub pickups: Vec<PrototypeEntity<PickupKind>>,
     pub doors: Vec<DoorDefinition>,
     pub terminals: Vec<TerminalDefinition>,
@@ -34,6 +34,12 @@ pub enum PickupKind {
     MedGel(i32),
     BioSample,
     SecurityKeycard(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct ContaminantDefinition {
+    pub id: String,
+    pub position: Vec2,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -103,6 +109,13 @@ impl LevelDefinition {
 
         if !point_inside_box(self.apothecary_start, self.bounds) {
             return Err(LevelValidationError::StartOutsideBounds);
+        }
+
+        let mut contaminant_ids = HashSet::new();
+        for contaminant in &self.contaminants {
+            if contaminant.id.trim().is_empty() || !contaminant_ids.insert(contaminant.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
         }
 
         let mut pickup_ids = HashSet::new();
@@ -193,7 +206,16 @@ impl LevelDefinition {
                 wall(-180.0, -110.0, 180.0, 24.0),
                 wall(220.0, -64.0, 26.0, 180.0),
             ],
-            contaminants: vec![Vec2::new(320.0, 180.0), Vec2::new(380.0, -185.0)],
+            contaminants: vec![
+                ContaminantDefinition {
+                    id: "ward_contaminant_alpha".to_string(),
+                    position: Vec2::new(320.0, 180.0),
+                },
+                ContaminantDefinition {
+                    id: "ward_contaminant_beta".to_string(),
+                    position: Vec2::new(380.0, -185.0),
+                },
+            ],
             pickups: vec![
                 PrototypeEntity {
                     id: "ward_rounds_a".to_string(),
@@ -352,6 +374,14 @@ mod tests {
     fn validation_rejects_duplicate_pickup_ids() {
         let mut level = LevelDefinition::prototype_quarantine_ward();
         level.pickups[1].id = level.pickups[0].id.clone();
+
+        assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_contaminant_ids() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.contaminants[1].id = level.contaminants[0].id.clone();
 
         assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
     }

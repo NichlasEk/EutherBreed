@@ -46,6 +46,8 @@ pub struct LevelState {
     pub unlocked_doors: HashSet<String>,
     #[serde(default)]
     pub activated_terminals: HashSet<String>,
+    #[serde(default)]
+    pub killed_contaminants: HashSet<String>,
 }
 
 impl LevelState {
@@ -109,12 +111,27 @@ impl LevelState {
         self.activated_terminals.contains(terminal_id)
     }
 
+    pub fn kill_contaminant(&mut self, contaminant_id: impl Into<String>) -> bool {
+        let contaminant_id = contaminant_id.into();
+
+        if contaminant_id.trim().is_empty() {
+            return false;
+        }
+
+        self.killed_contaminants.insert(contaminant_id)
+    }
+
+    pub fn has_killed_contaminant(&self, contaminant_id: &str) -> bool {
+        self.killed_contaminants.contains(contaminant_id)
+    }
+
     pub fn reset_for_level_travel(&mut self) {
         self.clearances.clear();
         self.objectives = ObjectiveProgress::default();
         self.collected_pickups.clear();
         self.unlocked_doors.clear();
         self.activated_terminals.clear();
+        self.killed_contaminants.clear();
     }
 }
 
@@ -130,6 +147,7 @@ mod tests {
         state.collect_pickup("ward_rounds_a");
         state.unlock_door("ward_quarantine_green_door");
         state.activate_terminal("ward_lab_analyzer");
+        state.kill_contaminant("ward_contaminant_alpha");
 
         state.reset_for_level_travel();
 
@@ -138,6 +156,7 @@ mod tests {
         assert!(!state.has_collected_pickup("ward_rounds_a"));
         assert!(!state.has_unlocked_door("ward_quarantine_green_door"));
         assert!(!state.has_activated_terminal("ward_lab_analyzer"));
+        assert!(!state.has_killed_contaminant("ward_contaminant_alpha"));
     }
 
     #[test]
@@ -187,5 +206,15 @@ mod tests {
         assert!(!state.activate_terminal("ward_lab_analyzer"));
         assert!(state.has_activated_terminal("ward_lab_analyzer"));
         assert!(!state.activate_terminal(""));
+    }
+
+    #[test]
+    fn killed_contaminants_are_tracked_once() {
+        let mut state = LevelState::default();
+
+        assert!(state.kill_contaminant("ward_contaminant_alpha"));
+        assert!(!state.kill_contaminant("ward_contaminant_alpha"));
+        assert!(state.has_killed_contaminant("ward_contaminant_alpha"));
+        assert!(!state.kill_contaminant(""));
     }
 }

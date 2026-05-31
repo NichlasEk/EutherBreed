@@ -14,8 +14,14 @@
         (center: (145.0, -92.0), half_extents: (190.0, 12.0)),
     ],
     contaminants: [
-        (120.0, 155.0),
-        (280.0, -155.0),
+        (
+            id: "lab_contaminant_alpha",
+            position: (120.0, 155.0),
+        ),
+        (
+            id: "lab_contaminant_beta",
+            position: (280.0, -155.0),
+        ),
     ],
     pickups: [
         (

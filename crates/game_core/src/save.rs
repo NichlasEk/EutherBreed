@@ -257,6 +257,7 @@ mod tests {
                     collected_pickups: ["ward_rounds_a"],
                     unlocked_doors: [],
                     activated_terminals: [],
+                    killed_contaminants: ["ward_contaminant_alpha"],
                 ),
             },
         )"#;
@@ -268,6 +269,10 @@ mod tests {
         assert!(
             save.level_state("prototype_quarantine_ward")
                 .has_collected_pickup("ward_rounds_a")
+        );
+        assert!(
+            save.level_state("prototype_quarantine_ward")
+                .has_killed_contaminant("ward_contaminant_alpha")
         );
     }
 

@@ -111,7 +111,7 @@ Current prototype:
 - contaminant enemies that chase the player
 - health, ammo, and bio-sample counters
 - basic room walls, pickups, security keycard, locked door, terminal objective, objective-gated exits, level reloads, and collision
-- save files preserve run position and level-local progress per campaign level, including collected pickups, unlocked doors, and activated terminals
+- save files preserve run position and level-local progress per campaign level, including collected pickups, unlocked doors, activated terminals, and killed contaminants
 - autosave writes the current slot after successful level transitions
 - exits can route the apothecary to named entry points on the destination level
 - HUD notice feedback reports quicksave, quickload, missing saves, and autosave status

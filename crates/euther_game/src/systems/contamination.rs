@@ -37,7 +37,10 @@ pub fn spawn_contaminants(
             Vec2::splat(CONTAMINANT_RADIUS * 2.0),
         ),
         Transform::from_xyz(x, y, 15.0),
-        Contaminant { health: 2 },
+        Contaminant {
+            id: None,
+            health: 2,
+        },
         LevelEntity,
     ));
 }

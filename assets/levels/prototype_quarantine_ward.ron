@@ -15,8 +15,14 @@
         (center: (220.0, -64.0), half_extents: (13.0, 90.0)),
     ],
     contaminants: [
-        (320.0, 180.0),
-        (380.0, -185.0),
+        (
+            id: "ward_contaminant_alpha",
+            position: (320.0, 180.0),
+        ),
+        (
+            id: "ward_contaminant_beta",
+            position: (380.0, -185.0),
+        ),
     ],
     pickups: [
         (

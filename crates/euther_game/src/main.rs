@@ -249,6 +249,7 @@ fn run_runtime_save_smoke(path: String) {
     level_state.0.collect_pickup("ward_rounds_a");
     level_state.0.unlock_door("ward_quarantine_green_door");
     level_state.0.activate_terminal("ward_lab_analyzer");
+    level_state.0.kill_contaminant("ward_contaminant_alpha");
     let mut lab_state = game_core::LevelState::default();
     lab_state.grant_clearance("lab_blue");
     persistent_level_states
@@ -455,6 +456,10 @@ fn print_runtime_summary(
     println!(
         "activated_terminals: {}",
         level_state.0.activated_terminals.len()
+    );
+    println!(
+        "killed_contaminants: {}",
+        level_state.0.killed_contaminants.len()
     );
     println!(
         "objective_ready: {}",

@@ -3,7 +3,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::components::{Apothecary, Contaminant, LevelEntity, Projectile, Wall};
 use crate::geometry::circle_hits_any_wall;
-use crate::resources::ApothecaryVitals;
+use crate::resources::{ApothecaryVitals, LocalLevelState};
 
 const PROJECTILE_SPEED: f32 = 720.0;
 const PROJECTILE_LIFETIME: f32 = 1.1;
@@ -80,6 +80,7 @@ pub fn resolve_projectile_hits(
     projectile_query: Query<(Entity, &Transform), With<Projectile>>,
     mut contaminant_query: Query<(Entity, &Transform, &mut Contaminant)>,
     mut vitals: ResMut<ApothecaryVitals>,
+    mut level_state: ResMut<LocalLevelState>,
 ) {
     for (projectile_entity, projectile_transform) in &projectile_query {
         for (contaminant_entity, contaminant_transform, mut contaminant) in &mut contaminant_query {
@@ -96,6 +97,10 @@ pub fn resolve_projectile_hits(
             commands.entity(projectile_entity).despawn();
 
             if contaminant.health <= 0 {
+                if let Some(contaminant_id) = &contaminant.id {
+                    level_state.0.kill_contaminant(contaminant_id.clone());
+                }
+
                 commands.entity(contaminant_entity).despawn();
                 vitals.0.collect_bio_sample();
             }
