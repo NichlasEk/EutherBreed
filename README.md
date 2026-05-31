@@ -76,6 +76,13 @@ scripts/run.sh
 Runs the GUI prototype and warns first if `nvidia-smi` reports a local driver problem.
 
 ```sh
+scripts/run-gl.sh
+scripts/run.sh --gl
+```
+
+Runs the GUI prototype with the OpenGL backend, useful if Vulkan validation noise or driver issues get in the way.
+
+```sh
 scripts/build.sh
 ```
 
