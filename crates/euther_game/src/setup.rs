@@ -206,8 +206,8 @@ pub fn apothecary_spawn_position(level: &LevelDefinition, entry_id: Option<&str>
 
 fn apothecary_sprite(asset_server: &AssetServer) -> Sprite {
     let mut sprite = Sprite::from_image(asset_server.load("sprites/apothecary_topdown.png"));
-    sprite.rect = Some(Rect::new(377.0, 84.0, 1102.0, 1122.0));
-    sprite.custom_size = Some(Vec2::new(80.0, 114.0));
+    sprite.rect = Some(Rect::new(244.0, 348.0, 1113.0, 802.0));
+    sprite.custom_size = Some(Vec2::new(96.0, 50.0));
     sprite
 }
 
