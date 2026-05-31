@@ -121,6 +121,7 @@ Current prototype:
 - reagent projectiles
 - contaminant enemies that chase the player
 - muzzle/impact/death flashes for combat feedback
+- split cybernetic top/bottom HUD rails for status, objective, prompts, and notices
 - health, ammo, and bio-sample counters
 - hold-to-view map overlay on `Shift`
 - death state with `R` restart for the current section

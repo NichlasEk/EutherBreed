@@ -48,6 +48,7 @@ First build a small but cohesive prototype atlas:
 - `assets/sprites/apothecary/walk_0.png` through `walk_5.png`: runtime walk frames derived from the top-down apothecary sprite, with subtle side-to-side body motion and highlight variation for movement readability.
 - `assets/sprites/source/apothecary_topdown_chroma.png`: generated chroma-key source for the runtime sprite.
 - `assets/sprites/biomech/`: first cohesive biomechanical runtime sprite pass for contaminants, reagent projectiles, pickups, terminals, doors, exits, floor panels, and wall panels.
+- `assets/sprites/ui/`: original cyber-biomech HUD panel assets for the split top/bottom status rails. These are inspired by classic industrial survival-shooter readability, but must stay visually original and not copy commercial HUD art.
 - `assets/sprites/source/biomech_sheet_chroma.png`: generated chroma-key source for the biomechanical runtime sprite pass.
 - `assets/sprites/source/biomech_enemy_tiles_chroma.png`: generated chroma-key source for the two-armed contaminant refresh and darker repeated floor/wall tile pass.
 

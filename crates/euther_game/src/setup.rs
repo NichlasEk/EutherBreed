@@ -1,10 +1,12 @@
 use bevy::prelude::*;
+use bevy::ui::widget::NodeImageMode;
 use game_core::{LevelDefinition, PickupKind, TerminalKind};
 use std::time::Duration;
 
 use crate::components::{
     Apothecary, ApothecaryAnimation, Contaminant, ContaminantAnimation, Door, ExitZone,
-    LevelEntity, NoticeText, Pickup, SectionText, StatusText, Terminal, Wall,
+    LevelEntity, NoticeText, ObjectiveText, Pickup, PromptText, SectionText, StatusText, Terminal,
+    Wall,
 };
 use crate::resources::{
     CampaignRuntime, ContaminantSpawnTimer, CurrentLevelMap, LevelRuntime, LocalLevelState,
@@ -17,6 +19,10 @@ const FLOOR_TILE_PATHS: [&str; 4] = [
     "sprites/biomech/tile_floor_biomech_c.png",
     "sprites/biomech/tile_floor_biomech_d.png",
 ];
+const HUD_RAIL_TOP_PATH: &str = "sprites/ui/hud_rail_top.png";
+const HUD_RAIL_BOTTOM_PATH: &str = "sprites/ui/hud_rail_bottom.png";
+const HUD_SEGMENT_CYAN_PATH: &str = "sprites/ui/hud_segment_cyan.png";
+const HUD_SEGMENT_STEEL_PATH: &str = "sprites/ui/hud_segment_steel.png";
 
 pub fn setup(
     mut commands: Commands,
@@ -29,53 +35,7 @@ pub fn setup(
 ) {
     commands.spawn(Camera2d);
 
-    commands.spawn((
-        Text::new("Health 100 | Reagent rounds 48 | Bio-samples 0"),
-        TextFont {
-            font_size: 22.0,
-            ..default()
-        },
-        TextColor(Color::srgb(0.78, 0.92, 0.88)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(16),
-            left: px(16),
-            ..default()
-        },
-        StatusText,
-    ));
-
-    commands.spawn((
-        Text::new(""),
-        TextFont {
-            font_size: 18.0,
-            ..default()
-        },
-        TextColor(Color::srgb(0.92, 0.82, 0.46)),
-        Node {
-            position_type: PositionType::Absolute,
-            right: px(18),
-            bottom: px(18),
-            ..default()
-        },
-        NoticeText,
-    ));
-
-    commands.spawn((
-        Text::new(""),
-        TextFont {
-            font_size: 16.0,
-            ..default()
-        },
-        TextColor(Color::srgb(0.58, 0.72, 0.84)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(44),
-            left: px(16),
-            ..default()
-        },
-        SectionText,
-    ));
+    spawn_hud(&mut commands, &asset_server);
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
@@ -116,6 +76,204 @@ pub fn load_level_from_campaign(
         .unwrap_or_else(|error| panic!("invalid level {}: {error:?}", campaign_level.path));
 
     level
+}
+
+fn spawn_hud(commands: &mut Commands, asset_server: &AssetServer) {
+    spawn_hud_rail(commands, asset_server, HudRail::Top, |parent| {
+        spawn_hud_segment(
+            parent,
+            asset_server,
+            "1UP <////////////>",
+            StatusText,
+            Color::srgb(0.90, 0.94, 0.88),
+            430.0,
+        );
+        spawn_static_hud_segment(
+            parent,
+            asset_server,
+            "LIVES 01",
+            Color::srgb(0.55, 0.68, 0.68),
+            132.0,
+        );
+        spawn_static_hud_segment(
+            parent,
+            asset_server,
+            "+",
+            Color::srgb(0.95, 0.76, 0.34),
+            42.0,
+        );
+    });
+
+    spawn_hud_rail(commands, asset_server, HudRail::Bottom, |parent| {
+        spawn_hud_segment(
+            parent,
+            asset_server,
+            "OBJ <standby>",
+            ObjectiveText,
+            Color::srgb(0.90, 0.84, 0.52),
+            390.0,
+        );
+        spawn_hud_segment(
+            parent,
+            asset_server,
+            "SECTION <loading>",
+            SectionText,
+            Color::srgb(0.55, 0.75, 0.92),
+            360.0,
+        );
+        spawn_hud_segment(
+            parent,
+            asset_server,
+            "",
+            PromptText,
+            Color::srgb(0.72, 0.96, 0.86),
+            430.0,
+        );
+        spawn_hud_segment(
+            parent,
+            asset_server,
+            "",
+            NoticeText,
+            Color::srgb(0.95, 0.78, 0.32),
+            330.0,
+        );
+    });
+}
+
+enum HudRail {
+    Top,
+    Bottom,
+}
+
+fn spawn_hud_rail(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    rail: HudRail,
+    children: impl FnOnce(&mut ChildSpawnerCommands),
+) {
+    let mut node = Node {
+        position_type: PositionType::Absolute,
+        left: px(0),
+        width: percent(100),
+        height: px(36),
+        display: Display::Flex,
+        align_items: AlignItems::Center,
+        column_gap: px(8),
+        padding: UiRect::horizontal(px(8)),
+        border: UiRect::all(px(2)),
+        ..default()
+    };
+
+    match rail {
+        HudRail::Top => node.top = px(0),
+        HudRail::Bottom => node.bottom = px(0),
+    }
+
+    let image = match rail {
+        HudRail::Top => asset_server.load(HUD_RAIL_TOP_PATH),
+        HudRail::Bottom => asset_server.load(HUD_RAIL_BOTTOM_PATH),
+    };
+
+    commands
+        .spawn((
+            node,
+            ImageNode {
+                image,
+                image_mode: NodeImageMode::Sliced(TextureSlicer {
+                    border: BorderRect::all(8.0),
+                    center_scale_mode: SliceScaleMode::Stretch,
+                    sides_scale_mode: SliceScaleMode::Stretch,
+                    max_corner_scale: 1.0,
+                }),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.012, 0.016, 0.018, 0.92)),
+            BorderColor::all(Color::srgba(0.30, 0.42, 0.42, 0.86)),
+        ))
+        .with_children(children);
+}
+
+fn spawn_hud_segment<M: Component>(
+    parent: &mut ChildSpawnerCommands,
+    asset_server: &AssetServer,
+    text: &'static str,
+    marker: M,
+    color: Color,
+    width: f32,
+) {
+    parent
+        .spawn((
+            Node {
+                width: px(width),
+                height: px(26),
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                ..default()
+            },
+            hud_segment_image(asset_server, HUD_SEGMENT_CYAN_PATH),
+            BackgroundColor(Color::srgba(0.04, 0.055, 0.055, 0.90)),
+            BorderColor::all(Color::srgba(0.18, 0.85, 0.78, 0.45)),
+        ))
+        .with_children(|segment| {
+            segment.spawn((
+                Text::new(text),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(color),
+                marker,
+            ));
+        });
+}
+
+fn spawn_static_hud_segment(
+    parent: &mut ChildSpawnerCommands,
+    asset_server: &AssetServer,
+    text: &'static str,
+    color: Color,
+    width: f32,
+) {
+    parent
+        .spawn((
+            Node {
+                width: px(width),
+                height: px(26),
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                ..default()
+            },
+            hud_segment_image(asset_server, HUD_SEGMENT_STEEL_PATH),
+            BackgroundColor(Color::srgba(0.035, 0.040, 0.044, 0.90)),
+            BorderColor::all(Color::srgba(0.62, 0.68, 0.64, 0.55)),
+        ))
+        .with_children(|segment| {
+            segment.spawn((
+                Text::new(text),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(color),
+            ));
+        });
+}
+
+fn hud_segment_image(asset_server: &AssetServer, path: &'static str) -> ImageNode {
+    ImageNode {
+        image: asset_server.load(path),
+        image_mode: NodeImageMode::Sliced(TextureSlicer {
+            border: BorderRect::all(12.0),
+            center_scale_mode: SliceScaleMode::Stretch,
+            sides_scale_mode: SliceScaleMode::Stretch,
+            max_corner_scale: 1.0,
+        }),
+        ..default()
+    }
 }
 
 pub fn spawn_level(

@@ -49,6 +49,10 @@ The player character is the ship's apothecary: a medical and biochemical special
 - Death/restart:
   - health 0 shows a restart prompt
   - `R`: restarts the current section with fresh local state
+- HUD direction:
+  - compact industrial top/bottom rails
+  - segmented health/ammo/key/resource readouts inspired by classic survival-shooter readability
+  - keep it original; do not copy original UI art or exact layouts
 - First visible character/enemy/tile sprite pass is in place.
 - Current apothecary walk sprite frames are intentionally left for manual replacement; code supports frame cycling.
 

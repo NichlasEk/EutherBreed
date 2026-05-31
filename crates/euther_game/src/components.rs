@@ -54,6 +54,12 @@ pub struct NoticeText;
 pub struct SectionText;
 
 #[derive(Component)]
+pub struct ObjectiveText;
+
+#[derive(Component)]
+pub struct PromptText;
+
+#[derive(Component)]
 pub struct Pickup {
     pub id: String,
     pub kind: game_core::PickupKind,

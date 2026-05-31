@@ -24,4 +24,7 @@ pub use pickups::{collect_pickups, report_exit_overlap, unlock_doors};
 pub use progression::{restart_current_level_on_death, update_campaign_progress};
 pub use save::{apply_save_to_runtime, quick_load_on_key, quick_save_on_key};
 pub use terminals::interact_with_terminals;
-pub use ui::{update_notice_text, update_section_text, update_status_text};
+pub use ui::{
+    update_notice_text, update_objective_text, update_prompt_text, update_section_text,
+    update_status_text,
+};
