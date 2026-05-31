@@ -770,6 +770,10 @@ fn spawn_pickup(
             "sprites/biomech/pickup_security_keycard.png",
             Vec2::new(34.0, 26.0),
         ),
+        PickupKind::AreaScan => (
+            "sprites/biomech/pickup_area_scan.png",
+            Vec2::new(30.0, 26.0),
+        ),
     };
 
     commands.spawn((

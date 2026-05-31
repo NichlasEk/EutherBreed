@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::ExitReadiness;
+use game_core::{ExitReadiness, TerminalKind};
 
 use crate::components::{
     Apothecary, BioText, Door, ExitZone, HudGaugeKind, HudGaugePip, KeysText, NoticeText,
@@ -169,7 +169,11 @@ fn prompt_for_position(
             if level_state.0.activated_terminals.contains(&terminal.id) {
                 return Some("TERMINAL <processed>".to_string());
             }
-            return Some("PRESS E <analyze terminal>".to_string());
+            return Some(match terminal.kind {
+                TerminalKind::LabAnalyzer => "PRESS E <analyze terminal>".to_string(),
+                TerminalKind::ShipLog => "PRESS E <read ship log>".to_string(),
+                TerminalKind::SupplyConsole => "PRESS E <use supply station>".to_string(),
+            });
         }
     }
 

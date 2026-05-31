@@ -48,6 +48,8 @@ pub struct LevelState {
     pub activated_terminals: HashSet<String>,
     #[serde(default)]
     pub killed_contaminants: HashSet<String>,
+    #[serde(default)]
+    pub area_scan_acquired: bool,
 }
 
 impl LevelState {
@@ -125,6 +127,10 @@ impl LevelState {
         self.killed_contaminants.contains(contaminant_id)
     }
 
+    pub fn acquire_area_scan(&mut self) {
+        self.area_scan_acquired = true;
+    }
+
     pub fn reset_for_level_travel(&mut self) {
         self.clearances.clear();
         self.objectives = ObjectiveProgress::default();
@@ -132,6 +138,7 @@ impl LevelState {
         self.unlocked_doors.clear();
         self.activated_terminals.clear();
         self.killed_contaminants.clear();
+        self.area_scan_acquired = false;
     }
 }
 
@@ -148,6 +155,7 @@ mod tests {
         state.unlock_door("ward_quarantine_green_door");
         state.activate_terminal("ward_lab_analyzer");
         state.kill_contaminant("ward_contaminant_alpha");
+        state.acquire_area_scan();
 
         state.reset_for_level_travel();
 
@@ -157,6 +165,7 @@ mod tests {
         assert!(!state.has_unlocked_door("ward_quarantine_green_door"));
         assert!(!state.has_activated_terminal("ward_lab_analyzer"));
         assert!(!state.has_killed_contaminant("ward_contaminant_alpha"));
+        assert!(!state.area_scan_acquired);
     }
 
     #[test]

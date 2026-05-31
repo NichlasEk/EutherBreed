@@ -44,6 +44,11 @@
             position: (320.0, 92.0),
             kind: BioSample,
         ),
+        (
+            id: "triage_area_scan",
+            position: (-332.0, 190.0),
+            kind: AreaScan,
+        ),
     ],
     doors: [],
     terminals: [
@@ -60,12 +65,23 @@
             id: "from_lab_access_corridor",
             position: (-390.0, -168.0),
         ),
+        (
+            id: "from_research_spine",
+            position: (390.0, -168.0),
+        ),
     ],
     exits: [
         (
             position: (-432.0, -168.0),
             half_extents: (22.0, 38.0),
             target: "lab_access_corridor",
+            entry_id: "from_triage_vault",
+            required_objectives: [],
+        ),
+        (
+            position: (432.0, -168.0),
+            half_extents: (22.0, 38.0),
+            target: "research_spine",
             entry_id: "from_triage_vault",
             required_objectives: [],
         ),

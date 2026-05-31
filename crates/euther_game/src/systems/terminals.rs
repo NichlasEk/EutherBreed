@@ -1,7 +1,10 @@
 use bevy::prelude::*;
+use game_core::TerminalKind;
 
 use crate::components::{Apothecary, Terminal};
-use crate::resources::{ContaminantSpawnTimer, GameNotice, LevelRuntime, LocalLevelState};
+use crate::resources::{
+    ApothecaryVitals, ContaminantSpawnTimer, GameNotice, LevelRuntime, LocalLevelState,
+};
 
 const TERMINAL_INTERACTION_RADIUS: f32 = 42.0;
 
@@ -12,6 +15,7 @@ pub fn interact_with_terminals(
     mut level_state: ResMut<LocalLevelState>,
     mut level_runtime: ResMut<LevelRuntime>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
+    mut vitals: ResMut<ApothecaryVitals>,
     mut notice: ResMut<GameNotice>,
 ) {
     if !input.just_pressed(KeyCode::KeyE) {
@@ -28,6 +32,11 @@ pub fn interact_with_terminals(
         if !level_state.0.activate_terminal(terminal.id.clone()) {
             notice.show("Terminal already processed", 1.4);
             continue;
+        }
+
+        if matches!(terminal.kind, TerminalKind::SupplyConsole) {
+            vitals.0.add_ammo(16);
+            vitals.0.heal(18, 100);
         }
 
         if let Some(objective_id) = &terminal.objective_id {
@@ -49,7 +58,12 @@ pub fn interact_with_terminals(
                 );
             }
         } else {
-            notice.show("Terminal accessed", 1.4);
+            let message = match terminal.kind {
+                TerminalKind::LabAnalyzer => "Analyzer accessed",
+                TerminalKind::ShipLog => "Ship log recovered",
+                TerminalKind::SupplyConsole => "Supply station: ammo +16 med-gel +18",
+            };
+            notice.show(message, 1.6);
         }
     }
 }

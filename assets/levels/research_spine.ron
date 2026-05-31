@@ -1,0 +1,170 @@
+(
+    name: "research_spine",
+    bounds: (
+        center: (0.0, 0.0),
+        half_extents: (720.0, 420.0),
+    ),
+    apothecary_start: (-650.0, -285.0),
+    walls: [
+        (center: (0.0, 434.0), half_extents: (740.0, 14.0)),
+        (center: (0.0, -434.0), half_extents: (740.0, 14.0)),
+        (center: (-744.0, 0.0), half_extents: (14.0, 434.0)),
+        (center: (744.0, 0.0), half_extents: (14.0, 434.0)),
+        (center: (-440.0, 230.0), half_extents: (205.0, 13.0)),
+        (center: (-120.0, 230.0), half_extents: (155.0, 13.0)),
+        (center: (310.0, 230.0), half_extents: (230.0, 13.0)),
+        (center: (-520.0, 48.0), half_extents: (13.0, 170.0)),
+        (center: (-300.0, 72.0), half_extents: (13.0, 145.0)),
+        (center: (-40.0, 78.0), half_extents: (13.0, 150.0)),
+        (center: (224.0, 68.0), half_extents: (13.0, 154.0)),
+        (center: (486.0, 64.0), half_extents: (13.0, 160.0)),
+        (center: (-440.0, -118.0), half_extents: (195.0, 13.0)),
+        (center: (-100.0, -118.0), half_extents: (155.0, 13.0)),
+        (center: (284.0, -118.0), half_extents: (210.0, 13.0)),
+        (center: (-600.0, -260.0), half_extents: (13.0, 106.0)),
+        (center: (-302.0, -270.0), half_extents: (13.0, 118.0)),
+        (center: (72.0, -278.0), half_extents: (13.0, 112.0)),
+        (center: (392.0, -282.0), half_extents: (13.0, 118.0)),
+        (center: (585.0, -260.0), half_extents: (13.0, 106.0)),
+        (center: (-460.0, -348.0), half_extents: (124.0, 12.0)),
+        (center: (-112.0, -348.0), half_extents: (170.0, 12.0)),
+        (center: (242.0, -348.0), half_extents: (155.0, 12.0)),
+        (center: (530.0, -348.0), half_extents: (95.0, 12.0)),
+    ],
+    contaminants: [
+        (
+            id: "spine_contaminant_alpha",
+            position: (-150.0, 310.0),
+        ),
+        (
+            id: "spine_contaminant_beta",
+            position: (420.0, 302.0),
+        ),
+        (
+            id: "spine_contaminant_gamma",
+            position: (-408.0, 12.0),
+        ),
+        (
+            id: "spine_contaminant_delta",
+            position: (80.0, -20.0),
+        ),
+        (
+            id: "spine_contaminant_epsilon",
+            position: (554.0, -220.0),
+        ),
+        (
+            id: "spine_contaminant_zeta",
+            position: (-206.0, -302.0),
+        ),
+    ],
+    pickups: [
+        (
+            id: "spine_rounds_a",
+            position: (-540.0, -305.0),
+            kind: ReagentRounds(14),
+        ),
+        (
+            id: "spine_medgel_a",
+            position: (-636.0, 330.0),
+            kind: MedGel(30),
+        ),
+        (
+            id: "spine_lab_lift_keycard",
+            position: (610.0, 318.0),
+            kind: SecurityKeycard("lab_lift"),
+        ),
+        (
+            id: "spine_bio_sample_a",
+            position: (148.0, 308.0),
+            kind: BioSample,
+        ),
+        (
+            id: "spine_bio_sample_b",
+            position: (636.0, -300.0),
+            kind: BioSample,
+        ),
+        (
+            id: "spine_rounds_b",
+            position: (-30.0, -302.0),
+            kind: ReagentRounds(18),
+        ),
+    ],
+    doors: [
+        (
+            id: "spine_lab_lift_lock",
+            position: (224.0, 68.0),
+            half_extents: (13.0, 40.0),
+            clearance_id: "lab_lift",
+            starts_locked: true,
+        ),
+    ],
+    terminals: [
+        (
+            id: "spine_shop_supply_console",
+            position: (-636.0, 330.0),
+            kind: SupplyConsole,
+            objective_id: None,
+        ),
+        (
+            id: "spine_lift_router",
+            position: (312.0, 306.0),
+            kind: ShipLog,
+            objective_id: Some("route_lift_power"),
+        ),
+        (
+            id: "spine_containment_analyzer",
+            position: (628.0, -304.0),
+            kind: LabAnalyzer,
+            objective_id: Some("purge_containment_spine"),
+        ),
+    ],
+    objectives: [
+        (
+            id: "route_lift_power",
+            label: "Route lift power",
+            required: true,
+        ),
+        (
+            id: "purge_containment_spine",
+            label: "Purge containment spine",
+            required: true,
+        ),
+    ],
+    entry_points: [
+        (
+            id: "from_lab_access_corridor",
+            position: (-650.0, -285.0),
+        ),
+        (
+            id: "from_triage_vault",
+            position: (650.0, -285.0),
+        ),
+    ],
+    exits: [
+        (
+            position: (-698.0, -285.0),
+            half_extents: (22.0, 42.0),
+            target: "lab_access_corridor",
+            entry_id: "from_research_spine",
+            required_objectives: [],
+        ),
+        (
+            position: (698.0, -285.0),
+            half_extents: (22.0, 42.0),
+            target: "triage_vault",
+            entry_id: "from_research_spine",
+            required_objectives: [
+                "route_lift_power",
+                "purge_containment_spine",
+            ],
+        ),
+    ],
+    spawn_points: [
+        (-660.0, 360.0),
+        (-80.0, 355.0),
+        (660.0, 360.0),
+        (-660.0, -360.0),
+        (660.0, -360.0),
+    ],
+    spawn_interval_seconds: Some(5.0),
+)

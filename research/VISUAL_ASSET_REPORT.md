@@ -25,6 +25,7 @@ Runtime already has:
 - quarantine door, exit marker, terminals, pickups, reagent projectile
 - split cyber-biomech HUD rails with health and ammo pips
 - three connected prototype levels
+- area scan pickups that unlock the Shift-map per level
 
 The biggest visual gap is not the player or HUD anymore. It is level construction variety: the same floor tile covers too much space, walls are not yet a full modular kit, and rooms need more physical set dressing.
 
@@ -110,6 +111,8 @@ Improve gameplay readability:
 - dead terminal variant
 - keycard socket
 - exit portal variants by destination
+- area scan pickup/device
+- lift/teleporter route device variants
 
 ### 6. HUD Icons
 

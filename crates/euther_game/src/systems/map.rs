@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use game_core::PickupKind;
 
 use crate::components::{Apothecary, Contaminant, MapOverlay};
-use crate::resources::{CurrentLevelMap, LocalLevelState};
+use crate::resources::{CurrentLevelMap, GameNotice, LocalLevelState};
 
 const MAP_SIZE: Vec2 = Vec2::new(560.0, 330.0);
 const MAP_Z: f32 = 850.0;
@@ -12,6 +12,7 @@ pub fn render_map_overlay_on_shift(
     input: Res<ButtonInput<KeyCode>>,
     current_map: Res<CurrentLevelMap>,
     level_state: Res<LocalLevelState>,
+    mut notice: ResMut<GameNotice>,
     camera_query: Single<&Transform, (With<Camera2d>, Without<MapOverlay>)>,
     apothecary_query: Query<&Transform, (With<Apothecary>, Without<Camera2d>, Without<MapOverlay>)>,
     contaminant_query: Query<
@@ -31,6 +32,11 @@ pub fn render_map_overlay_on_shift(
     let Some(level) = &current_map.level else {
         return;
     };
+
+    if !level_state.0.area_scan_acquired {
+        notice.show("Area scan required", 1.2);
+        return;
+    }
 
     let center = camera_query.translation.xy();
     let bounds_size = level.bounds.half_extents * 2.0;
@@ -97,6 +103,7 @@ pub fn render_map_overlay_on_shift(
             PickupKind::MedGel(_) => Color::srgba(0.4, 1.0, 0.7, 0.95),
             PickupKind::BioSample => Color::srgba(0.2, 0.9, 1.0, 0.95),
             PickupKind::SecurityKeycard(_) => Color::srgba(0.95, 0.7, 0.2, 0.95),
+            PickupKind::AreaScan => Color::srgba(0.25, 0.95, 1.0, 0.95),
         };
         spawn_map_rect(
             &mut commands,

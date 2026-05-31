@@ -55,6 +55,10 @@ pub fn collect_pickups(
                 }
                 notice.show("Security clearance acquired", 1.6);
             }
+            PickupKind::AreaScan => {
+                level_state.0.acquire_area_scan();
+                notice.show("Area scan acquired - hold Shift for map", 1.8);
+            }
         }
 
         level_state.0.collect_pickup(pickup.id.clone());

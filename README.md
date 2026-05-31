@@ -110,7 +110,7 @@ Controls:
 - `WASD` or arrow keys: move
 - mouse: aim
 - left mouse button or `Z`/`X`/`C`: fire reagent round
-- hold `Shift`: show map overlay
+- hold `Shift`: show map overlay after collecting an area scan
 - `R`: restart current section after health reaches 0
 - `F5`: quick save to `saves/slot1.ron`
 - `F9`: quick load from `saves/slot1.ron`
@@ -121,13 +121,13 @@ Current prototype:
 
 - apothecary movement and mouse aim
 - prototype quarantine ward loaded from level data
-- three connected prototype sections: quarantine ward, lab access corridor, and triage vault
+- four connected prototype sections: quarantine ward, lab access corridor, research spine, and triage vault
 - reagent projectiles
 - contaminant enemies that chase the player
 - muzzle/impact/death flashes for combat feedback
 - split cybernetic top/bottom HUD rails for status, objective, prompts, and notices
 - health, ammo, and bio-sample counters
-- hold-to-view map overlay on `Shift`
+- area scan pickups unlock the hold-to-view map overlay on `Shift` per section
 - death state with `R` restart for the current section
 - quarantine ward has a first designed loop with keycard pressure, terminal pressure, and exit routing
 - basic room walls, pickups, security keycard, locked door, terminal objective, objective-gated exits, level reloads, and collision

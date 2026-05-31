@@ -63,6 +63,11 @@
             position: (356.0, -132.0),
             kind: BioSample,
         ),
+        (
+            id: "ward_area_scan",
+            position: (-392.0, -126.0),
+            kind: AreaScan,
+        ),
     ],
     doors: [
         (

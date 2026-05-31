@@ -38,6 +38,7 @@ pub enum PickupKind {
     MedGel(i32),
     BioSample,
     SecurityKeycard(String),
+    AreaScan,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
