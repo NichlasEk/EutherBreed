@@ -69,6 +69,12 @@ scripts/release.sh
 
 Runs format check, `game_core` tests, and a release build.
 
+ABTA research helper:
+
+```sh
+cargo run -p abta_tools -- inspect /home/nichlas/AlienBrT/TA.EPF
+```
+
 Controls:
 
 - `WASD` or arrow keys: move
