@@ -7,7 +7,7 @@ mod systems;
 use bevy::prelude::*;
 use resources::{
     AccessInventory, ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer,
-    ObjectiveState,
+    LevelRuntime, ObjectiveState,
 };
 use setup::setup;
 use systems::{
@@ -37,6 +37,7 @@ fn run_game() {
         .insert_resource(ObjectiveState::default())
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
+        .insert_resource(initial_level_runtime())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherBreed Prototype".to_string(),
@@ -77,6 +78,7 @@ fn run_headless_smoke() {
         .insert_resource(ObjectiveState::default())
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
+        .insert_resource(initial_level_runtime())
         .add_plugins(MinimalPlugins);
 
     app.update();
@@ -108,5 +110,11 @@ fn initial_campaign_runtime() -> CampaignRuntime {
     CampaignRuntime {
         definition,
         progress,
+    }
+}
+
+fn initial_level_runtime() -> LevelRuntime {
+    LevelRuntime {
+        loaded_level_id: None,
     }
 }

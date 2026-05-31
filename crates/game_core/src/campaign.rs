@@ -210,11 +210,17 @@ mod tests {
     fn campaign_file_loads_and_validates_routes() {
         let campaign = CampaignDefinition::from_ron_file("../../assets/campaigns/prototype.ron")
             .expect("prototype campaign should load");
-        let level =
+        let quarantine =
             LevelDefinition::from_ron_file("../../assets/levels/prototype_quarantine_ward.ron")
                 .expect("prototype level should load");
+        let corridor =
+            LevelDefinition::from_ron_file("../../assets/levels/lab_access_corridor.ron")
+                .expect("corridor level should load");
 
-        assert_eq!(campaign.validate_level_routes([&level]), Ok(()));
+        assert_eq!(
+            campaign.validate_level_routes([&quarantine, &corridor]),
+            Ok(())
+        );
     }
 
     #[test]

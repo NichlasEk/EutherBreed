@@ -4,6 +4,9 @@ use bevy::prelude::*;
 pub struct Apothecary;
 
 #[derive(Component)]
+pub struct LevelEntity;
+
+#[derive(Component)]
 pub struct Projectile {
     pub velocity: Vec2,
     pub lifetime: Timer,

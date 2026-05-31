@@ -27,3 +27,8 @@ pub struct CampaignRuntime {
     pub definition: CampaignDefinition,
     pub progress: CampaignProgress,
 }
+
+#[derive(Resource)]
+pub struct LevelRuntime {
+    pub loaded_level_id: Option<String>,
+}
