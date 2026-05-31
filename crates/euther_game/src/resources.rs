@@ -1,7 +1,7 @@
 use bevy::prelude::*;
-use game_core::ObjectiveProgress;
-use game_core::{ApothecaryVitals as CoreApothecaryVitals, CampaignDefinition, CampaignProgress};
-use std::collections::HashSet;
+use game_core::{
+    ApothecaryVitals as CoreApothecaryVitals, CampaignDefinition, CampaignProgress, LevelState,
+};
 
 #[derive(Resource)]
 pub struct ApothecaryVitals(pub CoreApothecaryVitals);
@@ -10,12 +10,7 @@ pub struct ApothecaryVitals(pub CoreApothecaryVitals);
 pub struct ContaminantSpawnTimer(pub Timer);
 
 #[derive(Resource, Default)]
-pub struct AccessInventory {
-    pub clearances: HashSet<String>,
-}
-
-#[derive(Resource, Default)]
-pub struct ObjectiveState(pub ObjectiveProgress);
+pub struct LocalLevelState(pub LevelState);
 
 #[derive(Resource, Default)]
 pub struct CampaignSignal {

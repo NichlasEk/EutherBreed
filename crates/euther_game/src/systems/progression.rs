@@ -2,8 +2,7 @@ use bevy::prelude::*;
 
 use crate::components::LevelEntity;
 use crate::resources::{
-    AccessInventory, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
-    ObjectiveState,
+    CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime, LocalLevelState,
 };
 use crate::setup::{load_level_from_campaign, spawn_level};
 
@@ -12,8 +11,7 @@ pub fn update_campaign_progress(
     mut signal: ResMut<CampaignSignal>,
     mut runtime: ResMut<CampaignRuntime>,
     mut level_runtime: ResMut<LevelRuntime>,
-    mut access_inventory: ResMut<AccessInventory>,
-    mut objective_state: ResMut<ObjectiveState>,
+    mut level_state: ResMut<LocalLevelState>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
     level_entities: Query<Entity, With<LevelEntity>>,
 ) {
@@ -43,11 +41,7 @@ pub fn update_campaign_progress(
         commands.entity(entity).despawn();
     }
 
-    reset_level_local_state(
-        &mut access_inventory,
-        &mut objective_state,
-        &mut contaminant_timer,
-    );
+    reset_level_local_state(&mut level_state, &mut contaminant_timer);
 
     let level = load_level_from_campaign(&runtime, runtime.progress.current_level());
     spawn_level(&mut commands, &level);
@@ -55,11 +49,9 @@ pub fn update_campaign_progress(
 }
 
 fn reset_level_local_state(
-    access_inventory: &mut AccessInventory,
-    objective_state: &mut ObjectiveState,
+    level_state: &mut LocalLevelState,
     contaminant_timer: &mut ContaminantSpawnTimer,
 ) {
-    access_inventory.clearances.clear();
-    objective_state.0 = game_core::ObjectiveProgress::default();
+    level_state.0.reset_for_level_travel();
     contaminant_timer.0.reset();
 }

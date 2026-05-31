@@ -2,6 +2,7 @@ pub mod campaign;
 pub mod collision;
 pub mod level;
 pub mod progression;
+pub mod state;
 pub mod vitals;
 
 pub use campaign::{
@@ -14,4 +15,5 @@ pub use level::{
     TerminalDefinition, TerminalKind,
 };
 pub use progression::{ExitReadiness, ObjectiveProgress};
+pub use state::{LevelState, RunState};
 pub use vitals::{ApothecaryVitals, DamageOutcome};

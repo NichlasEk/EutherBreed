@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::components::{Apothecary, Terminal};
-use crate::resources::ObjectiveState;
+use crate::resources::LocalLevelState;
 
 const TERMINAL_INTERACTION_RADIUS: f32 = 42.0;
 
@@ -9,7 +9,7 @@ pub fn interact_with_terminals(
     input: Res<ButtonInput<KeyCode>>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     terminal_query: Query<(&Transform, &Terminal)>,
-    mut objective_state: ResMut<ObjectiveState>,
+    mut level_state: ResMut<LocalLevelState>,
 ) {
     if !input.just_pressed(KeyCode::KeyE) {
         return;
@@ -23,7 +23,7 @@ pub fn interact_with_terminals(
         }
 
         if let Some(objective_id) = &terminal.objective_id {
-            if objective_state.0.complete(objective_id.clone()) {
+            if level_state.0.complete_objective(objective_id.clone()) {
                 info!(
                     "terminal {:?} completed objective {}",
                     terminal.kind, objective_id

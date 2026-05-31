@@ -6,8 +6,8 @@ mod systems;
 
 use bevy::prelude::*;
 use resources::{
-    AccessInventory, ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer,
-    LevelRuntime, ObjectiveState,
+    ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, LevelRuntime,
+    LocalLevelState,
 };
 use setup::setup;
 use systems::{
@@ -38,8 +38,7 @@ fn run_game() {
         .insert_resource(ClearColor(Color::srgb(0.015, 0.018, 0.025)))
         .insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
-        .insert_resource(AccessInventory::default())
-        .insert_resource(ObjectiveState::default())
+        .insert_resource(LocalLevelState::default())
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
@@ -79,8 +78,7 @@ fn run_headless_smoke() {
     let mut app = App::new();
     app.insert_resource(initial_vitals())
         .insert_resource(initial_contaminant_timer())
-        .insert_resource(AccessInventory::default())
-        .insert_resource(ObjectiveState::default())
+        .insert_resource(LocalLevelState::default())
         .insert_resource(CampaignSignal::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())

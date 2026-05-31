@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
-use crate::resources::{AccessInventory, ApothecaryVitals, CampaignSignal, ObjectiveState};
+use crate::resources::{ApothecaryVitals, CampaignSignal, LocalLevelState};
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
@@ -12,7 +12,7 @@ pub fn collect_pickups(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     pickup_query: Query<(Entity, &Transform, &Pickup)>,
     mut vitals: ResMut<ApothecaryVitals>,
-    mut access_inventory: ResMut<AccessInventory>,
+    mut level_state: ResMut<LocalLevelState>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
 
@@ -28,7 +28,7 @@ pub fn collect_pickups(
             PickupKind::MedGel(amount) => vitals.0.heal(amount, 100),
             PickupKind::BioSample => vitals.0.collect_bio_sample(),
             PickupKind::SecurityKeycard(ref clearance_id) => {
-                access_inventory.clearances.insert(clearance_id.clone());
+                level_state.0.grant_clearance(clearance_id.clone());
             }
         }
 
@@ -38,15 +38,15 @@ pub fn collect_pickups(
 
 pub fn unlock_doors(
     mut commands: Commands,
-    access_inventory: Res<AccessInventory>,
+    level_state: Res<LocalLevelState>,
     mut door_query: Query<(Entity, &mut Door, &mut Sprite), With<Wall>>,
 ) {
-    if !access_inventory.is_changed() {
+    if !level_state.is_changed() {
         return;
     }
 
     for (entity, mut door, mut sprite) in &mut door_query {
-        if !door.locked || !access_inventory.clearances.contains(&door.clearance_id) {
+        if !door.locked || !level_state.0.has_clearance(&door.clearance_id) {
             continue;
         }
 
@@ -59,7 +59,7 @@ pub fn unlock_doors(
 pub fn report_exit_overlap(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     exit_query: Query<(&Transform, &ExitZone)>,
-    objective_state: Res<ObjectiveState>,
+    level_state: Res<LocalLevelState>,
     mut campaign_signal: ResMut<CampaignSignal>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
@@ -69,7 +69,11 @@ pub fn report_exit_overlap(
             continue;
         }
 
-        match objective_state.0.exit_readiness(&exit.required_objectives) {
+        match level_state
+            .0
+            .objectives
+            .exit_readiness(&exit.required_objectives)
+        {
             ExitReadiness::Ready => {
                 if campaign_signal.pending_exit_target.as_ref() != Some(&exit.target) {
                     campaign_signal.pending_exit_target = Some(exit.target.clone());
