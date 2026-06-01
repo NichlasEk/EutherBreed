@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
-use game_core::{DoorKind, LevelDefinition, PickupKind, TerminalKind};
+use game_core::{DecorDefinition, DecorKind, DoorKind, LevelDefinition, PickupKind, TerminalKind};
 use std::time::Duration;
 
 use crate::components::{
@@ -465,6 +465,10 @@ pub fn spawn_level(
         );
     }
 
+    for decor in &level.decor {
+        spawn_decor(commands, asset_server, decor);
+    }
+
     for contaminant in &level.contaminants {
         if level_state.has_killed_contaminant(&contaminant.id) {
             continue;
@@ -495,7 +499,7 @@ pub fn spawn_level(
     for door in &level.doors {
         let locked = door.starts_locked
             && !level_state.has_unlocked_door(&door.id)
-            && !level_state.has_clearance(&door.clearance_id);
+            && !door_requirements_met(&door.clearance_id, &door.required_objectives, level_state);
         spawn_door(
             commands,
             asset_server,
@@ -505,6 +509,7 @@ pub fn spawn_level(
             door.clearance_id.clone(),
             locked,
             door.kind,
+            door.required_objectives.clone(),
         );
     }
 
@@ -786,6 +791,107 @@ fn spawn_pickup(
     ));
 }
 
+fn spawn_decor(commands: &mut Commands, asset_server: &AssetServer, decor: &DecorDefinition) {
+    let (path, size, z, color) = decor_visual(decor.kind);
+    let mut transform = Transform::from_xyz(decor.position.x, decor.position.y, z);
+    transform.rotation = Quat::from_rotation_z(decor.rotation_degrees.to_radians());
+
+    let mut entity = commands.spawn((
+        image_sprite(asset_server, path, size, color),
+        transform,
+        LevelEntity,
+    ));
+
+    if decor.blocking {
+        entity.insert(Wall {
+            half_extents: size * 0.45,
+        });
+    }
+}
+
+fn decor_visual(kind: DecorKind) -> (&'static str, Vec2, f32, Color) {
+    match kind {
+        DecorKind::BloodDrops => (
+            "sprites/biomech/decor_blood_drops.png",
+            Vec2::new(54.0, 42.0),
+            -1.0,
+            Color::WHITE,
+        ),
+        DecorKind::BloodSmear => (
+            "sprites/biomech/decor_blood_smear.png",
+            Vec2::new(92.0, 44.0),
+            -1.0,
+            Color::WHITE,
+        ),
+        DecorKind::BloodPool => (
+            "sprites/biomech/decor_blood_pool.png",
+            Vec2::new(96.0, 72.0),
+            -1.0,
+            Color::WHITE,
+        ),
+        DecorKind::AcidScorch => (
+            "sprites/biomech/decor_acid_scorch.png",
+            Vec2::new(90.0, 70.0),
+            -1.0,
+            Color::WHITE,
+        ),
+        DecorKind::CrackedPanel => (
+            "sprites/biomech/decor_cracked_panel.png",
+            Vec2::new(84.0, 84.0),
+            -1.0,
+            Color::WHITE,
+        ),
+        DecorKind::LabTable => (
+            "sprites/biomech/decor_lab_table.png",
+            Vec2::new(112.0, 64.0),
+            1.0,
+            Color::WHITE,
+        ),
+        DecorKind::MedBed => (
+            "sprites/biomech/decor_med_bed.png",
+            Vec2::new(70.0, 118.0),
+            1.0,
+            Color::WHITE,
+        ),
+        DecorKind::BioTank => (
+            "sprites/biomech/decor_bio_tank.png",
+            Vec2::new(62.0, 96.0),
+            1.0,
+            Color::WHITE,
+        ),
+        DecorKind::SupplyCrate => (
+            "sprites/biomech/decor_supply_crate.png",
+            Vec2::new(58.0, 48.0),
+            1.0,
+            Color::WHITE,
+        ),
+        DecorKind::PipeCluster => (
+            "sprites/biomech/decor_pipe_cluster.png",
+            Vec2::new(116.0, 42.0),
+            1.0,
+            Color::WHITE,
+        ),
+        DecorKind::CorpsePile => (
+            "sprites/biomech/decor_corpse_pile.png",
+            Vec2::new(88.0, 74.0),
+            1.0,
+            Color::WHITE,
+        ),
+        DecorKind::FloorGrate => (
+            "sprites/biomech/decor_floor_grate.png",
+            Vec2::new(112.0, 82.0),
+            -1.0,
+            Color::WHITE,
+        ),
+        DecorKind::HazardFloor => (
+            "sprites/biomech/decor_hazard_floor.png",
+            Vec2::new(112.0, 38.0),
+            -1.0,
+            Color::WHITE,
+        ),
+    }
+}
+
 fn spawn_door(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -795,6 +901,7 @@ fn spawn_door(
     clearance_id: String,
     locked: bool,
     kind: DoorKind,
+    required_objectives: Vec<String>,
 ) {
     let color = if locked {
         door_locked_color(kind)
@@ -810,6 +917,7 @@ fn spawn_door(
             clearance_id,
             locked,
             kind,
+            required_objectives,
         },
         LevelEntity,
     ));
@@ -819,6 +927,19 @@ fn spawn_door(
             half_extents: size * 0.5,
         });
     }
+}
+
+fn door_requirements_met(
+    clearance_id: &str,
+    required_objectives: &[String],
+    level_state: &game_core::LevelState,
+) -> bool {
+    let clearance_met = clearance_id == "open" || level_state.has_clearance(clearance_id);
+    let objectives_met = required_objectives
+        .iter()
+        .all(|objective_id| level_state.objectives.is_complete(objective_id));
+
+    clearance_met && objectives_met
 }
 
 fn door_sprite_path(kind: DoorKind) -> &'static str {

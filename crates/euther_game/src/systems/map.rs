@@ -70,7 +70,7 @@ pub fn render_map_overlay_on_shift(
     for door in &level.doors {
         let locked = door.starts_locked
             && !level_state.0.has_unlocked_door(&door.id)
-            && !level_state.0.has_clearance(&door.clearance_id);
+            && !door_requirements_met(&door.clearance_id, &door.required_objectives, &level_state);
         spawn_map_rect(
             &mut commands,
             map_position(center, level.bounds.center, door.position, scale),
@@ -174,4 +174,17 @@ fn door_map_color(kind: DoorKind, locked: bool) -> Color {
         (DoorKind::EnergyBarrier, true) => Color::srgba(0.85, 0.28, 1.0, 0.96),
         (DoorKind::EnergyBarrier, false) => Color::srgba(0.15, 0.70, 1.0, 0.70),
     }
+}
+
+fn door_requirements_met(
+    clearance_id: &str,
+    required_objectives: &[String],
+    level_state: &LocalLevelState,
+) -> bool {
+    let clearance_met = clearance_id == "open" || level_state.0.has_clearance(clearance_id);
+    let objectives_met = required_objectives
+        .iter()
+        .all(|objective_id| level_state.0.objectives.is_complete(objective_id));
+
+    clearance_met && objectives_met
 }

@@ -12,8 +12,8 @@ pub use campaign::{
 };
 pub use collision::{AxisAlignedBox, circle_intersects_aabb};
 pub use level::{
-    DoorDefinition, DoorKind, LevelDefinition, LevelExit, ObjectiveDefinition, PickupKind,
-    PrototypeEntity, TerminalDefinition, TerminalKind,
+    DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition, LevelExit,
+    ObjectiveDefinition, PickupKind, PrototypeEntity, TerminalDefinition, TerminalKind,
 };
 pub use progression::{ExitReadiness, ObjectiveProgress};
 pub use save::{SAVE_GAME_VERSION, SaveGame, SaveLoadError};

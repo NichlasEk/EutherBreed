@@ -94,6 +94,7 @@ pub struct Door {
     pub clearance_id: String,
     pub locked: bool,
     pub kind: game_core::DoorKind,
+    pub required_objectives: Vec<String>,
 }
 
 #[derive(Component)]

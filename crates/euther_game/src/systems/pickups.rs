@@ -78,7 +78,7 @@ pub fn unlock_doors(
     }
 
     for (entity, mut door, mut sprite) in &mut door_query {
-        if !door.locked || !level_state.0.has_clearance(&door.clearance_id) {
+        if !door.locked || !door_requirements_met(&door, &level_state) {
             continue;
         }
 
@@ -95,6 +95,17 @@ pub fn unlock_doors(
         };
         notice.show(message, 1.4);
     }
+}
+
+fn door_requirements_met(door: &Door, level_state: &LocalLevelState) -> bool {
+    let clearance_met =
+        door.clearance_id == "open" || level_state.0.has_clearance(&door.clearance_id);
+    let objectives_met = door
+        .required_objectives
+        .iter()
+        .all(|objective_id| level_state.0.objectives.is_complete(objective_id));
+
+    clearance_met && objectives_met
 }
 
 pub fn report_exit_overlap(

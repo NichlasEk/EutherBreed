@@ -17,6 +17,8 @@ pub struct LevelDefinition {
     pub doors: Vec<DoorDefinition>,
     pub terminals: Vec<TerminalDefinition>,
     pub objectives: Vec<ObjectiveDefinition>,
+    #[serde(default)]
+    pub decor: Vec<DecorDefinition>,
     pub entry_points: Vec<LevelEntryPoint>,
     pub exits: Vec<LevelExit>,
     #[serde(default)]
@@ -71,6 +73,8 @@ pub struct DoorDefinition {
     pub starts_locked: bool,
     #[serde(default)]
     pub kind: DoorKind,
+    #[serde(default)]
+    pub required_objectives: Vec<String>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -78,6 +82,34 @@ pub enum DoorKind {
     #[default]
     Bulkhead,
     EnergyBarrier,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct DecorDefinition {
+    pub id: String,
+    pub position: Vec2,
+    pub kind: DecorKind,
+    #[serde(default)]
+    pub rotation_degrees: f32,
+    #[serde(default)]
+    pub blocking: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum DecorKind {
+    BloodDrops,
+    BloodSmear,
+    BloodPool,
+    AcidScorch,
+    CrackedPanel,
+    LabTable,
+    MedBed,
+    BioTank,
+    SupplyCrate,
+    PipeCluster,
+    CorpsePile,
+    FloorGrate,
+    HazardFloor,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -158,6 +190,14 @@ impl LevelDefinition {
             if door.clearance_id.trim().is_empty() {
                 return Err(LevelValidationError::InvalidClearanceId);
             }
+
+            if door
+                .required_objectives
+                .iter()
+                .any(|objective_id| objective_id.trim().is_empty())
+            {
+                return Err(LevelValidationError::InvalidObjective);
+            }
         }
 
         let mut terminal_ids = HashSet::new();
@@ -175,6 +215,17 @@ impl LevelDefinition {
         for objective in &self.objectives {
             if objective.id.trim().is_empty() || objective.label.trim().is_empty() {
                 return Err(LevelValidationError::InvalidObjective);
+            }
+        }
+
+        let mut decor_ids = HashSet::new();
+        for decor in &self.decor {
+            if decor.id.trim().is_empty() || !decor_ids.insert(decor.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
+
+            if !point_inside_box(decor.position, self.bounds) {
+                return Err(LevelValidationError::DecorOutsideBounds);
             }
         }
 
@@ -258,6 +309,7 @@ impl LevelDefinition {
                 clearance_id: "quarantine_green".to_string(),
                 starts_locked: true,
                 kind: DoorKind::Bulkhead,
+                required_objectives: vec![],
             }],
             terminals: vec![TerminalDefinition {
                 id: "ward_lab_analyzer".to_string(),
@@ -270,6 +322,7 @@ impl LevelDefinition {
                 label: "Analyze contaminant sample".to_string(),
                 required: true,
             }],
+            decor: vec![],
             entry_points: vec![LevelEntryPoint {
                 id: "from_lab_access_corridor".to_string(),
                 position: Vec2::new(390.0, 0.0),
@@ -304,6 +357,7 @@ pub enum LevelValidationError {
     InvalidEntityId,
     InvalidClearanceId,
     InvalidObjective,
+    DecorOutsideBounds,
     InvalidExit,
     InvalidSpawnInterval,
 }

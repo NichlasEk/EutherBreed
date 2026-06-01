@@ -6,6 +6,7 @@ This folder contains the first cohesive runtime sprite pass for the prototype:
 - reagent projectile
 - area scan pickup
 - bulkhead and energy barrier door sprites
+- decor and floor-detail pass: blood drops, blood smear, blood pool, acid scorch, cracked panel, lab table, med bed, bio tank, supply crate, pipe cluster, corpse pile, floor grate, hazard floor
 - reagent rounds, med-gel, bio-sample, and security keycard pickups
 - quarantine door
 - lab analyzer and supply terminal
