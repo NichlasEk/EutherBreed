@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
-use game_core::{DecorDefinition, DecorKind, DoorKind, LevelDefinition, PickupKind, TerminalKind};
+use game_core::{
+    AxisAlignedBox, DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition,
+    PickupKind, TerminalKind,
+};
 use std::time::Duration;
 
 use crate::components::{
@@ -455,7 +458,7 @@ pub fn spawn_level(
         LevelEntity,
     ));
 
-    for wall in &level.walls {
+    for wall in split_walls_around_doors(&level.walls, &level.doors) {
         spawn_wall(
             commands,
             asset_server,
@@ -708,6 +711,88 @@ fn spawn_wall(
         },
         LevelEntity,
     ));
+}
+
+fn split_walls_around_doors(
+    walls: &[AxisAlignedBox],
+    doors: &[DoorDefinition],
+) -> Vec<AxisAlignedBox> {
+    let mut split_walls = Vec::new();
+
+    for wall in walls {
+        let mut segments = vec![*wall];
+
+        for door in doors {
+            segments = segments
+                .into_iter()
+                .flat_map(|segment| split_wall_around_door(segment, door))
+                .collect();
+        }
+
+        split_walls.extend(segments);
+    }
+
+    split_walls
+}
+
+fn split_wall_around_door(wall: AxisAlignedBox, door: &DoorDefinition) -> Vec<AxisAlignedBox> {
+    let wall_is_horizontal = wall.half_extents.x >= wall.half_extents.y;
+    let door_is_horizontal = door.half_extents.x >= door.half_extents.y;
+
+    if wall_is_horizontal != door_is_horizontal || !door_overlaps_wall(wall, door) {
+        return vec![wall];
+    }
+
+    const DOOR_CUT_PADDING: f32 = 4.0;
+    let wall_min = wall.center - wall.half_extents;
+    let wall_max = wall.center + wall.half_extents;
+    let door_min = door.position - door.half_extents - Vec2::splat(DOOR_CUT_PADDING);
+    let door_max = door.position + door.half_extents + Vec2::splat(DOOR_CUT_PADDING);
+
+    if wall_is_horizontal {
+        let left = wall_segment(
+            Vec2::new(wall_min.x, wall_min.y),
+            Vec2::new(door_min.x.min(wall_max.x), wall_max.y),
+        );
+        let right = wall_segment(
+            Vec2::new(door_max.x.max(wall_min.x), wall_min.y),
+            Vec2::new(wall_max.x, wall_max.y),
+        );
+        [left, right].into_iter().flatten().collect()
+    } else {
+        let bottom = wall_segment(
+            Vec2::new(wall_min.x, wall_min.y),
+            Vec2::new(wall_max.x, door_min.y.min(wall_max.y)),
+        );
+        let top = wall_segment(
+            Vec2::new(wall_min.x, door_max.y.max(wall_min.y)),
+            Vec2::new(wall_max.x, wall_max.y),
+        );
+        [bottom, top].into_iter().flatten().collect()
+    }
+}
+
+fn door_overlaps_wall(wall: AxisAlignedBox, door: &DoorDefinition) -> bool {
+    let door_bounds = AxisAlignedBox::new(door.position, door.half_extents);
+    aabb_intersects(wall, door_bounds)
+}
+
+fn aabb_intersects(a: AxisAlignedBox, b: AxisAlignedBox) -> bool {
+    let a_min = a.center - a.half_extents;
+    let a_max = a.center + a.half_extents;
+    let b_min = b.center - b.half_extents;
+    let b_max = b.center + b.half_extents;
+
+    a_min.x <= b_max.x && a_max.x >= b_min.x && a_min.y <= b_max.y && a_max.y >= b_min.y
+}
+
+fn wall_segment(min: Vec2, max: Vec2) -> Option<AxisAlignedBox> {
+    let size = max - min;
+    if size.x <= 2.0 || size.y <= 2.0 {
+        return None;
+    }
+
+    Some(AxisAlignedBox::new((min + max) * 0.5, size * 0.5))
 }
 
 fn level_floor_tint(level_name: &str) -> Color {
