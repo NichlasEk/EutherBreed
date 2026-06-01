@@ -120,8 +120,14 @@ pub fn unlock_doors(
 pub fn update_door_openings(
     mut commands: Commands,
     time: Res<Time>,
-    mut door_query: Query<(Entity, &Door, &mut DoorOpening, &mut Sprite)>,
-    mut effect_query: Query<(Entity, &mut DoorOpeningEffect, &mut Transform, &mut Sprite)>,
+    mut door_query: Query<
+        (Entity, &Door, &mut DoorOpening, &mut Sprite),
+        Without<DoorOpeningEffect>,
+    >,
+    mut effect_query: Query<
+        (Entity, &mut DoorOpeningEffect, &mut Transform, &mut Sprite),
+        Without<DoorOpening>,
+    >,
 ) {
     for (entity, door, mut opening, mut sprite) in &mut door_query {
         opening.timer.tick(time.delta());
