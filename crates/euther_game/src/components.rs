@@ -98,6 +98,12 @@ pub struct Door {
 }
 
 #[derive(Component)]
+pub struct DoorOpening {
+    pub timer: Timer,
+    pub original_size: Vec2,
+}
+
+#[derive(Component)]
 pub struct Terminal {
     pub id: String,
     pub kind: game_core::TerminalKind,

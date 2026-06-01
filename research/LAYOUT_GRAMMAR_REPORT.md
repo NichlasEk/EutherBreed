@@ -122,6 +122,7 @@ This pass adds:
 - terminal prompts that distinguish analyzer, log, and supply station
 - level-bounds movement and a following camera so larger maps are not constrained to the old prototype room size
 - typed doors for physical bulkheads and energy barriers, so rooms can show open, locked, or disabled portal states
+- animated door opening: unlock starts a short collapse/slide animation, then removes collision so the route becomes passable
 - a decor layer for room dressing, gore, floor detail, and blocking set pieces
 - local executable string research surfaced useful design signals: area map, door open counts, `DOOR1`, `TELE`, keys, ammo, power warnings, and locate-exit alarms
 

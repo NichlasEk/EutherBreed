@@ -17,8 +17,9 @@ use systems::{
     render_map_overlay_on_shift, report_exit_overlap, resolve_contaminant_contact,
     resolve_projectile_hits, restart_current_level_on_death, spawn_contaminants,
     sync_camera_to_level, toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress,
-    update_contaminant_hit_flash, update_effect_lifetimes, update_notice_text,
-    update_objective_text, update_prompt_text, update_section_text, update_status_text,
+    update_contaminant_hit_flash, update_door_openings, update_effect_lifetimes,
+    update_notice_text, update_objective_text, update_prompt_text, update_section_text,
+    update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -122,6 +123,7 @@ fn run_game() {
                 quick_save_on_key,
                 quick_load_on_key,
                 unlock_doors,
+                update_door_openings,
                 interact_with_terminals,
                 report_exit_overlap,
                 update_campaign_progress,

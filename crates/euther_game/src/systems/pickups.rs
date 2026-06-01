@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use game_core::{AxisAlignedBox, DoorKind};
 use game_core::{ExitReadiness, PickupKind};
 
-use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
+use crate::components::{Apothecary, Door, DoorOpening, ExitZone, Pickup, Wall};
 use crate::resources::{
     ApothecaryVitals, CampaignSignal, ContaminantSpawnTimer, GameNotice, LevelRuntime,
     LocalLevelState, PendingExit,
@@ -10,6 +10,7 @@ use crate::resources::{
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
+const DOOR_OPEN_SECONDS: f32 = 0.42;
 
 pub fn collect_pickups(
     mut commands: Commands,
@@ -70,30 +71,58 @@ pub fn collect_pickups(
 pub fn unlock_doors(
     mut commands: Commands,
     mut level_state: ResMut<LocalLevelState>,
-    mut door_query: Query<(Entity, &mut Door, &mut Sprite), With<Wall>>,
+    mut door_query: Query<(Entity, &mut Door, &Sprite), (With<Wall>, Without<DoorOpening>)>,
     mut notice: ResMut<GameNotice>,
 ) {
     if !level_state.is_changed() {
         return;
     }
 
-    for (entity, mut door, mut sprite) in &mut door_query {
+    for (entity, mut door, sprite) in &mut door_query {
         if !door.locked || !door_requirements_met(&door, &level_state) {
             continue;
         }
 
         door.locked = false;
         level_state.0.unlock_door(door.id.clone());
-        sprite.color = match door.kind {
-            DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
-            DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
-        };
-        commands.entity(entity).remove::<Wall>();
+        commands.entity(entity).insert(DoorOpening {
+            timer: Timer::from_seconds(DOOR_OPEN_SECONDS, TimerMode::Once),
+            original_size: sprite.custom_size.unwrap_or(Vec2::splat(32.0)),
+        });
         let message = match door.kind {
-            DoorKind::Bulkhead => "Door unlocked",
-            DoorKind::EnergyBarrier => "Energy barrier disabled",
+            DoorKind::Bulkhead => "Door opening",
+            DoorKind::EnergyBarrier => "Energy barrier collapsing",
         };
         notice.show(message, 1.4);
+    }
+}
+
+pub fn update_door_openings(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut door_query: Query<(Entity, &Door, &mut DoorOpening, &mut Sprite)>,
+) {
+    for (entity, door, mut opening, mut sprite) in &mut door_query {
+        opening.timer.tick(time.delta());
+        let progress = opening.timer.fraction();
+        let collapse = (1.0 - progress).max(0.08);
+        let mut size = opening.original_size;
+
+        if opening.original_size.x >= opening.original_size.y {
+            size.x = opening.original_size.x * collapse;
+        } else {
+            size.y = opening.original_size.y * collapse;
+        }
+
+        sprite.custom_size = Some(size);
+        sprite.color = door_opening_color(door.kind, progress);
+
+        if opening.timer.is_finished() {
+            sprite.custom_size = Some(opening.original_size);
+            sprite.color = door_open_color(door.kind);
+            commands.entity(entity).remove::<Wall>();
+            commands.entity(entity).remove::<DoorOpening>();
+        }
     }
 }
 
@@ -106,6 +135,22 @@ fn door_requirements_met(door: &Door, level_state: &LocalLevelState) -> bool {
         .all(|objective_id| level_state.0.objectives.is_complete(objective_id));
 
     clearance_met && objectives_met
+}
+
+fn door_opening_color(kind: DoorKind, progress: f32) -> Color {
+    match kind {
+        DoorKind::Bulkhead => Color::srgba(0.90, 1.0, 0.94, 1.0 - progress * 0.55),
+        DoorKind::EnergyBarrier => {
+            Color::srgba(0.85, 0.25 + progress * 0.70, 1.0, 1.0 - progress * 0.70)
+        }
+    }
+}
+
+fn door_open_color(kind: DoorKind) -> Color {
+    match kind {
+        DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
+        DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
+    }
 }
 
 pub fn report_exit_overlap(
