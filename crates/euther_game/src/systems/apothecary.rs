@@ -3,7 +3,7 @@ use bevy::window::{MonitorSelection, PrimaryWindow, WindowMode};
 
 use crate::components::{Apothecary, ApothecaryAnimation, Wall};
 use crate::geometry::circle_hits_any_wall;
-use crate::resources::ApothecaryVitals;
+use crate::resources::{ApothecaryVitals, CurrentLevelMap};
 
 const APOTHECARY_SPEED: f32 = 260.0;
 const APOTHECARY_RADIUS: f32 = 22.0;
@@ -15,6 +15,7 @@ pub fn move_apothecary(
     input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     vitals: Res<ApothecaryVitals>,
+    current_map: Res<CurrentLevelMap>,
     wall_query: Query<(&Transform, &Wall), Without<Apothecary>>,
     mut query: Query<&mut Transform, With<Apothecary>>,
 ) {
@@ -43,12 +44,19 @@ pub fn move_apothecary(
 
     let delta = movement.normalize() * APOTHECARY_SPEED * time.delta_secs();
 
+    let movement_bounds = current_map.level.as_ref().map(|level| {
+        let min = level.bounds.center - level.bounds.half_extents + Vec2::splat(APOTHECARY_RADIUS);
+        let max = level.bounds.center + level.bounds.half_extents - Vec2::splat(APOTHECARY_RADIUS);
+        (min, max)
+    });
+
     for mut transform in &mut query {
         let current = transform.translation.xy();
-        let next = Vec2::new(
-            (current.x + delta.x).clamp(-430.0, 430.0),
-            (current.y + delta.y).clamp(-230.0, 230.0),
-        );
+        let next = if let Some((min, max)) = movement_bounds {
+            (current + delta).clamp(min, max)
+        } else {
+            current + delta
+        };
 
         if !circle_hits_any_wall(next, APOTHECARY_RADIUS, &wall_query) {
             transform.translation.x = next.x;

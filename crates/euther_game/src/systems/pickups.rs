@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use game_core::AxisAlignedBox;
 use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
@@ -99,7 +100,8 @@ pub fn report_exit_overlap(
     let apothecary_position = apothecary_query.translation.xy();
 
     for (transform, exit) in &exit_query {
-        if apothecary_position.distance(transform.translation.xy()) >= 34.0 {
+        let exit_bounds = AxisAlignedBox::new(transform.translation.xy(), exit.half_extents);
+        if !point_inside_expanded_box(apothecary_position, exit_bounds, APOTHECARY_RADIUS) {
             continue;
         }
 
@@ -131,4 +133,11 @@ pub fn report_exit_overlap(
             }
         }
     }
+}
+
+fn point_inside_expanded_box(point: Vec2, area: AxisAlignedBox, expansion: f32) -> bool {
+    let min = area.center - area.half_extents - Vec2::splat(expansion);
+    let max = area.center + area.half_extents + Vec2::splat(expansion);
+
+    point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
 }

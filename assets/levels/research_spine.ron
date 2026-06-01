@@ -153,10 +153,7 @@
             half_extents: (22.0, 42.0),
             target: "triage_vault",
             entry_id: "from_research_spine",
-            required_objectives: [
-                "route_lift_power",
-                "purge_containment_spine",
-            ],
+            required_objectives: [],
         ),
     ],
     spawn_points: [

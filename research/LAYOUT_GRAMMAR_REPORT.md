@@ -120,6 +120,7 @@ This pass adds:
 - Shift-map locked until the local area scan is acquired
 - supply console that gives ammo and med-gel once
 - terminal prompts that distinguish analyzer, log, and supply station
+- level-bounds movement and a following camera so larger maps are not constrained to the old prototype room size
 
 ## Next Level Design Target
 

@@ -531,6 +531,7 @@ pub fn spawn_level(
                 target: exit.target.clone(),
                 entry_id: exit.entry_id.clone(),
                 required_objectives: exit.required_objectives.clone(),
+                half_extents: exit.half_extents,
             },
             LevelEntity,
         ));

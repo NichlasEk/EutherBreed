@@ -85,6 +85,7 @@ pub struct ExitZone {
     pub target: String,
     pub entry_id: String,
     pub required_objectives: Vec<String>,
+    pub half_extents: Vec2,
 }
 
 #[derive(Component)]
