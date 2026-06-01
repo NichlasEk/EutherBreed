@@ -2,6 +2,7 @@ pub mod campaign;
 pub mod collision;
 pub mod level;
 pub mod progression;
+pub mod rules;
 pub mod save;
 pub mod state;
 pub mod vitals;
@@ -16,6 +17,7 @@ pub use level::{
     ObjectiveDefinition, PickupKind, PrototypeEntity, TerminalDefinition, TerminalKind,
 };
 pub use progression::{ExitReadiness, ObjectiveProgress};
+pub use rules::{RuleContext, RuleGate, RuleGateStatus, RuleRequirement};
 pub use save::{SAVE_GAME_VERSION, SaveGame, SaveLoadError};
 pub use state::{LevelState, RunState};
 pub use vitals::{ApothecaryVitals, DamageOutcome};

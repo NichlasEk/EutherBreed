@@ -181,6 +181,14 @@ impl LevelDefinition {
             }
         }
 
+        let available_clearances: HashSet<String> = self
+            .pickups
+            .iter()
+            .filter_map(|pickup| match &pickup.kind {
+                PickupKind::SecurityKeycard(clearance_id) => Some(clearance_id.clone()),
+                _ => None,
+            })
+            .collect();
         let mut door_ids = HashSet::new();
         for door in &self.doors {
             if door.id.trim().is_empty() || !door_ids.insert(door.id.clone()) {
@@ -198,9 +206,17 @@ impl LevelDefinition {
             {
                 return Err(LevelValidationError::InvalidObjective);
             }
+
+            if door.starts_locked
+                && door.clearance_id != "open"
+                && !available_clearances.contains(&door.clearance_id)
+            {
+                return Err(LevelValidationError::UnreachableClearance);
+            }
         }
 
         let mut terminal_ids = HashSet::new();
+        let mut objective_completers = HashSet::new();
         for terminal in &self.terminals {
             if terminal.id.trim().is_empty() || !terminal_ids.insert(terminal.id.clone()) {
                 return Err(LevelValidationError::InvalidEntityId);
@@ -210,11 +226,25 @@ impl LevelDefinition {
             {
                 return Err(LevelValidationError::InvalidObjective);
             }
+
+            if let Some(objective_id) = &terminal.objective_id {
+                objective_completers.insert(objective_id.clone());
+            }
         }
 
+        let mut objective_ids = HashSet::new();
         for objective in &self.objectives {
-            if objective.id.trim().is_empty() || objective.label.trim().is_empty() {
+            if objective.id.trim().is_empty()
+                || objective.label.trim().is_empty()
+                || !objective_ids.insert(objective.id.clone())
+            {
                 return Err(LevelValidationError::InvalidObjective);
+            }
+        }
+
+        for objective_id in &objective_completers {
+            if !objective_ids.contains(objective_id) {
+                return Err(LevelValidationError::UnknownObjectiveReference);
             }
         }
 
@@ -251,6 +281,34 @@ impl LevelDefinition {
                 .any(|objective_id| objective_id.trim().is_empty())
             {
                 return Err(LevelValidationError::InvalidObjective);
+            }
+
+            if exit
+                .required_objectives
+                .iter()
+                .any(|objective_id| !objective_ids.contains(objective_id))
+            {
+                return Err(LevelValidationError::UnknownObjectiveReference);
+            }
+        }
+
+        for door in &self.doors {
+            if door
+                .required_objectives
+                .iter()
+                .any(|objective_id| !objective_ids.contains(objective_id))
+            {
+                return Err(LevelValidationError::UnknownObjectiveReference);
+            }
+        }
+
+        for objective in self
+            .objectives
+            .iter()
+            .filter(|objective| objective.required)
+        {
+            if !objective_completers.contains(&objective.id) {
+                return Err(LevelValidationError::UnreachableObjective);
             }
         }
 
@@ -360,6 +418,9 @@ pub enum LevelValidationError {
     DecorOutsideBounds,
     InvalidExit,
     InvalidSpawnInterval,
+    UnknownObjectiveReference,
+    UnreachableClearance,
+    UnreachableObjective,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -460,6 +521,43 @@ mod tests {
         level.contaminants[1].id = level.contaminants[0].id.clone();
 
         assert_eq!(level.validate(), Err(LevelValidationError::InvalidEntityId));
+    }
+
+    #[test]
+    fn validation_rejects_locked_door_without_matching_keycard() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.pickups.retain(|pickup| {
+            !matches!(pickup.kind, PickupKind::SecurityKeycard(ref id) if id == "quarantine_green")
+        });
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::UnreachableClearance)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_unknown_exit_objective() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.exits[0]
+            .required_objectives
+            .push("missing_objective".to_string());
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::UnknownObjectiveReference)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_required_objective_without_completer() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.terminals[0].objective_id = None;
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::UnreachableObjective)
+        );
     }
 
     #[test]

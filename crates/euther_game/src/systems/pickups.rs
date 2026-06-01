@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use game_core::{AxisAlignedBox, DoorKind};
-use game_core::{ExitReadiness, PickupKind};
+use game_core::{PickupKind, RuleContext, RuleGate, RuleGateStatus};
 
 use crate::components::{
     Apothecary, Door, DoorOpening, DoorOpeningEffect, ExitZone, LevelEntity, Pickup, Wall,
@@ -74,6 +74,7 @@ pub fn collect_pickups(
 pub fn unlock_doors(
     mut commands: Commands,
     apothecary_query: Single<&Transform, With<Apothecary>>,
+    vitals: Res<ApothecaryVitals>,
     mut level_state: ResMut<LocalLevelState>,
     mut door_query: Query<
         (Entity, &Transform, &mut Door, &Sprite),
@@ -84,7 +85,7 @@ pub fn unlock_doors(
     let apothecary_position = apothecary_query.translation.xy();
 
     for (entity, transform, mut door, sprite) in &mut door_query {
-        if door.opened || !door_requirements_met(&door, &level_state) {
+        if door.opened || !door_requirements_met(&door, &level_state, &vitals) {
             continue;
         }
 
@@ -307,15 +308,15 @@ fn ease_out_cubic(t: f32) -> f32 {
     1.0 - (1.0 - t).powi(3)
 }
 
-fn door_requirements_met(door: &Door, level_state: &LocalLevelState) -> bool {
-    let clearance_met =
-        door.clearance_id == "open" || level_state.0.has_clearance(&door.clearance_id);
-    let objectives_met = door
-        .required_objectives
-        .iter()
-        .all(|objective_id| level_state.0.objectives.is_complete(objective_id));
-
-    clearance_met && objectives_met
+fn door_requirements_met(
+    door: &Door,
+    level_state: &LocalLevelState,
+    vitals: &ApothecaryVitals,
+) -> bool {
+    RuleGate::for_door(&door.clearance_id, &door.required_objectives).is_open(RuleContext {
+        level_state: &level_state.0,
+        vitals: &vitals.0,
+    })
 }
 
 fn door_opening_color(kind: DoorKind, progress: f32) -> Color {
@@ -338,6 +339,7 @@ pub fn report_exit_overlap(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     exit_query: Query<(&Transform, &ExitZone)>,
     level_state: Res<LocalLevelState>,
+    vitals: Res<ApothecaryVitals>,
     mut campaign_signal: ResMut<CampaignSignal>,
     mut notice: ResMut<GameNotice>,
 ) {
@@ -349,12 +351,11 @@ pub fn report_exit_overlap(
             continue;
         }
 
-        match level_state
-            .0
-            .objectives
-            .exit_readiness(&exit.required_objectives)
-        {
-            ExitReadiness::Ready => {
+        match RuleGate::for_objectives(&exit.required_objectives).evaluate(RuleContext {
+            level_state: &level_state.0,
+            vitals: &vitals.0,
+        }) {
+            RuleGateStatus::Open => {
                 if campaign_signal.pending_exit.as_ref().is_none_or(|pending| {
                     pending.target != exit.target || pending.entry_id != exit.entry_id
                 }) {
@@ -368,7 +369,7 @@ pub fn report_exit_overlap(
                     );
                 }
             }
-            ExitReadiness::Blocked { missing } => {
+            RuleGateStatus::Blocked { missing } => {
                 notice.show("Exit locked: objective incomplete", 1.6);
                 debug!(
                     "exit target={} is locked by objectives {:?}",
