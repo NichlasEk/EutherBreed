@@ -2,7 +2,9 @@ use bevy::prelude::*;
 use game_core::{AxisAlignedBox, DoorKind};
 use game_core::{ExitReadiness, PickupKind};
 
-use crate::components::{Apothecary, Door, DoorOpening, ExitZone, Pickup, Wall};
+use crate::components::{
+    Apothecary, Door, DoorOpening, DoorOpeningEffect, ExitZone, LevelEntity, Pickup, Wall,
+};
 use crate::resources::{
     ApothecaryVitals, CampaignSignal, ContaminantSpawnTimer, GameNotice, LevelRuntime,
     LocalLevelState, PendingExit,
@@ -95,9 +97,16 @@ pub fn unlock_doors(
         door.locked = false;
         door.opened = true;
         level_state.0.unlock_door(door.id.clone());
+        let door_size = sprite.custom_size.unwrap_or(Vec2::splat(32.0));
+        spawn_door_opening_effects(
+            &mut commands,
+            transform.translation.xy(),
+            door_size,
+            door.kind,
+        );
         commands.entity(entity).insert(DoorOpening {
             timer: Timer::from_seconds(DOOR_OPEN_SECONDS, TimerMode::Once),
-            original_size: sprite.custom_size.unwrap_or(Vec2::splat(32.0)),
+            original_size: door_size,
         });
         let message = match door.kind {
             DoorKind::Bulkhead => "Door opening",
@@ -111,11 +120,13 @@ pub fn update_door_openings(
     mut commands: Commands,
     time: Res<Time>,
     mut door_query: Query<(Entity, &Door, &mut DoorOpening, &mut Sprite)>,
+    mut effect_query: Query<(Entity, &mut DoorOpeningEffect, &mut Transform, &mut Sprite)>,
 ) {
     for (entity, door, mut opening, mut sprite) in &mut door_query {
         opening.timer.tick(time.delta());
         let progress = opening.timer.fraction();
-        let collapse = (1.0 - progress).max(0.08);
+        let eased = ease_out_cubic(progress);
+        let collapse = (1.0 - eased).max(0.05);
         let mut size = opening.original_size;
 
         if opening.original_size.x >= opening.original_size.y {
@@ -125,7 +136,7 @@ pub fn update_door_openings(
         }
 
         sprite.custom_size = Some(size);
-        sprite.color = door_opening_color(door.kind, progress);
+        sprite.color = door_opening_color(door.kind, eased);
 
         if opening.timer.is_finished() {
             sprite.custom_size = Some(opening.original_size);
@@ -134,6 +145,166 @@ pub fn update_door_openings(
             commands.entity(entity).remove::<DoorOpening>();
         }
     }
+
+    for (entity, mut effect, mut transform, mut sprite) in &mut effect_query {
+        effect.timer.tick(time.delta());
+        let progress = effect.timer.fraction();
+        let eased = ease_out_cubic(progress);
+        let shimmer = (progress * std::f32::consts::TAU * 4.0).sin().abs();
+
+        let position = effect.origin + effect.slide * eased;
+        transform.translation.x = position.x;
+        transform.translation.y = position.y;
+        sprite.custom_size = Some(effect.base_size * (1.0 + shimmer * 0.05));
+        sprite.color = effect
+            .base_color
+            .with_alpha((1.0 - progress).powf(1.35).clamp(0.0, 1.0));
+
+        if effect.timer.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn spawn_door_opening_effects(commands: &mut Commands, center: Vec2, size: Vec2, kind: DoorKind) {
+    match kind {
+        DoorKind::Bulkhead => spawn_bulkhead_opening_effects(commands, center, size),
+        DoorKind::EnergyBarrier => spawn_energy_barrier_opening_effects(commands, center, size),
+    }
+}
+
+fn spawn_bulkhead_opening_effects(commands: &mut Commands, center: Vec2, size: Vec2) {
+    let horizontal = size.x >= size.y;
+    let axis = if horizontal { Vec2::X } else { Vec2::Y };
+    let cross = if horizontal { Vec2::Y } else { Vec2::X };
+    let panel_size = if horizontal {
+        Vec2::new((size.x * 0.46).max(8.0), size.y.max(8.0))
+    } else {
+        Vec2::new(size.x.max(8.0), (size.y * 0.46).max(8.0))
+    };
+    let panel_offset = axis
+        * (if horizontal {
+            panel_size.x
+        } else {
+            panel_size.y
+        } * 0.52);
+    let slide = axis * (if horizontal { size.x } else { size.y } * 0.48 + 12.0);
+
+    spawn_opening_effect(
+        commands,
+        center - panel_offset,
+        -slide,
+        panel_size,
+        Color::srgba(0.34, 0.58, 0.60, 0.88),
+        0.46,
+        -2.2,
+    );
+    spawn_opening_effect(
+        commands,
+        center + panel_offset,
+        slide,
+        panel_size,
+        Color::srgba(0.28, 0.48, 0.50, 0.88),
+        0.46,
+        -2.2,
+    );
+    spawn_opening_effect(
+        commands,
+        center,
+        Vec2::ZERO,
+        if horizontal {
+            Vec2::new(5.0, size.y + 22.0)
+        } else {
+            Vec2::new(size.x + 22.0, 5.0)
+        },
+        Color::srgba(0.28, 1.0, 0.92, 0.76),
+        0.34,
+        -2.0,
+    );
+    spawn_opening_effect(
+        commands,
+        center + cross * 2.0,
+        cross * 5.0,
+        if horizontal {
+            Vec2::new(size.x + 18.0, 3.0)
+        } else {
+            Vec2::new(3.0, size.y + 18.0)
+        },
+        Color::srgba(0.96, 0.72, 0.30, 0.54),
+        0.28,
+        -1.9,
+    );
+}
+
+fn spawn_energy_barrier_opening_effects(commands: &mut Commands, center: Vec2, size: Vec2) {
+    let horizontal = size.x >= size.y;
+    let axis = if horizontal { Vec2::X } else { Vec2::Y };
+    let cross = if horizontal { Vec2::Y } else { Vec2::X };
+    let long_size = if horizontal {
+        Vec2::new(size.x + 28.0, 4.0)
+    } else {
+        Vec2::new(4.0, size.y + 28.0)
+    };
+    let beam_size = if horizontal {
+        Vec2::new(4.0, size.y + 30.0)
+    } else {
+        Vec2::new(size.x + 30.0, 4.0)
+    };
+
+    for index in 0..4 {
+        let offset = (index as f32 - 1.5) * 7.0;
+        let slide = cross * offset * 0.85 + axis * ((index as f32 - 1.5) * 8.0);
+        spawn_opening_effect(
+            commands,
+            center + cross * offset,
+            slide,
+            long_size,
+            if index % 2 == 0 {
+                Color::srgba(0.86, 0.16, 1.0, 0.68)
+            } else {
+                Color::srgba(0.12, 0.98, 1.0, 0.58)
+            },
+            0.38,
+            -1.8,
+        );
+    }
+
+    spawn_opening_effect(
+        commands,
+        center,
+        Vec2::ZERO,
+        beam_size,
+        Color::srgba(0.98, 0.30, 1.0, 0.84),
+        0.34,
+        -1.7,
+    );
+}
+
+fn spawn_opening_effect(
+    commands: &mut Commands,
+    origin: Vec2,
+    slide: Vec2,
+    size: Vec2,
+    color: Color,
+    seconds: f32,
+    z: f32,
+) {
+    commands.spawn((
+        Sprite::from_color(color, size),
+        Transform::from_xyz(origin.x, origin.y, z),
+        DoorOpeningEffect {
+            timer: Timer::from_seconds(seconds, TimerMode::Once),
+            origin,
+            slide,
+            base_size: size,
+            base_color: color,
+        },
+        LevelEntity,
+    ));
+}
+
+fn ease_out_cubic(t: f32) -> f32 {
+    1.0 - (1.0 - t).powi(3)
 }
 
 fn door_requirements_met(door: &Door, level_state: &LocalLevelState) -> bool {

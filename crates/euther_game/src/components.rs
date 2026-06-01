@@ -105,6 +105,15 @@ pub struct DoorOpening {
 }
 
 #[derive(Component)]
+pub struct DoorOpeningEffect {
+    pub timer: Timer,
+    pub origin: Vec2,
+    pub slide: Vec2,
+    pub base_size: Vec2,
+    pub base_color: Color,
+}
+
+#[derive(Component)]
 pub struct Terminal {
     pub id: String,
     pub kind: game_core::TerminalKind,
