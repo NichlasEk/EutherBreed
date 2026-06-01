@@ -497,8 +497,9 @@ pub fn spawn_level(
     }
 
     for door in &level.doors {
-        let locked = door.starts_locked
-            && !level_state.has_unlocked_door(&door.id)
+        let opened = level_state.has_unlocked_door(&door.id);
+        let locked = !opened
+            && door.starts_locked
             && !door_requirements_met(&door.clearance_id, &door.required_objectives, level_state);
         spawn_door(
             commands,
@@ -508,6 +509,7 @@ pub fn spawn_level(
             door.half_extents * 2.0,
             door.clearance_id.clone(),
             locked,
+            opened,
             door.kind,
             door.required_objectives.clone(),
         );
@@ -900,13 +902,16 @@ fn spawn_door(
     size: Vec2,
     clearance_id: String,
     locked: bool,
+    opened: bool,
     kind: DoorKind,
     required_objectives: Vec<String>,
 ) {
-    let color = if locked {
+    let color = if opened {
+        door_open_color(kind)
+    } else if locked {
         door_locked_color(kind)
     } else {
-        door_open_color(kind)
+        door_closed_color(kind)
     };
 
     let mut entity = commands.spawn((
@@ -916,13 +921,14 @@ fn spawn_door(
             id,
             clearance_id,
             locked,
+            opened,
             kind,
             required_objectives,
         },
         LevelEntity,
     ));
 
-    if locked {
+    if !opened {
         entity.insert(Wall {
             half_extents: size * 0.5,
         });
@@ -953,6 +959,13 @@ fn door_locked_color(kind: DoorKind) -> Color {
     match kind {
         DoorKind::Bulkhead => Color::WHITE,
         DoorKind::EnergyBarrier => Color::srgba(0.90, 0.35, 1.0, 1.0),
+    }
+}
+
+fn door_closed_color(kind: DoorKind) -> Color {
+    match kind {
+        DoorKind::Bulkhead => Color::srgba(0.78, 1.0, 0.92, 0.90),
+        DoorKind::EnergyBarrier => Color::srgba(0.72, 0.45, 1.0, 0.90),
     }
 }
 

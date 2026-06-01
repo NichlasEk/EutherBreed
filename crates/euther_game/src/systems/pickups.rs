@@ -11,6 +11,7 @@ use crate::resources::{
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
 const DOOR_OPEN_SECONDS: f32 = 0.42;
+const DOOR_TRIGGER_PADDING: f32 = 18.0;
 
 pub fn collect_pickups(
     mut commands: Commands,
@@ -70,20 +71,29 @@ pub fn collect_pickups(
 
 pub fn unlock_doors(
     mut commands: Commands,
+    apothecary_query: Single<&Transform, With<Apothecary>>,
     mut level_state: ResMut<LocalLevelState>,
-    mut door_query: Query<(Entity, &mut Door, &Sprite), (With<Wall>, Without<DoorOpening>)>,
+    mut door_query: Query<
+        (Entity, &Transform, &mut Door, &Sprite),
+        (With<Wall>, Without<DoorOpening>),
+    >,
     mut notice: ResMut<GameNotice>,
 ) {
-    if !level_state.is_changed() {
-        return;
-    }
+    let apothecary_position = apothecary_query.translation.xy();
 
-    for (entity, mut door, sprite) in &mut door_query {
-        if !door.locked || !door_requirements_met(&door, &level_state) {
+    for (entity, transform, mut door, sprite) in &mut door_query {
+        if door.opened || !door_requirements_met(&door, &level_state) {
+            continue;
+        }
+
+        let door_half_extents = sprite.custom_size.unwrap_or(Vec2::splat(32.0)) * 0.5;
+        let trigger_bounds = AxisAlignedBox::new(transform.translation.xy(), door_half_extents);
+        if !point_inside_expanded_box(apothecary_position, trigger_bounds, DOOR_TRIGGER_PADDING) {
             continue;
         }
 
         door.locked = false;
+        door.opened = true;
         level_state.0.unlock_door(door.id.clone());
         commands.entity(entity).insert(DoorOpening {
             timer: Timer::from_seconds(DOOR_OPEN_SECONDS, TimerMode::Once),

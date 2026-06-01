@@ -179,10 +179,13 @@ fn prompt_for_position(
 
     for (transform, door) in door_query {
         if apothecary_position.distance(transform.translation.xy()) <= PROMPT_RADIUS {
+            if door.opened {
+                return Some("DOOR <open>".to_string());
+            }
             if door.locked {
                 return Some("DOOR <locked - find clearance>".to_string());
             }
-            return Some("DOOR <clearance accepted>".to_string());
+            return Some("DOOR <clearance accepted - opening>".to_string());
         }
     }
 
