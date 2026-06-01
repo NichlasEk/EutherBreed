@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
-use game_core::{LevelDefinition, PickupKind, TerminalKind};
+use game_core::{DoorKind, LevelDefinition, PickupKind, TerminalKind};
 use std::time::Duration;
 
 use crate::components::{
@@ -504,6 +504,7 @@ pub fn spawn_level(
             door.half_extents * 2.0,
             door.clearance_id.clone(),
             locked,
+            door.kind,
         );
     }
 
@@ -793,25 +794,22 @@ fn spawn_door(
     size: Vec2,
     clearance_id: String,
     locked: bool,
+    kind: DoorKind,
 ) {
     let color = if locked {
-        Color::WHITE
+        door_locked_color(kind)
     } else {
-        Color::srgba(0.55, 0.85, 0.80, 0.36)
+        door_open_color(kind)
     };
 
     let mut entity = commands.spawn((
-        image_sprite(
-            asset_server,
-            "sprites/biomech/door_quarantine.png",
-            size,
-            color,
-        ),
+        image_sprite(asset_server, door_sprite_path(kind), size, color),
         Transform::from_xyz(center.x, center.y, -3.0),
         Door {
             id,
             clearance_id,
             locked,
+            kind,
         },
         LevelEntity,
     ));
@@ -820,6 +818,27 @@ fn spawn_door(
         entity.insert(Wall {
             half_extents: size * 0.5,
         });
+    }
+}
+
+fn door_sprite_path(kind: DoorKind) -> &'static str {
+    match kind {
+        DoorKind::Bulkhead => "sprites/biomech/door_bulkhead.png",
+        DoorKind::EnergyBarrier => "sprites/biomech/door_energy_barrier.png",
+    }
+}
+
+fn door_locked_color(kind: DoorKind) -> Color {
+    match kind {
+        DoorKind::Bulkhead => Color::WHITE,
+        DoorKind::EnergyBarrier => Color::srgba(0.90, 0.35, 1.0, 1.0),
+    }
+}
+
+fn door_open_color(kind: DoorKind) -> Color {
+    match kind {
+        DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
+        DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
     }
 }
 

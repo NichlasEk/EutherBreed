@@ -121,6 +121,7 @@ This pass adds:
 - supply console that gives ammo and med-gel once
 - terminal prompts that distinguish analyzer, log, and supply station
 - level-bounds movement and a following camera so larger maps are not constrained to the old prototype room size
+- typed doors for physical bulkheads and energy barriers, so rooms can show open, locked, or disabled portal states
 
 ## Next Level Design Target
 

@@ -5,6 +5,7 @@ This folder contains the first cohesive runtime sprite pass for the prototype:
 - contaminant enemy with stride variant
 - reagent projectile
 - area scan pickup
+- bulkhead and energy barrier door sprites
 - reagent rounds, med-gel, bio-sample, and security keycard pickups
 - quarantine door
 - lab analyzer and supply terminal

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::AxisAlignedBox;
+use game_core::{AxisAlignedBox, DoorKind};
 use game_core::{ExitReadiness, PickupKind};
 
 use crate::components::{Apothecary, Door, ExitZone, Pickup, Wall};
@@ -84,9 +84,16 @@ pub fn unlock_doors(
 
         door.locked = false;
         level_state.0.unlock_door(door.id.clone());
-        sprite.color = Color::srgba(0.55, 0.85, 0.80, 0.36);
+        sprite.color = match door.kind {
+            DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
+            DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
+        };
         commands.entity(entity).remove::<Wall>();
-        notice.show("Door unlocked", 1.4);
+        let message = match door.kind {
+            DoorKind::Bulkhead => "Door unlocked",
+            DoorKind::EnergyBarrier => "Energy barrier disabled",
+        };
+        notice.show(message, 1.4);
     }
 }
 

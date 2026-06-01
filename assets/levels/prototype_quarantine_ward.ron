@@ -76,6 +76,7 @@
             half_extents: (32.0, 13.0),
             clearance_id: "quarantine_green",
             starts_locked: true,
+            kind: Bulkhead,
         ),
     ],
     terminals: [

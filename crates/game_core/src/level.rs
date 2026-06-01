@@ -69,6 +69,15 @@ pub struct DoorDefinition {
     pub half_extents: Vec2,
     pub clearance_id: String,
     pub starts_locked: bool,
+    #[serde(default)]
+    pub kind: DoorKind,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum DoorKind {
+    #[default]
+    Bulkhead,
+    EnergyBarrier,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -248,6 +257,7 @@ impl LevelDefinition {
                 half_extents: Vec2::new(32.0, 13.0),
                 clearance_id: "quarantine_green".to_string(),
                 starts_locked: true,
+                kind: DoorKind::Bulkhead,
             }],
             terminals: vec![TerminalDefinition {
                 id: "ward_lab_analyzer".to_string(),

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::PickupKind;
+use game_core::{DoorKind, PickupKind};
 
 use crate::components::{Apothecary, Contaminant, MapOverlay};
 use crate::resources::{CurrentLevelMap, GameNotice, LocalLevelState};
@@ -76,11 +76,7 @@ pub fn render_map_overlay_on_shift(
             map_position(center, level.bounds.center, door.position, scale),
             (door.half_extents * 2.0 * scale).max(Vec2::splat(6.0)),
             MAP_Z + 0.3,
-            if locked {
-                Color::srgba(1.0, 0.78, 0.25, 0.96)
-            } else {
-                Color::srgba(0.25, 0.95, 0.85, 0.88)
-            },
+            door_map_color(door.kind, locked),
         );
     }
 
@@ -169,4 +165,13 @@ fn spawn_map_rect(commands: &mut Commands, center: Vec2, size: Vec2, z: f32, col
         Transform::from_xyz(center.x, center.y, z),
         MapOverlay,
     ));
+}
+
+fn door_map_color(kind: DoorKind, locked: bool) -> Color {
+    match (kind, locked) {
+        (DoorKind::Bulkhead, true) => Color::srgba(1.0, 0.78, 0.25, 0.96),
+        (DoorKind::Bulkhead, false) => Color::srgba(0.25, 0.95, 0.85, 0.88),
+        (DoorKind::EnergyBarrier, true) => Color::srgba(0.85, 0.28, 1.0, 0.96),
+        (DoorKind::EnergyBarrier, false) => Color::srgba(0.15, 0.70, 1.0, 0.70),
+    }
 }
