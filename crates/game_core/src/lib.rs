@@ -14,8 +14,9 @@ pub use campaign::{
 pub use collision::{AxisAlignedBox, circle_intersects_aabb};
 pub use level::{
     DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition, LevelEvent, LevelExit,
-    LevelTransition, ObjectiveDefinition, PickupKind, PrototypeEntity, SectionDefinition,
-    SectionKind, TerminalAction, TerminalDefinition, TerminalKind, TerminalPattern, TransitionKind,
+    LevelTransition, ObjectiveDefinition, PickupKind, PrototypeEntity, SectionAccessKind,
+    SectionConnection, SectionDefinition, SectionKind, TerminalAction, TerminalDefinition,
+    TerminalKind, TerminalPattern, TransitionKind,
 };
 pub use progression::{ExitReadiness, ObjectiveProgress};
 pub use rules::{RuleContext, RuleGate, RuleGateStatus, RuleRequirement};

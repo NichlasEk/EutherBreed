@@ -208,11 +208,34 @@ fn validate_content() {
     println!("levels: {}", levels.len());
 
     for level in levels {
+        let section_links = level
+            .sections
+            .iter()
+            .map(|section| section.connects.len())
+            .sum::<usize>()
+            + level
+                .doors
+                .iter()
+                .filter(|door| door.connects.is_some())
+                .count();
+        let locked_sections = level
+            .sections
+            .iter()
+            .filter(|section| {
+                matches!(
+                    section.access,
+                    game_core::SectionAccessKind::LockedDoor
+                        | game_core::SectionAccessKind::Transition
+                )
+            })
+            .count();
         println!(
-            "level: {} walls={} sections={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={} transitions={}",
+            "level: {} walls={} sections={} section_links={} locked_sections={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={} transitions={}",
             level.name,
             level.walls.len(),
             level.sections.len(),
+            section_links,
+            locked_sections,
             level.contaminants.len(),
             level.pickups.len(),
             level.doors.len(),

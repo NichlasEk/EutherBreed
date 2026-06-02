@@ -1,6 +1,6 @@
 use glam::Vec2;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -101,6 +101,8 @@ pub struct DoorDefinition {
     pub kind: DoorKind,
     #[serde(default)]
     pub required_objectives: Vec<String>,
+    #[serde(default)]
+    pub connects: Option<SectionConnection>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -127,6 +129,25 @@ pub struct SectionDefinition {
     pub label: String,
     pub bounds: AxisAlignedBox,
     pub kind: SectionKind,
+    #[serde(default)]
+    pub connects: Vec<String>,
+    #[serde(default)]
+    pub access: SectionAccessKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SectionConnection {
+    pub from: String,
+    pub to: String,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum SectionAccessKind {
+    #[default]
+    Open,
+    Door,
+    LockedDoor,
+    Transition,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -380,6 +401,7 @@ impl LevelDefinition {
         }
 
         let mut section_ids = HashSet::new();
+        let mut sections_by_id = HashMap::new();
         for section in &self.sections {
             if section.id.trim().is_empty()
                 || section.label.trim().is_empty()
@@ -391,6 +413,12 @@ impl LevelDefinition {
             if !box_inside_box(section.bounds, self.bounds) {
                 return Err(LevelValidationError::InvalidSection);
             }
+
+            sections_by_id.insert(section.id.as_str(), section);
+        }
+
+        if !self.sections.is_empty() {
+            validate_section_connections(self, &sections_by_id)?;
         }
 
         let mut entry_ids = HashSet::new();
@@ -564,6 +592,7 @@ impl LevelDefinition {
                 starts_locked: true,
                 kind: DoorKind::Bulkhead,
                 required_objectives: vec![],
+                connects: None,
             }],
             terminals: vec![TerminalDefinition {
                 id: "ward_lab_analyzer".to_string(),
@@ -629,6 +658,8 @@ pub enum LevelValidationError {
     UnreachableInteraction,
     InvalidDoorReference,
     InvalidSection,
+    InvalidSectionConnection,
+    DisconnectedSection,
     InvalidTerminalPattern,
 }
 
@@ -646,6 +677,122 @@ fn point_inside_box(point: Vec2, area: AxisAlignedBox) -> bool {
 fn box_inside_box(inner: AxisAlignedBox, outer: AxisAlignedBox) -> bool {
     point_inside_box(inner.center - inner.half_extents, outer)
         && point_inside_box(inner.center + inner.half_extents, outer)
+}
+
+fn validate_section_connections(
+    level: &LevelDefinition,
+    sections_by_id: &HashMap<&str, &SectionDefinition>,
+) -> Result<(), LevelValidationError> {
+    let mut graph: HashMap<&str, HashSet<&str>> = level
+        .sections
+        .iter()
+        .map(|section| (section.id.as_str(), HashSet::new()))
+        .collect();
+    let mut has_access = HashSet::new();
+
+    for section in &level.sections {
+        for connected_id in &section.connects {
+            let connected_id = connected_id.as_str();
+            if connected_id == section.id || !sections_by_id.contains_key(connected_id) {
+                return Err(LevelValidationError::InvalidSectionConnection);
+            }
+
+            graph
+                .entry(section.id.as_str())
+                .or_default()
+                .insert(connected_id);
+            graph
+                .entry(connected_id)
+                .or_default()
+                .insert(section.id.as_str());
+            has_access.insert(section.id.as_str());
+            has_access.insert(connected_id);
+        }
+    }
+
+    for door in &level.doors {
+        let Some(connection) = &door.connects else {
+            continue;
+        };
+        if connection.from == connection.to {
+            return Err(LevelValidationError::InvalidSectionConnection);
+        }
+
+        let Some(from_section) = sections_by_id.get(connection.from.as_str()) else {
+            return Err(LevelValidationError::InvalidSectionConnection);
+        };
+        let Some(to_section) = sections_by_id.get(connection.to.as_str()) else {
+            return Err(LevelValidationError::InvalidSectionConnection);
+        };
+
+        if !door_near_section_boundary(door, from_section)
+            || !door_near_section_boundary(door, to_section)
+        {
+            return Err(LevelValidationError::InvalidSectionConnection);
+        }
+
+        graph
+            .entry(connection.from.as_str())
+            .or_default()
+            .insert(connection.to.as_str());
+        graph
+            .entry(connection.to.as_str())
+            .or_default()
+            .insert(connection.from.as_str());
+        has_access.insert(connection.from.as_str());
+        has_access.insert(connection.to.as_str());
+    }
+
+    for transition in &level.transitions {
+        for section in &level.sections {
+            if point_near_box(transition.position, section.bounds, 72.0) {
+                has_access.insert(section.id.as_str());
+            }
+        }
+    }
+
+    for section in &level.sections {
+        if section.kind != SectionKind::Corridor && !has_access.contains(section.id.as_str()) {
+            return Err(LevelValidationError::DisconnectedSection);
+        }
+    }
+
+    let start = level.sections[0].id.as_str();
+    let mut visited = HashSet::new();
+    let mut frontier = vec![start];
+    visited.insert(start);
+
+    while let Some(section_id) = frontier.pop() {
+        if let Some(neighbors) = graph.get(section_id) {
+            for neighbor in neighbors {
+                if visited.insert(*neighbor) {
+                    frontier.push(*neighbor);
+                }
+            }
+        }
+    }
+
+    if level
+        .sections
+        .iter()
+        .any(|section| !visited.contains(section.id.as_str()))
+    {
+        return Err(LevelValidationError::DisconnectedSection);
+    }
+
+    Ok(())
+}
+
+fn door_near_section_boundary(door: &DoorDefinition, section: &SectionDefinition) -> bool {
+    let door_bounds = AxisAlignedBox::new(door.position, door.half_extents + Vec2::splat(96.0));
+    aabb_intersects(door_bounds, section.bounds)
+}
+
+fn point_near_box(point: Vec2, area: AxisAlignedBox, margin: f32) -> bool {
+    let min = area.center - area.half_extents - Vec2::splat(margin);
+    let max = area.center + area.half_extents + Vec2::splat(margin);
+
+    point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
 }
 
 fn door_has_matching_wall(door: &DoorDefinition, walls: &[AxisAlignedBox]) -> bool {
@@ -1171,6 +1318,16 @@ mod tests {
             label: "Ward Lab".to_string(),
             bounds: AxisAlignedBox::new(Vec2::new(120.0, 0.0), Vec2::new(180.0, 120.0)),
             kind: SectionKind::Lab,
+            connects: vec!["ward_corridor".to_string()],
+            access: SectionAccessKind::Door,
+        });
+        level.sections.push(SectionDefinition {
+            id: "ward_corridor".to_string(),
+            label: "Ward Corridor".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(-170.0, 0.0), Vec2::new(180.0, 180.0)),
+            kind: SectionKind::Corridor,
+            connects: vec!["ward_lab".to_string()],
+            access: SectionAccessKind::Open,
         });
 
         assert_eq!(level.validate(), Ok(()));
@@ -1184,9 +1341,85 @@ mod tests {
             label: "Bad Section".to_string(),
             bounds: AxisAlignedBox::new(Vec2::new(700.0, 0.0), Vec2::new(80.0, 80.0)),
             kind: SectionKind::Corridor,
+            connects: vec![],
+            access: SectionAccessKind::Open,
         });
 
         assert_eq!(level.validate(), Err(LevelValidationError::InvalidSection));
+    }
+
+    #[test]
+    fn validation_allows_old_levels_without_sections() {
+        let level = LevelDefinition::prototype_quarantine_ward();
+
+        assert!(level.sections.is_empty());
+        assert_eq!(level.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validation_rejects_unknown_section_connection() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.sections.push(SectionDefinition {
+            id: "ward_lab".to_string(),
+            label: "Ward Lab".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(120.0, 0.0), Vec2::new(180.0, 120.0)),
+            kind: SectionKind::Lab,
+            connects: vec!["missing".to_string()],
+            access: SectionAccessKind::Door,
+        });
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidSectionConnection)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_section_without_access() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.sections.push(SectionDefinition {
+            id: "ward_lab".to_string(),
+            label: "Ward Lab".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(120.0, 0.0), Vec2::new(180.0, 120.0)),
+            kind: SectionKind::Lab,
+            connects: vec![],
+            access: SectionAccessKind::Door,
+        });
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::DisconnectedSection)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_door_connection_far_from_section() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.sections.push(SectionDefinition {
+            id: "west_corridor".to_string(),
+            label: "West Corridor".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(-260.0, 0.0), Vec2::new(160.0, 160.0)),
+            kind: SectionKind::Corridor,
+            connects: vec![],
+            access: SectionAccessKind::Open,
+        });
+        level.sections.push(SectionDefinition {
+            id: "east_lab".to_string(),
+            label: "East Lab".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(260.0, 0.0), Vec2::new(120.0, 120.0)),
+            kind: SectionKind::Lab,
+            connects: vec![],
+            access: SectionAccessKind::Door,
+        });
+        level.doors[0].connects = Some(SectionConnection {
+            from: "west_corridor".to_string(),
+            to: "east_lab".to_string(),
+        });
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidSectionConnection)
+        );
     }
 
     #[test]

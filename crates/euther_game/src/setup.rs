@@ -437,6 +437,7 @@ pub fn spawn_level(
     spawn_floor_area(
         commands,
         asset_server,
+        level,
         level.bounds.center,
         floor_size,
         Vec2::splat(128.0),
@@ -652,6 +653,7 @@ fn spawn_tiled_area(
 fn spawn_floor_area(
     commands: &mut Commands,
     asset_server: &AssetServer,
+    level: &LevelDefinition,
     center: Vec2,
     size: Vec2,
     tile_size: Vec2,
@@ -669,7 +671,7 @@ fn spawn_floor_area(
                     x as f32 * tile_size.x + tile_size.x * 0.5,
                     y as f32 * tile_size.y + tile_size.y * 0.5,
                 );
-            let path = FLOOR_TILE_PATHS[tile_variant_index(x, y)];
+            let path = floor_tile_path(level, position, x, y);
             commands.spawn((
                 image_sprite(asset_server, path, tile_size, color),
                 Transform::from_xyz(position.x, position.y, z),
@@ -679,9 +681,42 @@ fn spawn_floor_area(
     }
 }
 
+fn floor_tile_path(level: &LevelDefinition, position: Vec2, x: i32, y: i32) -> &'static str {
+    let variant = tile_variant_index(x, y);
+    let offset = section_at(level, position).map_or(0, floor_variant_offset);
+
+    FLOOR_TILE_PATHS[(variant + offset) % FLOOR_TILE_PATHS.len()]
+}
+
 fn tile_variant_index(x: i32, y: i32) -> usize {
     let hash = x.wrapping_mul(73_856_093) ^ y.wrapping_mul(19_349_663);
     hash.unsigned_abs() as usize % FLOOR_TILE_PATHS.len()
+}
+
+fn section_at(level: &LevelDefinition, position: Vec2) -> Option<SectionKind> {
+    level
+        .sections
+        .iter()
+        .find(|section| point_inside_area(position, section.bounds))
+        .map(|section| section.kind)
+}
+
+fn point_inside_area(point: Vec2, area: AxisAlignedBox) -> bool {
+    let min = area.center - area.half_extents;
+    let max = area.center + area.half_extents;
+
+    point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
+}
+
+fn floor_variant_offset(kind: SectionKind) -> usize {
+    match kind {
+        SectionKind::Corridor => 0,
+        SectionKind::Lab => 1,
+        SectionKind::Triage => 2,
+        SectionKind::Supply => 3,
+        SectionKind::Lift => 1,
+        SectionKind::Containment => 2,
+    }
 }
 
 fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {

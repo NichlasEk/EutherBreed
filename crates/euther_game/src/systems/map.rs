@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::{DoorKind, PickupKind};
+use game_core::{DoorKind, PickupKind, SectionKind};
 
 use crate::components::{Apothecary, Contaminant, MapOverlay};
 use crate::resources::{CurrentLevelMap, GameNotice, LocalLevelState};
@@ -56,6 +56,16 @@ pub fn render_map_overlay_on_shift(
         MAP_Z + 0.1,
         Color::srgba(0.02, 0.05, 0.06, 0.92),
     );
+
+    for section in &level.sections {
+        spawn_map_rect(
+            &mut commands,
+            map_position(center, level.bounds.center, section.bounds.center, scale),
+            section.bounds.half_extents * 2.0 * scale,
+            MAP_Z + 0.15,
+            section_map_color(section.kind),
+        );
+    }
 
     for wall in &level.walls {
         spawn_map_rect(
@@ -173,6 +183,17 @@ fn door_map_color(kind: DoorKind, locked: bool) -> Color {
         (DoorKind::Bulkhead, false) => Color::srgba(0.25, 0.95, 0.85, 0.88),
         (DoorKind::EnergyBarrier, true) => Color::srgba(0.85, 0.28, 1.0, 0.96),
         (DoorKind::EnergyBarrier, false) => Color::srgba(0.15, 0.70, 1.0, 0.70),
+    }
+}
+
+fn section_map_color(kind: SectionKind) -> Color {
+    match kind {
+        SectionKind::Corridor => Color::srgba(0.10, 0.20, 0.24, 0.30),
+        SectionKind::Lab => Color::srgba(0.08, 0.55, 0.48, 0.30),
+        SectionKind::Triage => Color::srgba(0.55, 0.16, 0.26, 0.28),
+        SectionKind::Supply => Color::srgba(0.70, 0.44, 0.08, 0.30),
+        SectionKind::Lift => Color::srgba(0.10, 0.58, 0.70, 0.34),
+        SectionKind::Containment => Color::srgba(0.64, 0.08, 0.13, 0.28),
     }
 }
 
