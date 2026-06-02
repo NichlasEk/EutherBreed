@@ -92,7 +92,7 @@
     doors: [
         (
             id: "spine_supply_bulkhead",
-            position: (-600.0, -168.0),
+            position: (-600.0, -250.0),
             half_extents: (10.0, 34.0),
             clearance_id: "open",
             starts_locked: false,
@@ -100,7 +100,7 @@
         ),
         (
             id: "spine_scan_bulkhead",
-            position: (-300.0, -120.0),
+            position: (-180.0, -118.0),
             half_extents: (34.0, 10.0),
             clearance_id: "open",
             starts_locked: false,
@@ -108,7 +108,7 @@
         ),
         (
             id: "spine_north_lab_bulkhead",
-            position: (-40.0, 230.0),
+            position: (-120.0, 230.0),
             half_extents: (34.0, 10.0),
             clearance_id: "open",
             starts_locked: false,
@@ -127,7 +127,7 @@
         ),
         (
             id: "spine_containment_bulkhead",
-            position: (392.0, -118.0),
+            position: (320.0, -118.0),
             half_extents: (34.0, 10.0),
             clearance_id: "open",
             starts_locked: false,

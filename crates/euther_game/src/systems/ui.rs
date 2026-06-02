@@ -185,7 +185,7 @@ fn prompt_for_position(
             if door.locked {
                 return Some("DOOR <locked - find clearance>".to_string());
             }
-            return Some("DOOR <clearance accepted - opening>".to_string());
+            return Some("DOOR <clearance accepted - approach>".to_string());
         }
     }
 

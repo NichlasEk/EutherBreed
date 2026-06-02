@@ -217,6 +217,10 @@ impl LevelDefinition {
             if !door_has_matching_wall(door, &self.walls) {
                 return Err(LevelValidationError::InvalidDoorPlacement);
             }
+
+            if !door_has_clear_approaches(door, &self.walls) {
+                return Err(LevelValidationError::BlockedDoorApproach);
+            }
         }
 
         let mut terminal_ids = HashSet::new();
@@ -426,6 +430,7 @@ pub enum LevelValidationError {
     UnreachableClearance,
     UnreachableObjective,
     InvalidDoorPlacement,
+    BlockedDoorApproach,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -447,6 +452,50 @@ fn door_has_matching_wall(door: &DoorDefinition, walls: &[AxisAlignedBox]) -> bo
         let wall_is_horizontal = wall.half_extents.x >= wall.half_extents.y;
         wall_is_horizontal == door_is_horizontal && aabb_intersects(*wall, door_bounds)
     })
+}
+
+fn door_has_clear_approaches(door: &DoorDefinition, walls: &[AxisAlignedBox]) -> bool {
+    door_approach_zones(door)
+        .into_iter()
+        .all(|zone| !walls.iter().any(|wall| aabb_intersects(*wall, zone)))
+}
+
+fn door_approach_zones(door: &DoorDefinition) -> [AxisAlignedBox; 2] {
+    const APPROACH_DISTANCE: f32 = 30.0;
+    const APPROACH_HALF_WIDTH: f32 = 18.0;
+    const APPROACH_LONG_PADDING: f32 = 6.0;
+
+    if door.half_extents.x >= door.half_extents.y {
+        let half_extents = Vec2::new(
+            door.half_extents.x + APPROACH_LONG_PADDING,
+            APPROACH_HALF_WIDTH,
+        );
+        [
+            AxisAlignedBox::new(
+                door.position - Vec2::Y * (door.half_extents.y + APPROACH_DISTANCE),
+                half_extents,
+            ),
+            AxisAlignedBox::new(
+                door.position + Vec2::Y * (door.half_extents.y + APPROACH_DISTANCE),
+                half_extents,
+            ),
+        ]
+    } else {
+        let half_extents = Vec2::new(
+            APPROACH_HALF_WIDTH,
+            door.half_extents.y + APPROACH_LONG_PADDING,
+        );
+        [
+            AxisAlignedBox::new(
+                door.position - Vec2::X * (door.half_extents.x + APPROACH_DISTANCE),
+                half_extents,
+            ),
+            AxisAlignedBox::new(
+                door.position + Vec2::X * (door.half_extents.x + APPROACH_DISTANCE),
+                half_extents,
+            ),
+        ]
+    }
 }
 
 fn aabb_intersects(a: AxisAlignedBox, b: AxisAlignedBox) -> bool {
@@ -592,6 +641,17 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::InvalidDoorPlacement)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_door_with_blocked_approach() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.walls.push(wall(0.0, 125.0, 80.0, 24.0));
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::BlockedDoorApproach)
         );
     }
 
