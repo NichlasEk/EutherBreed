@@ -730,6 +730,7 @@ fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
             LevelEntity,
         ));
 
+        spawn_section_floor_details(commands, section.bounds, section.kind);
         spawn_section_edge_accent(commands, section.bounds, section.kind);
     }
 }
@@ -742,6 +743,141 @@ fn section_tint(kind: SectionKind) -> Color {
         SectionKind::Supply => Color::srgba(0.34, 0.22, 0.05, 0.32),
         SectionKind::Lift => Color::srgba(0.04, 0.30, 0.36, 0.34),
         SectionKind::Containment => Color::srgba(0.32, 0.04, 0.08, 0.30),
+    }
+}
+
+fn spawn_section_floor_details(commands: &mut Commands, bounds: AxisAlignedBox, kind: SectionKind) {
+    match kind {
+        SectionKind::Corridor => spawn_section_stripes(
+            commands,
+            bounds,
+            Vec2::Y,
+            128.0,
+            2.0,
+            section_detail_color(kind),
+        ),
+        SectionKind::Lab => {
+            spawn_section_stripes(
+                commands,
+                bounds,
+                Vec2::X,
+                88.0,
+                2.0,
+                section_detail_color(kind),
+            );
+            spawn_section_stripes(
+                commands,
+                bounds,
+                Vec2::Y,
+                88.0,
+                2.0,
+                section_detail_color(kind).with_alpha(0.13),
+            );
+        }
+        SectionKind::Triage => spawn_section_cross_marks(commands, bounds, kind, 4),
+        SectionKind::Supply => spawn_section_cross_marks(commands, bounds, kind, 5),
+        SectionKind::Lift => {
+            spawn_section_stripes(
+                commands,
+                bounds,
+                Vec2::X,
+                52.0,
+                4.0,
+                section_detail_color(kind),
+            );
+            spawn_section_stripes(
+                commands,
+                bounds,
+                Vec2::Y,
+                70.0,
+                3.0,
+                Color::srgba(1.0, 0.72, 0.18, 0.18),
+            );
+        }
+        SectionKind::Containment => {
+            spawn_section_stripes(
+                commands,
+                bounds,
+                Vec2::X,
+                106.0,
+                3.0,
+                section_detail_color(kind),
+            );
+            spawn_section_cross_marks(commands, bounds, kind, 3);
+        }
+    }
+}
+
+fn spawn_section_stripes(
+    commands: &mut Commands,
+    bounds: AxisAlignedBox,
+    axis: Vec2,
+    spacing: f32,
+    thickness: f32,
+    color: Color,
+) {
+    let size = bounds.half_extents * 2.0;
+    let across = if axis == Vec2::X { size.y } else { size.x };
+    let count = (across / spacing).floor().max(1.0) as i32;
+    let z = -8.32;
+
+    for index in -count..=count {
+        let offset = index as f32 * spacing;
+        let position = if axis == Vec2::X {
+            bounds.center + Vec2::Y * offset
+        } else {
+            bounds.center + Vec2::X * offset
+        };
+        let stripe_size = if axis == Vec2::X {
+            Vec2::new(size.x * 0.92, thickness)
+        } else {
+            Vec2::new(thickness, size.y * 0.92)
+        };
+
+        commands.spawn((
+            Sprite::from_color(color, stripe_size),
+            Transform::from_xyz(position.x, position.y, z),
+            LevelEntity,
+        ));
+    }
+}
+
+fn spawn_section_cross_marks(
+    commands: &mut Commands,
+    bounds: AxisAlignedBox,
+    kind: SectionKind,
+    count: i32,
+) {
+    let color = section_detail_color(kind);
+    let z = -8.30;
+    let size = bounds.half_extents * 2.0;
+    let span = size.x.min(size.y) * 0.26;
+    let count = count.max(1);
+
+    for index in 0..count {
+        let phase = index as f32 / count as f32;
+        let x = bounds.center.x + (phase - 0.5) * size.x * 0.68;
+        let y = bounds.center.y + ((index * 37 % 100) as f32 / 100.0 - 0.5) * size.y * 0.58;
+        for rotation in [0.0, std::f32::consts::FRAC_PI_2] {
+            let mut transform = Transform::from_xyz(x, y, z);
+            transform.rotation = Quat::from_rotation_z(rotation + phase * 0.25);
+            commands.spawn((
+                Sprite::from_color(color, Vec2::new(span, 3.0)),
+                transform,
+                LevelEntity,
+            ));
+        }
+    }
+}
+
+fn section_detail_color(kind: SectionKind) -> Color {
+    match kind {
+        SectionKind::Corridor => Color::srgba(0.12, 0.36, 0.40, 0.12),
+        SectionKind::Lab => Color::srgba(0.14, 1.0, 0.88, 0.20),
+        SectionKind::Triage => Color::srgba(1.0, 0.28, 0.42, 0.20),
+        SectionKind::Supply => Color::srgba(1.0, 0.62, 0.12, 0.24),
+        SectionKind::Lift => Color::srgba(0.12, 0.90, 1.0, 0.24),
+        SectionKind::Containment => Color::srgba(1.0, 0.10, 0.18, 0.18),
     }
 }
 
