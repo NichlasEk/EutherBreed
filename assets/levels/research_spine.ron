@@ -150,6 +150,17 @@
             kind: Bulkhead,
         ),
         (
+            id: "spine_east_bypass_barrier",
+            position: (392.0, -282.0),
+            half_extents: (10.0, 34.0),
+            clearance_id: "open",
+            starts_locked: true,
+            kind: EnergyBarrier,
+            required_objectives: [
+                "restore_east_bypass",
+            ],
+        ),
+        (
             id: "spine_exit_bulkhead",
             position: (585.0, -260.0),
             half_extents: (10.0, 34.0),
@@ -179,6 +190,13 @@
             kind: LabAnalyzer,
             objective_id: Some("purge_containment_spine"),
         ),
+        (
+            id: "spine_bypass_router",
+            position: (78.0, -208.0),
+            kind: ShipLog,
+            objective_id: Some("restore_east_bypass"),
+            pattern: ObjectiveRouter,
+        ),
     ],
     objectives: [
         (
@@ -190,6 +208,11 @@
             id: "purge_containment_spine",
             label: "Purge containment spine",
             required: true,
+        ),
+        (
+            id: "restore_east_bypass",
+            label: "Restore east bypass",
+            required: false,
         ),
     ],
     decor: [
@@ -364,6 +387,12 @@
             label: "Lower Spine",
             bounds: (center: (0.0, -300.0), half_extents: (690.0, 90.0)),
             kind: Corridor,
+        ),
+        (
+            id: "east_bypass",
+            label: "East Bypass",
+            bounds: (center: (478.0, -270.0), half_extents: (130.0, 95.0)),
+            kind: Containment,
         ),
     ],
     entry_points: [
