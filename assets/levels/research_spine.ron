@@ -154,6 +154,11 @@
             position: (312.0, 306.0),
             kind: ShipLog,
             objective_id: Some("route_lift_power"),
+            actions: [
+                CompleteObjective("route_lift_power"),
+                AcquireAreaScan,
+                SetSpawnInterval(2.2),
+            ],
         ),
         (
             id: "spine_containment_analyzer",

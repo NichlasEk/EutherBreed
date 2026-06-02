@@ -143,7 +143,7 @@ pub struct TerminalDefinition {
     pub kind: TerminalKind,
     pub objective_id: Option<String>,
     #[serde(default)]
-    pub actions: Vec<TerminalAction>,
+    pub actions: Vec<LevelEvent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -154,13 +154,17 @@ pub enum TerminalKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub enum TerminalAction {
+pub enum LevelEvent {
     CompleteObjective(String),
+    GrantClearance(String),
+    UnlockDoor(String),
     AddAmmo(i32),
     Heal(i32),
     AcquireAreaScan,
     SetSpawnInterval(f32),
 }
+
+pub type TerminalAction = LevelEvent;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ObjectiveDefinition {
@@ -276,18 +280,26 @@ impl LevelDefinition {
 
             for action in &terminal.actions {
                 match action {
-                    TerminalAction::CompleteObjective(objective_id) => {
+                    LevelEvent::CompleteObjective(objective_id) => {
                         if objective_id.trim().is_empty() {
                             return Err(LevelValidationError::InvalidObjective);
                         }
                         objective_completers.insert(objective_id.clone());
                     }
-                    TerminalAction::AddAmmo(amount) | TerminalAction::Heal(amount)
-                        if *amount <= 0 =>
-                    {
+                    LevelEvent::GrantClearance(clearance_id) => {
+                        if clearance_id.trim().is_empty() {
+                            return Err(LevelValidationError::InvalidClearanceId);
+                        }
+                    }
+                    LevelEvent::UnlockDoor(door_id) => {
+                        if door_id.trim().is_empty() {
+                            return Err(LevelValidationError::InvalidDoorReference);
+                        }
+                    }
+                    LevelEvent::AddAmmo(amount) | LevelEvent::Heal(amount) if *amount <= 0 => {
                         return Err(LevelValidationError::InvalidTerminalAction);
                     }
-                    TerminalAction::SetSpawnInterval(seconds) if *seconds <= 0.0 => {
+                    LevelEvent::SetSpawnInterval(seconds) if *seconds <= 0.0 => {
                         return Err(LevelValidationError::InvalidTerminalAction);
                     }
                     _ => {}
@@ -413,6 +425,17 @@ impl LevelDefinition {
                 .any(|objective_id| !objective_ids.contains(objective_id))
             {
                 return Err(LevelValidationError::UnknownObjectiveReference);
+            }
+        }
+
+        let door_ids: HashSet<&str> = self.doors.iter().map(|door| door.id.as_str()).collect();
+        for terminal in &self.terminals {
+            for action in &terminal.actions {
+                if let LevelEvent::UnlockDoor(door_id) = action {
+                    if !door_ids.contains(door_id.as_str()) {
+                        return Err(LevelValidationError::InvalidDoorReference);
+                    }
+                }
             }
         }
 
@@ -547,6 +570,7 @@ pub enum LevelValidationError {
     InvalidTerminalAction,
     InvalidTransition,
     UnreachableInteraction,
+    InvalidDoorReference,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -1034,6 +1058,32 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::InvalidTerminalAction)
+        );
+    }
+
+    #[test]
+    fn validation_accepts_level_event_terminal_actions() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.terminals[0].actions = vec![
+            LevelEvent::CompleteObjective("analyze_contaminant_sample".to_string()),
+            LevelEvent::GrantClearance("quarantine_green".to_string()),
+            LevelEvent::UnlockDoor("ward_quarantine_green_door".to_string()),
+        ];
+
+        assert_eq!(level.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validation_rejects_unknown_door_event_reference() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.terminals[0].actions = vec![
+            LevelEvent::CompleteObjective("analyze_contaminant_sample".to_string()),
+            LevelEvent::UnlockDoor("missing_door".to_string()),
+        ];
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidDoorReference)
         );
     }
 

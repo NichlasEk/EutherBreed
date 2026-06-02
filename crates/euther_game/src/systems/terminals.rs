@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::{TerminalAction, TerminalKind};
+use game_core::{LevelEvent, TerminalKind};
 
 use crate::components::{Apothecary, EffectLifetime, LevelEntity, Terminal};
 use crate::resources::{
@@ -52,31 +52,31 @@ pub fn interact_with_terminals(
     }
 }
 
-fn terminal_actions(terminal: &Terminal) -> Vec<TerminalAction> {
+fn terminal_actions(terminal: &Terminal) -> Vec<LevelEvent> {
     if !terminal.actions.is_empty() {
         return terminal.actions.clone();
     }
 
     let mut actions = Vec::new();
     if let Some(objective_id) = &terminal.objective_id {
-        actions.push(TerminalAction::CompleteObjective(objective_id.clone()));
-        actions.push(TerminalAction::SetSpawnInterval(2.2));
+        actions.push(LevelEvent::CompleteObjective(objective_id.clone()));
+        actions.push(LevelEvent::SetSpawnInterval(2.2));
     }
 
     if matches!(terminal.kind, TerminalKind::SupplyConsole) {
-        actions.push(TerminalAction::AddAmmo(16));
-        actions.push(TerminalAction::Heal(18));
+        actions.push(LevelEvent::AddAmmo(16));
+        actions.push(LevelEvent::Heal(18));
     }
 
     if actions.is_empty() && matches!(terminal.kind, TerminalKind::ShipLog) {
-        actions.push(TerminalAction::AcquireAreaScan);
+        actions.push(LevelEvent::AcquireAreaScan);
     }
 
     actions
 }
 
 fn execute_terminal_actions(
-    actions: &[TerminalAction],
+    actions: &[LevelEvent],
     level_state: &mut LocalLevelState,
     level_runtime: &mut LevelRuntime,
     contaminant_timer: &mut ContaminantSpawnTimer,
@@ -86,24 +86,34 @@ fn execute_terminal_actions(
 
     for action in actions {
         match action {
-            TerminalAction::CompleteObjective(objective_id) => {
+            LevelEvent::CompleteObjective(objective_id) => {
                 if level_state.0.complete_objective(objective_id.clone()) {
                     messages.push(format!("objective {objective_id} complete"));
                 }
             }
-            TerminalAction::AddAmmo(amount) => {
+            LevelEvent::GrantClearance(clearance_id) => {
+                if level_state.0.grant_clearance(clearance_id.clone()) {
+                    messages.push(format!("clearance {clearance_id} granted"));
+                }
+            }
+            LevelEvent::UnlockDoor(door_id) => {
+                if level_state.0.unlock_door(door_id.clone()) {
+                    messages.push(format!("door {door_id} unlocked"));
+                }
+            }
+            LevelEvent::AddAmmo(amount) => {
                 vitals.0.add_ammo(*amount);
                 messages.push(format!("ammo +{amount}"));
             }
-            TerminalAction::Heal(amount) => {
+            LevelEvent::Heal(amount) => {
                 vitals.0.heal(*amount, 100);
                 messages.push(format!("med-gel +{amount}"));
             }
-            TerminalAction::AcquireAreaScan => {
+            LevelEvent::AcquireAreaScan => {
                 level_state.0.acquire_area_scan();
                 messages.push("area scan uploaded".to_string());
             }
-            TerminalAction::SetSpawnInterval(seconds) => {
+            LevelEvent::SetSpawnInterval(seconds) => {
                 if level_runtime.dynamic_spawn_interval_seconds > 0.0 {
                     level_runtime.dynamic_spawn_interval_seconds =
                         level_runtime.dynamic_spawn_interval_seconds.min(*seconds);

@@ -85,7 +85,10 @@ pub fn unlock_doors(
     let apothecary_position = apothecary_query.translation.xy();
 
     for (entity, transform, mut door, sprite) in &mut door_query {
-        if door.opened || !door_requirements_met(&door, &level_state, &vitals) {
+        if door.opened
+            || !(level_state.0.has_unlocked_door(&door.id)
+                || door_requirements_met(&door, &level_state, &vitals))
+        {
             continue;
         }
 

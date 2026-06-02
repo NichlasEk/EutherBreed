@@ -1095,7 +1095,7 @@ fn spawn_terminal(
     position: Vec2,
     kind: TerminalKind,
     objective_id: Option<String>,
-    actions: Vec<game_core::TerminalAction>,
+    actions: Vec<game_core::LevelEvent>,
 ) {
     let (path, color) = match kind {
         TerminalKind::LabAnalyzer => ("sprites/biomech/terminal_lab_analyzer.png", Color::WHITE),

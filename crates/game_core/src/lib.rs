@@ -13,7 +13,7 @@ pub use campaign::{
 };
 pub use collision::{AxisAlignedBox, circle_intersects_aabb};
 pub use level::{
-    DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition, LevelExit,
+    DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition, LevelEvent, LevelExit,
     LevelTransition, ObjectiveDefinition, PickupKind, PrototypeEntity, TerminalAction,
     TerminalDefinition, TerminalKind, TransitionKind,
 };

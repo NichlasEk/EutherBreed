@@ -32,12 +32,11 @@ pub fn trigger_transition_zones(
         }
 
         let clearance_id = transition.required_clearance.as_deref().unwrap_or("open");
-        match RuleGate::for_door(clearance_id, &transition.required_objectives).evaluate(
-            RuleContext {
+        match RuleGate::for_clearance_and_objectives(clearance_id, &transition.required_objectives)
+            .evaluate(RuleContext {
                 level_state: &level_state.0,
                 vitals: &vitals.0,
-            },
-        ) {
+            }) {
             RuleGateStatus::Open => {
                 pending_transition.travel = Some(TransitionTravel {
                     target: transition.target.clone(),

@@ -24,6 +24,13 @@ impl RuleGate {
     }
 
     pub fn for_door(clearance_id: &str, required_objectives: &[String]) -> Self {
+        Self::for_clearance_and_objectives(clearance_id, required_objectives)
+    }
+
+    pub fn for_clearance_and_objectives(
+        clearance_id: &str,
+        required_objectives: &[String],
+    ) -> Self {
         let mut gate = Self::with_clearance(clearance_id);
         gate.requirements.extend(
             required_objectives
