@@ -131,6 +131,7 @@ pub struct Terminal {
     pub id: String,
     pub kind: game_core::TerminalKind,
     pub objective_id: Option<String>,
+    pub required_bio_samples: i32,
     pub pattern: game_core::TerminalPattern,
     pub actions: Vec<game_core::LevelEvent>,
 }

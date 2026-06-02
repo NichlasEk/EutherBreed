@@ -30,6 +30,17 @@ pub fn interact_with_terminals(
             continue;
         }
 
+        if terminal.required_bio_samples > vitals.0.bio_samples {
+            notice.show(
+                format!(
+                    "Bio-samples required {}/{}",
+                    vitals.0.bio_samples, terminal.required_bio_samples
+                ),
+                1.8,
+            );
+            continue;
+        }
+
         if !level_state.0.activate_terminal(terminal.id.clone()) {
             notice.show("Terminal already processed", 1.4);
             continue;

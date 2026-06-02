@@ -137,6 +137,7 @@ pub fn update_prompt_text(
     exit_query: Query<(&Transform, &ExitZone)>,
     transition_query: Query<(&Transform, &TransitionZone)>,
     level_state: Res<LocalLevelState>,
+    vitals: Res<ApothecaryVitals>,
     mut text_query: Query<&mut Text, With<PromptText>>,
 ) {
     let prompt = apothecary_query
@@ -150,6 +151,7 @@ pub fn update_prompt_text(
                 &exit_query,
                 &transition_query,
                 &level_state,
+                &vitals,
             )
         })
         .unwrap_or_default();
@@ -166,11 +168,18 @@ fn prompt_for_position(
     exit_query: &Query<(&Transform, &ExitZone)>,
     transition_query: &Query<(&Transform, &TransitionZone)>,
     level_state: &LocalLevelState,
+    vitals: &ApothecaryVitals,
 ) -> Option<String> {
     for (transform, terminal) in terminal_query {
         if apothecary_position.distance(transform.translation.xy()) <= PROMPT_RADIUS {
             if level_state.0.activated_terminals.contains(&terminal.id) {
                 return Some("TERMINAL <processed>".to_string());
+            }
+            if terminal.required_bio_samples > 0 {
+                return Some(format!(
+                    "PRESS E <analyze: bio {}/{}>",
+                    vitals.0.bio_samples, terminal.required_bio_samples
+                ));
             }
             return Some(match terminal.kind {
                 TerminalKind::LabAnalyzer => "PRESS E <analyze terminal>".to_string(),
@@ -189,7 +198,7 @@ fn prompt_for_position(
                 return Some("DOOR <open>".to_string());
             }
             if door.locked {
-                return Some("DOOR <locked - find clearance>".to_string());
+                return Some(locked_door_prompt(door, level_state));
             }
             return Some("DOOR <clearance accepted - approach>".to_string());
         }
@@ -243,6 +252,22 @@ fn prompt_for_position(
     }
 
     None
+}
+
+fn locked_door_prompt(door: &Door, level_state: &LocalLevelState) -> String {
+    if door.clearance_id != "open" && !level_state.0.has_clearance(&door.clearance_id) {
+        return format!("DOOR <locked - need {}>", door.clearance_id);
+    }
+
+    if door
+        .required_objectives
+        .iter()
+        .any(|objective_id| !level_state.0.objectives.is_complete(objective_id))
+    {
+        return "DOOR <locked - objective incomplete>".to_string();
+    }
+
+    "DOOR <locked - approach>".to_string()
 }
 
 fn active_pip(index: usize, value: i32, max: i32, width: usize) -> bool {

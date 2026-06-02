@@ -184,6 +184,8 @@ pub struct TerminalDefinition {
     pub kind: TerminalKind,
     pub objective_id: Option<String>,
     #[serde(default)]
+    pub required_bio_samples: i32,
+    #[serde(default)]
     pub pattern: TerminalPattern,
     #[serde(default)]
     pub actions: Vec<LevelEvent>,
@@ -280,6 +282,11 @@ impl LevelDefinition {
                 _ => None,
             })
             .collect();
+        let available_bio_samples = self
+            .pickups
+            .iter()
+            .filter(|pickup| matches!(pickup.kind, PickupKind::BioSample))
+            .count() as i32;
         let mut door_ids = HashSet::new();
         for door in &self.doors {
             if door.id.trim().is_empty() || !door_ids.insert(door.id.clone()) {
@@ -324,6 +331,14 @@ impl LevelDefinition {
             if matches!(terminal.objective_id, Some(ref objective_id) if objective_id.trim().is_empty())
             {
                 return Err(LevelValidationError::InvalidObjective);
+            }
+
+            if terminal.required_bio_samples < 0 {
+                return Err(LevelValidationError::InvalidTerminalAction);
+            }
+
+            if terminal.required_bio_samples > available_bio_samples {
+                return Err(LevelValidationError::UnreachableObjective);
             }
 
             if let Some(objective_id) = &terminal.objective_id {
@@ -624,6 +639,7 @@ impl LevelDefinition {
                 position: Vec2::new(360.0, -96.0),
                 kind: TerminalKind::LabAnalyzer,
                 objective_id: Some("analyze_contaminant_sample".to_string()),
+                required_bio_samples: 0,
                 pattern: TerminalPattern::Default,
                 actions: vec![],
             }],

@@ -74,6 +74,11 @@
             kind: SecurityKeycard("lab_lift"),
         ),
         (
+            id: "spine_supply_keycard",
+            position: (-458.0, -306.0),
+            kind: SecurityKeycard("supply_cache"),
+        ),
+        (
             id: "spine_bio_sample_a",
             position: (148.0, 308.0),
             kind: BioSample,
@@ -88,14 +93,19 @@
             position: (-30.0, -302.0),
             kind: ReagentRounds(18),
         ),
+        (
+            id: "spine_area_scan",
+            position: (-318.0, -306.0),
+            kind: AreaScan,
+        ),
     ],
     doors: [
         (
             id: "spine_supply_bulkhead",
             position: (-600.0, -250.0),
             half_extents: (10.0, 34.0),
-            clearance_id: "open",
-            starts_locked: false,
+            clearance_id: "supply_cache",
+            starts_locked: true,
             kind: Bulkhead,
         ),
         (
@@ -112,8 +122,11 @@
             position: (-120.0, 230.0),
             half_extents: (34.0, 10.0),
             clearance_id: "open",
-            starts_locked: false,
+            starts_locked: true,
             kind: Bulkhead,
+            required_objectives: [
+                "restore_east_bypass",
+            ],
         ),
         (
             id: "spine_mid_room_bulkhead",
@@ -158,8 +171,11 @@
             position: (320.0, -118.0),
             half_extents: (34.0, 10.0),
             clearance_id: "open",
-            starts_locked: false,
+            starts_locked: true,
             kind: Bulkhead,
+            required_objectives: [
+                "route_lift_power",
+            ],
             connects: Some((from: "lift_access", to: "east_bypass")),
         ),
         (
@@ -179,8 +195,11 @@
             position: (585.0, -260.0),
             half_extents: (10.0, 34.0),
             clearance_id: "open",
-            starts_locked: false,
+            starts_locked: true,
             kind: Bulkhead,
+            required_objectives: [
+                "purge_containment_spine",
+            ],
             connects: Some((from: "east_bypass", to: "lower_spine")),
         ),
     ],
@@ -191,6 +210,11 @@
             kind: SupplyConsole,
             objective_id: None,
             pattern: SupplyStation,
+            actions: [
+                AddAmmo(24),
+                Heal(24),
+                GrantClearance("supply_cache"),
+            ],
         ),
         (
             id: "spine_lift_router",
@@ -198,12 +222,25 @@
             kind: ShipLog,
             objective_id: Some("route_lift_power"),
             pattern: ObjectiveRouter,
+            actions: [
+                CompleteObjective("route_lift_power"),
+                GrantClearance("lab_lift"),
+                UnlockDoor("spine_lab_lift_lock"),
+                UnlockDoor("spine_containment_bulkhead"),
+                SetSpawnInterval(2.0),
+            ],
         ),
         (
             id: "spine_containment_analyzer",
             position: (628.0, -304.0),
             kind: LabAnalyzer,
             objective_id: Some("purge_containment_spine"),
+            required_bio_samples: 2,
+            actions: [
+                CompleteObjective("purge_containment_spine"),
+                UnlockDoor("spine_exit_bulkhead"),
+                SetSpawnInterval(1.6),
+            ],
         ),
         (
             id: "spine_bypass_router",
@@ -211,23 +248,29 @@
             kind: ShipLog,
             objective_id: Some("restore_east_bypass"),
             pattern: ObjectiveRouter,
+            actions: [
+                CompleteObjective("restore_east_bypass"),
+                UnlockDoor("spine_east_bypass_barrier"),
+                UnlockDoor("spine_north_lab_bulkhead"),
+                SetSpawnInterval(2.4),
+            ],
         ),
     ],
     objectives: [
         (
+            id: "restore_east_bypass",
+            label: "Restore east bypass access",
+            required: true,
+        ),
+        (
             id: "route_lift_power",
-            label: "Route lift power",
+            label: "Route lift power from north lab",
             required: true,
         ),
         (
             id: "purge_containment_spine",
-            label: "Purge containment spine",
+            label: "Analyze east containment sample",
             required: true,
-        ),
-        (
-            id: "restore_east_bypass",
-            label: "Restore east bypass",
-            required: false,
         ),
     ],
     decor: [
@@ -613,7 +656,11 @@
             half_extents: (22.0, 42.0),
             target: "triage_vault",
             entry_id: "from_research_spine",
-            required_objectives: [],
+            required_objectives: [
+                "restore_east_bypass",
+                "route_lift_power",
+                "purge_containment_spine",
+            ],
         ),
     ],
     transitions: [

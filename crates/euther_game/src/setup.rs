@@ -529,6 +529,7 @@ pub fn spawn_level(
             terminal.position,
             terminal.kind.clone(),
             terminal.objective_id.clone(),
+            terminal.required_bio_samples,
             terminal.pattern.clone(),
             terminal.actions.clone(),
         );
@@ -1348,6 +1349,7 @@ fn spawn_terminal(
     position: Vec2,
     kind: TerminalKind,
     objective_id: Option<String>,
+    required_bio_samples: i32,
     pattern: game_core::TerminalPattern,
     actions: Vec<game_core::LevelEvent>,
 ) {
@@ -1369,6 +1371,7 @@ fn spawn_terminal(
             id,
             kind,
             objective_id,
+            required_bio_samples,
             pattern,
             actions,
         },
