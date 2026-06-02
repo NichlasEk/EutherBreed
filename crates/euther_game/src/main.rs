@@ -209,9 +209,10 @@ fn validate_content() {
 
     for level in levels {
         println!(
-            "level: {} walls={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={} transitions={}",
+            "level: {} walls={} sections={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={} transitions={}",
             level.name,
             level.walls.len(),
+            level.sections.len(),
             level.contaminants.len(),
             level.pickups.len(),
             level.doors.len(),

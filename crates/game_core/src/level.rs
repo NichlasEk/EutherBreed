@@ -19,6 +19,8 @@ pub struct LevelDefinition {
     pub objectives: Vec<ObjectiveDefinition>,
     #[serde(default)]
     pub decor: Vec<DecorDefinition>,
+    #[serde(default)]
+    pub sections: Vec<SectionDefinition>,
     pub entry_points: Vec<LevelEntryPoint>,
     pub exits: Vec<LevelExit>,
     #[serde(default)]
@@ -117,6 +119,24 @@ pub struct DecorDefinition {
     pub rotation_degrees: f32,
     #[serde(default)]
     pub blocking: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct SectionDefinition {
+    pub id: String,
+    pub label: String,
+    pub bounds: AxisAlignedBox,
+    pub kind: SectionKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum SectionKind {
+    Corridor,
+    Lab,
+    Triage,
+    Supply,
+    Lift,
+    Containment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -338,6 +358,20 @@ impl LevelDefinition {
             }
         }
 
+        let mut section_ids = HashSet::new();
+        for section in &self.sections {
+            if section.id.trim().is_empty()
+                || section.label.trim().is_empty()
+                || !section_ids.insert(section.id.clone())
+            {
+                return Err(LevelValidationError::InvalidSection);
+            }
+
+            if !box_inside_box(section.bounds, self.bounds) {
+                return Err(LevelValidationError::InvalidSection);
+            }
+        }
+
         let mut entry_ids = HashSet::new();
         for entry_point in &self.entry_points {
             if entry_point.id.trim().is_empty() || !entry_ids.insert(entry_point.id.clone()) {
@@ -523,6 +557,7 @@ impl LevelDefinition {
                 required: true,
             }],
             decor: vec![],
+            sections: vec![],
             entry_points: vec![LevelEntryPoint {
                 id: "from_lab_access_corridor".to_string(),
                 position: Vec2::new(390.0, 0.0),
@@ -571,6 +606,7 @@ pub enum LevelValidationError {
     InvalidTransition,
     UnreachableInteraction,
     InvalidDoorReference,
+    InvalidSection,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -582,6 +618,11 @@ fn point_inside_box(point: Vec2, area: AxisAlignedBox) -> bool {
     let max = area.center + area.half_extents;
 
     point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
+}
+
+fn box_inside_box(inner: AxisAlignedBox, outer: AxisAlignedBox) -> bool {
+    point_inside_box(inner.center - inner.half_extents, outer)
+        && point_inside_box(inner.center + inner.half_extents, outer)
 }
 
 fn door_has_matching_wall(door: &DoorDefinition, walls: &[AxisAlignedBox]) -> bool {
@@ -1085,6 +1126,32 @@ mod tests {
             level.validate(),
             Err(LevelValidationError::InvalidDoorReference)
         );
+    }
+
+    #[test]
+    fn validation_accepts_semantic_sections() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.sections.push(SectionDefinition {
+            id: "ward_lab".to_string(),
+            label: "Ward Lab".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(120.0, 0.0), Vec2::new(180.0, 120.0)),
+            kind: SectionKind::Lab,
+        });
+
+        assert_eq!(level.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validation_rejects_section_outside_bounds() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.sections.push(SectionDefinition {
+            id: "bad_section".to_string(),
+            label: "Bad Section".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(700.0, 0.0), Vec2::new(80.0, 80.0)),
+            kind: SectionKind::Corridor,
+        });
+
+        assert_eq!(level.validate(), Err(LevelValidationError::InvalidSection));
     }
 
     #[test]

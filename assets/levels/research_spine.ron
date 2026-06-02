@@ -337,6 +337,38 @@
             blocking: false,
         ),
     ],
+    sections: [
+        (
+            id: "supply_nest",
+            label: "Supply Nest",
+            bounds: (center: (-610.0, 305.0), half_extents: (110.0, 95.0)),
+            kind: Supply,
+        ),
+        (
+            id: "north_lab",
+            label: "North Lab",
+            bounds: (center: (330.0, 305.0), half_extents: (245.0, 85.0)),
+            kind: Lab,
+        ),
+        (
+            id: "mid_chamber",
+            label: "Mid Chamber",
+            bounds: (center: (84.0, 48.0), half_extents: (250.0, 165.0)),
+            kind: Containment,
+        ),
+        (
+            id: "lift_access",
+            label: "Lift Access",
+            bounds: (center: (300.0, -16.0), half_extents: (120.0, 110.0)),
+            kind: Lift,
+        ),
+        (
+            id: "lower_spine",
+            label: "Lower Spine",
+            bounds: (center: (0.0, -300.0), half_extents: (690.0, 90.0)),
+            kind: Corridor,
+        ),
+    ],
     entry_points: [
         (
             id: "from_lab_access_corridor",
