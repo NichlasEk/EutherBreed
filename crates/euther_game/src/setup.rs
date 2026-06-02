@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 use game_core::{
     AxisAlignedBox, DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition,
-    PickupKind, TerminalKind, TransitionKind,
+    PickupKind, SectionKind, TerminalKind, TransitionKind,
 };
 use std::time::Duration;
 
@@ -450,6 +450,8 @@ pub fn spawn_level(
         LevelEntity,
     ));
 
+    spawn_section_tints(commands, level);
+
     commands.spawn((
         apothecary_sprite(asset_server),
         Transform::from_xyz(apothecary_start.x, apothecary_start.y, 10.0),
@@ -680,6 +682,30 @@ fn spawn_floor_area(
 fn tile_variant_index(x: i32, y: i32) -> usize {
     let hash = x.wrapping_mul(73_856_093) ^ y.wrapping_mul(19_349_663);
     hash.unsigned_abs() as usize % FLOOR_TILE_PATHS.len()
+}
+
+fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
+    for section in &level.sections {
+        commands.spawn((
+            Sprite::from_color(
+                section_tint(section.kind),
+                section.bounds.half_extents * 2.0,
+            ),
+            Transform::from_xyz(section.bounds.center.x, section.bounds.center.y, -8.5),
+            LevelEntity,
+        ));
+    }
+}
+
+fn section_tint(kind: SectionKind) -> Color {
+    match kind {
+        SectionKind::Corridor => Color::srgba(0.04, 0.09, 0.11, 0.16),
+        SectionKind::Lab => Color::srgba(0.05, 0.22, 0.19, 0.18),
+        SectionKind::Triage => Color::srgba(0.18, 0.08, 0.12, 0.16),
+        SectionKind::Supply => Color::srgba(0.22, 0.15, 0.04, 0.18),
+        SectionKind::Lift => Color::srgba(0.04, 0.20, 0.24, 0.22),
+        SectionKind::Containment => Color::srgba(0.20, 0.04, 0.06, 0.16),
+    }
 }
 
 fn visual_floor_size(playable_size: Vec2) -> Vec2 {
