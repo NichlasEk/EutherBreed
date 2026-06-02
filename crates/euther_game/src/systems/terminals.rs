@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::{LevelEvent, TerminalKind};
+use game_core::{LevelEvent, TerminalKind, TerminalPattern};
 
 use crate::components::{Apothecary, EffectLifetime, LevelEntity, Terminal};
 use crate::resources::{
@@ -58,18 +58,33 @@ fn terminal_actions(terminal: &Terminal) -> Vec<LevelEvent> {
     }
 
     let mut actions = Vec::new();
-    if let Some(objective_id) = &terminal.objective_id {
-        actions.push(LevelEvent::CompleteObjective(objective_id.clone()));
-        actions.push(LevelEvent::SetSpawnInterval(2.2));
-    }
+    match terminal.pattern {
+        TerminalPattern::Default => {
+            if let Some(objective_id) = &terminal.objective_id {
+                actions.push(LevelEvent::CompleteObjective(objective_id.clone()));
+                actions.push(LevelEvent::SetSpawnInterval(2.2));
+            }
 
-    if matches!(terminal.kind, TerminalKind::SupplyConsole) {
-        actions.push(LevelEvent::AddAmmo(16));
-        actions.push(LevelEvent::Heal(18));
-    }
+            if matches!(terminal.kind, TerminalKind::SupplyConsole) {
+                actions.push(LevelEvent::AddAmmo(16));
+                actions.push(LevelEvent::Heal(18));
+            }
 
-    if actions.is_empty() && matches!(terminal.kind, TerminalKind::ShipLog) {
-        actions.push(LevelEvent::AcquireAreaScan);
+            if actions.is_empty() && matches!(terminal.kind, TerminalKind::ShipLog) {
+                actions.push(LevelEvent::AcquireAreaScan);
+            }
+        }
+        TerminalPattern::SupplyStation => {
+            actions.push(LevelEvent::AddAmmo(16));
+            actions.push(LevelEvent::Heal(18));
+        }
+        TerminalPattern::ObjectiveRouter => {
+            if let Some(objective_id) = &terminal.objective_id {
+                actions.push(LevelEvent::CompleteObjective(objective_id.clone()));
+                actions.push(LevelEvent::SetSpawnInterval(2.2));
+            }
+        }
+        TerminalPattern::AreaScan => actions.push(LevelEvent::AcquireAreaScan),
     }
 
     actions

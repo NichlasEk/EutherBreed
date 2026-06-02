@@ -164,17 +164,14 @@
             position: (-636.0, 330.0),
             kind: SupplyConsole,
             objective_id: None,
+            pattern: SupplyStation,
         ),
         (
             id: "spine_lift_router",
             position: (312.0, 306.0),
             kind: ShipLog,
             objective_id: Some("route_lift_power"),
-            actions: [
-                CompleteObjective("route_lift_power"),
-                AcquireAreaScan,
-                SetSpawnInterval(2.2),
-            ],
+            pattern: ObjectiveRouter,
         ),
         (
             id: "spine_containment_analyzer",

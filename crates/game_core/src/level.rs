@@ -163,7 +163,18 @@ pub struct TerminalDefinition {
     pub kind: TerminalKind,
     pub objective_id: Option<String>,
     #[serde(default)]
+    pub pattern: TerminalPattern,
+    #[serde(default)]
     pub actions: Vec<LevelEvent>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum TerminalPattern {
+    #[default]
+    Default,
+    SupplyStation,
+    ObjectiveRouter,
+    AreaScan,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -296,6 +307,16 @@ impl LevelDefinition {
 
             if let Some(objective_id) = &terminal.objective_id {
                 objective_completers.insert(objective_id.clone());
+            }
+
+            if terminal.pattern == TerminalPattern::ObjectiveRouter
+                && terminal.objective_id.is_none()
+                && !terminal
+                    .actions
+                    .iter()
+                    .any(|action| matches!(action, LevelEvent::CompleteObjective(_)))
+            {
+                return Err(LevelValidationError::InvalidTerminalPattern);
             }
 
             for action in &terminal.actions {
@@ -549,6 +570,7 @@ impl LevelDefinition {
                 position: Vec2::new(360.0, -96.0),
                 kind: TerminalKind::LabAnalyzer,
                 objective_id: Some("analyze_contaminant_sample".to_string()),
+                pattern: TerminalPattern::Default,
                 actions: vec![],
             }],
             objectives: vec![ObjectiveDefinition {
@@ -607,6 +629,7 @@ pub enum LevelValidationError {
     UnreachableInteraction,
     InvalidDoorReference,
     InvalidSection,
+    InvalidTerminalPattern,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -1125,6 +1148,18 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::InvalidDoorReference)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_empty_objective_router_pattern() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.terminals[0].objective_id = None;
+        level.terminals[0].pattern = TerminalPattern::ObjectiveRouter;
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidTerminalPattern)
         );
     }
 
