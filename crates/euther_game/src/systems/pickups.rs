@@ -149,7 +149,7 @@ pub fn update_door_openings(
 
         if opening.timer.is_finished() {
             door.opened = true;
-            sprite.custom_size = Some(opening.original_size);
+            sprite.custom_size = Some(opened_door_size(opening.original_size));
             sprite.color = door_open_color(door.kind);
             commands.entity(entity).remove::<Wall>();
             commands.entity(entity).remove::<DoorOpening>();
@@ -341,6 +341,14 @@ fn door_open_color(kind: DoorKind) -> Color {
     match kind {
         DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
         DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
+    }
+}
+
+fn opened_door_size(size: Vec2) -> Vec2 {
+    if size.x >= size.y {
+        Vec2::new(8.0, size.y.max(18.0))
+    } else {
+        Vec2::new(size.x.max(18.0), 8.0)
     }
 }
 

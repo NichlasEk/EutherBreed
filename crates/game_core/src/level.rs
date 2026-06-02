@@ -540,7 +540,32 @@ impl LevelDefinition {
             return Err(LevelValidationError::UnreachableInteraction);
         }
 
+        if !level_sections_have_reachable_floor(self) {
+            return Err(LevelValidationError::DisconnectedSection);
+        }
+
         Ok(())
+    }
+
+    pub fn reachable_section_count(&self) -> usize {
+        if self.sections.is_empty() {
+            return 0;
+        }
+
+        let path_map = PathMap::new(self);
+        let Some(reachable) = path_map.reachable_from(self.apothecary_start) else {
+            return 0;
+        };
+
+        self.sections
+            .iter()
+            .filter(|section| {
+                path_map
+                    .cells_in_area(section.bounds)
+                    .into_iter()
+                    .any(|(x, y)| reachable[path_map.index(x, y)])
+            })
+            .count()
     }
 
     pub fn prototype_quarantine_ward() -> Self {
@@ -917,6 +942,24 @@ fn level_has_reachable_critical_points(level: &LevelDefinition) -> bool {
         })
 }
 
+fn level_sections_have_reachable_floor(level: &LevelDefinition) -> bool {
+    if level.sections.is_empty() {
+        return true;
+    }
+
+    let path_map = PathMap::new(level);
+    let Some(reachable) = path_map.reachable_from(level.apothecary_start) else {
+        return false;
+    };
+
+    level.sections.iter().all(|section| {
+        path_map
+            .cells_in_area(section.bounds)
+            .into_iter()
+            .any(|(x, y)| reachable[path_map.index(x, y)])
+    })
+}
+
 struct PathMap<'a> {
     level: &'a LevelDefinition,
     origin: Vec2,
@@ -999,6 +1042,24 @@ impl<'a> PathMap<'a> {
         for y in min_cell.1..=max_cell.1 {
             for x in min_cell.0..=max_cell.0 {
                 if self.cell_center(x, y).distance(position) <= radius + self.cell_size {
+                    cells.push((x, y));
+                }
+            }
+        }
+
+        cells
+    }
+
+    fn cells_in_area(&self, area: AxisAlignedBox) -> Vec<(usize, usize)> {
+        let min = area.center - area.half_extents;
+        let max = area.center + area.half_extents;
+        let min_cell = self.cell_for_position(min);
+        let max_cell = self.cell_for_position(max);
+        let mut cells = Vec::new();
+
+        for y in min_cell.1..=max_cell.1 {
+            for x in min_cell.0..=max_cell.0 {
+                if point_inside_box(self.cell_center(x, y), area) {
                     cells.push((x, y));
                 }
             }
@@ -1419,6 +1480,44 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::InvalidSectionConnection)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_unreachable_section_floor() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.pickups.clear();
+        level.terminals.clear();
+        level.objectives.clear();
+        level.exits[0].required_objectives.clear();
+        level.doors[0].clearance_id = "open".to_string();
+        level.doors[0].starts_locked = false;
+        level.walls.extend([
+            wall(-390.0, 100.0, 180.0, 24.0),
+            wall(-390.0, -100.0, 180.0, 24.0),
+            wall(-480.0, 0.0, 24.0, 224.0),
+            wall(-300.0, 0.0, 24.0, 224.0),
+        ]);
+        level.sections.push(SectionDefinition {
+            id: "sealed_lab".to_string(),
+            label: "Sealed Lab".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(-390.0, 0.0), Vec2::new(45.0, 55.0)),
+            kind: SectionKind::Lab,
+            connects: vec!["main_corridor".to_string()],
+            access: SectionAccessKind::Door,
+        });
+        level.sections.push(SectionDefinition {
+            id: "main_corridor".to_string(),
+            label: "Main Corridor".to_string(),
+            bounds: AxisAlignedBox::new(Vec2::new(120.0, -70.0), Vec2::new(260.0, 145.0)),
+            kind: SectionKind::Corridor,
+            connects: vec!["sealed_lab".to_string()],
+            access: SectionAccessKind::Open,
+        });
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::DisconnectedSection)
         );
     }
 

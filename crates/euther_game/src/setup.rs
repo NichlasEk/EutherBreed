@@ -729,17 +729,61 @@ fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
             Transform::from_xyz(section.bounds.center.x, section.bounds.center.y, -8.5),
             LevelEntity,
         ));
+
+        spawn_section_edge_accent(commands, section.bounds, section.kind);
     }
 }
 
 fn section_tint(kind: SectionKind) -> Color {
     match kind {
-        SectionKind::Corridor => Color::srgba(0.04, 0.09, 0.11, 0.16),
-        SectionKind::Lab => Color::srgba(0.05, 0.22, 0.19, 0.18),
-        SectionKind::Triage => Color::srgba(0.18, 0.08, 0.12, 0.16),
-        SectionKind::Supply => Color::srgba(0.22, 0.15, 0.04, 0.18),
-        SectionKind::Lift => Color::srgba(0.04, 0.20, 0.24, 0.22),
-        SectionKind::Containment => Color::srgba(0.20, 0.04, 0.06, 0.16),
+        SectionKind::Corridor => Color::srgba(0.03, 0.08, 0.10, 0.20),
+        SectionKind::Lab => Color::srgba(0.04, 0.32, 0.27, 0.30),
+        SectionKind::Triage => Color::srgba(0.28, 0.10, 0.16, 0.28),
+        SectionKind::Supply => Color::srgba(0.34, 0.22, 0.05, 0.32),
+        SectionKind::Lift => Color::srgba(0.04, 0.30, 0.36, 0.34),
+        SectionKind::Containment => Color::srgba(0.32, 0.04, 0.08, 0.30),
+    }
+}
+
+fn spawn_section_edge_accent(commands: &mut Commands, bounds: AxisAlignedBox, kind: SectionKind) {
+    let color = section_edge_color(kind);
+    let size = bounds.half_extents * 2.0;
+    let line = 3.0;
+    let z = -8.35;
+    let horizontal_size = Vec2::new(size.x, line);
+    let vertical_size = Vec2::new(line, size.y);
+
+    for offset in [
+        Vec2::new(0.0, bounds.half_extents.y),
+        Vec2::new(0.0, -bounds.half_extents.y),
+    ] {
+        commands.spawn((
+            Sprite::from_color(color, horizontal_size),
+            Transform::from_xyz(bounds.center.x + offset.x, bounds.center.y + offset.y, z),
+            LevelEntity,
+        ));
+    }
+
+    for offset in [
+        Vec2::new(bounds.half_extents.x, 0.0),
+        Vec2::new(-bounds.half_extents.x, 0.0),
+    ] {
+        commands.spawn((
+            Sprite::from_color(color, vertical_size),
+            Transform::from_xyz(bounds.center.x + offset.x, bounds.center.y + offset.y, z),
+            LevelEntity,
+        ));
+    }
+}
+
+fn section_edge_color(kind: SectionKind) -> Color {
+    match kind {
+        SectionKind::Corridor => Color::srgba(0.16, 0.34, 0.38, 0.18),
+        SectionKind::Lab => Color::srgba(0.18, 0.95, 0.82, 0.32),
+        SectionKind::Triage => Color::srgba(0.95, 0.28, 0.42, 0.28),
+        SectionKind::Supply => Color::srgba(1.00, 0.62, 0.16, 0.34),
+        SectionKind::Lift => Color::srgba(0.16, 0.86, 1.0, 0.34),
+        SectionKind::Containment => Color::srgba(1.0, 0.16, 0.24, 0.30),
     }
 }
 
@@ -1082,6 +1126,7 @@ fn spawn_door(
     kind: DoorKind,
     required_objectives: Vec<String>,
 ) {
+    let visual_size = if opened { opened_door_size(size) } else { size };
     let color = if opened {
         door_open_color(kind)
     } else if locked {
@@ -1091,7 +1136,7 @@ fn spawn_door(
     };
 
     let mut entity = commands.spawn((
-        image_sprite(asset_server, door_sprite_path(kind), size, color),
+        image_sprite(asset_server, door_sprite_path(kind), visual_size, color),
         Transform::from_xyz(center.x, center.y, -3.0),
         Door {
             id,
@@ -1108,6 +1153,14 @@ fn spawn_door(
         entity.insert(Wall {
             half_extents: size * 0.5,
         });
+    }
+}
+
+fn opened_door_size(size: Vec2) -> Vec2 {
+    if size.x >= size.y {
+        Vec2::new(8.0, size.y.max(18.0))
+    } else {
+        Vec2::new(size.x.max(18.0), 8.0)
     }
 }
 

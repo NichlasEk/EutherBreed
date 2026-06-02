@@ -229,11 +229,13 @@ fn validate_content() {
                 )
             })
             .count();
+        let reachable_sections = level.reachable_section_count();
         println!(
-            "level: {} walls={} sections={} section_links={} locked_sections={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={} transitions={}",
+            "level: {} walls={} sections={} reachable_sections={} section_links={} locked_sections={} contaminants={} pickups={} doors={} terminals={} objectives={} exits={} transitions={}",
             level.name,
             level.walls.len(),
             level.sections.len(),
+            reachable_sections,
             section_links,
             locked_sections,
             level.contaminants.len(),
