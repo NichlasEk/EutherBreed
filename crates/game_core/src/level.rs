@@ -213,6 +213,10 @@ impl LevelDefinition {
             {
                 return Err(LevelValidationError::UnreachableClearance);
             }
+
+            if !door_has_matching_wall(door, &self.walls) {
+                return Err(LevelValidationError::InvalidDoorPlacement);
+            }
         }
 
         let mut terminal_ids = HashSet::new();
@@ -421,6 +425,7 @@ pub enum LevelValidationError {
     UnknownObjectiveReference,
     UnreachableClearance,
     UnreachableObjective,
+    InvalidDoorPlacement,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -432,6 +437,25 @@ fn point_inside_box(point: Vec2, area: AxisAlignedBox) -> bool {
     let max = area.center + area.half_extents;
 
     point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
+}
+
+fn door_has_matching_wall(door: &DoorDefinition, walls: &[AxisAlignedBox]) -> bool {
+    let door_is_horizontal = door.half_extents.x >= door.half_extents.y;
+    let door_bounds = AxisAlignedBox::new(door.position, door.half_extents);
+
+    walls.iter().any(|wall| {
+        let wall_is_horizontal = wall.half_extents.x >= wall.half_extents.y;
+        wall_is_horizontal == door_is_horizontal && aabb_intersects(*wall, door_bounds)
+    })
+}
+
+fn aabb_intersects(a: AxisAlignedBox, b: AxisAlignedBox) -> bool {
+    let a_min = a.center - a.half_extents;
+    let a_max = a.center + a.half_extents;
+    let b_min = b.center - b.half_extents;
+    let b_max = b.center + b.half_extents;
+
+    a_min.x <= b_max.x && a_max.x >= b_min.x && a_min.y <= b_max.y && a_max.y >= b_min.y
 }
 
 #[cfg(test)]
@@ -557,6 +581,17 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::UnreachableObjective)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_door_with_wrong_wall_orientation() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.doors[0].half_extents = Vec2::new(13.0, 32.0);
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidDoorPlacement)
         );
     }
 

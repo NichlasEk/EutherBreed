@@ -93,7 +93,7 @@
         (
             id: "spine_supply_bulkhead",
             position: (-600.0, -168.0),
-            half_extents: (34.0, 10.0),
+            half_extents: (10.0, 34.0),
             clearance_id: "open",
             starts_locked: false,
             kind: Bulkhead,
@@ -101,7 +101,7 @@
         (
             id: "spine_scan_bulkhead",
             position: (-300.0, -120.0),
-            half_extents: (10.0, 34.0),
+            half_extents: (34.0, 10.0),
             clearance_id: "open",
             starts_locked: false,
             kind: Bulkhead,
@@ -135,7 +135,7 @@
         ),
         (
             id: "spine_exit_bulkhead",
-            position: (585.0, -118.0),
+            position: (585.0, -260.0),
             half_extents: (10.0, 34.0),
             clearance_id: "open",
             starts_locked: false,
