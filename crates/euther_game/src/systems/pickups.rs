@@ -342,6 +342,7 @@ fn door_open_color(kind: DoorKind) -> Color {
 }
 
 pub fn report_exit_overlap(
+    mut commands: Commands,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     exit_query: Query<(&Transform, &ExitZone)>,
     level_state: Res<LocalLevelState>,
@@ -369,6 +370,8 @@ pub fn report_exit_overlap(
                         target: exit.target.clone(),
                         entry_id: exit.entry_id.clone(),
                     });
+                    spawn_exit_transit_effect(&mut commands, transform.translation.xy());
+                    notice.show("Transit engaged", 0.8);
                     info!(
                         "exit target={} entry={} is ready",
                         exit.target, exit.entry_id
@@ -384,6 +387,15 @@ pub fn report_exit_overlap(
             }
         }
     }
+}
+
+fn spawn_exit_transit_effect(commands: &mut Commands, position: Vec2) {
+    commands.spawn((
+        Sprite::from_color(Color::srgba(0.18, 1.0, 0.92, 0.60), Vec2::new(66.0, 116.0)),
+        Transform::from_xyz(position.x, position.y, 7.0),
+        crate::components::EffectLifetime(Timer::from_seconds(0.32, TimerMode::Once)),
+        LevelEntity,
+    ));
 }
 
 fn point_inside_expanded_box(point: Vec2, area: AxisAlignedBox, expansion: f32) -> bool {

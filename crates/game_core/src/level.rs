@@ -118,6 +118,8 @@ pub struct TerminalDefinition {
     pub position: Vec2,
     pub kind: TerminalKind,
     pub objective_id: Option<String>,
+    #[serde(default)]
+    pub actions: Vec<TerminalAction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -125,6 +127,15 @@ pub enum TerminalKind {
     LabAnalyzer,
     ShipLog,
     SupplyConsole,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum TerminalAction {
+    CompleteObjective(String),
+    AddAmmo(i32),
+    Heal(i32),
+    AcquireAreaScan,
+    SetSpawnInterval(f32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -237,6 +248,26 @@ impl LevelDefinition {
 
             if let Some(objective_id) = &terminal.objective_id {
                 objective_completers.insert(objective_id.clone());
+            }
+
+            for action in &terminal.actions {
+                match action {
+                    TerminalAction::CompleteObjective(objective_id) => {
+                        if objective_id.trim().is_empty() {
+                            return Err(LevelValidationError::InvalidObjective);
+                        }
+                        objective_completers.insert(objective_id.clone());
+                    }
+                    TerminalAction::AddAmmo(amount) | TerminalAction::Heal(amount)
+                        if *amount <= 0 =>
+                    {
+                        return Err(LevelValidationError::InvalidTerminalAction);
+                    }
+                    TerminalAction::SetSpawnInterval(seconds) if *seconds <= 0.0 => {
+                        return Err(LevelValidationError::InvalidTerminalAction);
+                    }
+                    _ => {}
+                }
             }
         }
 
@@ -386,6 +417,7 @@ impl LevelDefinition {
                 position: Vec2::new(360.0, -96.0),
                 kind: TerminalKind::LabAnalyzer,
                 objective_id: Some("analyze_contaminant_sample".to_string()),
+                actions: vec![],
             }],
             objectives: vec![ObjectiveDefinition {
                 id: "analyze_contaminant_sample".to_string(),
@@ -436,6 +468,7 @@ pub enum LevelValidationError {
     InvalidDoorPlacement,
     BlockedDoorApproach,
     InvalidDecorPlacement,
+    InvalidTerminalAction,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -696,6 +729,28 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::InvalidDecorPlacement)
+        );
+    }
+
+    #[test]
+    fn validation_accepts_terminal_complete_objective_action() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.terminals[0].objective_id = None;
+        level.terminals[0].actions = vec![TerminalAction::CompleteObjective(
+            "analyze_contaminant_sample".to_string(),
+        )];
+
+        assert_eq!(level.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validation_rejects_invalid_terminal_action_amount() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.terminals[0].actions = vec![TerminalAction::AddAmmo(0)];
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidTerminalAction)
         );
     }
 
