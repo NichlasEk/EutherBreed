@@ -2,14 +2,14 @@ use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 use game_core::{
     AxisAlignedBox, DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition,
-    PickupKind, TerminalKind,
+    PickupKind, TerminalKind, TransitionKind,
 };
 use std::time::Duration;
 
 use crate::components::{
     Apothecary, ApothecaryAnimation, BioText, Contaminant, ContaminantAnimation, Door, ExitZone,
     HudGaugeKind, HudGaugePip, KeysText, LevelEntity, NoticeText, ObjectiveText, Pickup,
-    PromptText, SectionText, Terminal, Wall,
+    PromptText, SectionText, Terminal, TransitionZone, Wall,
 };
 use crate::resources::{
     CampaignRuntime, ContaminantSpawnTimer, CurrentLevelMap, LevelRuntime, LocalLevelState,
@@ -544,6 +544,32 @@ pub fn spawn_level(
                 entry_id: exit.entry_id.clone(),
                 required_objectives: exit.required_objectives.clone(),
                 half_extents: exit.half_extents,
+            },
+            LevelEntity,
+        ));
+    }
+
+    for transition in &level.transitions {
+        let color = match transition.kind {
+            TransitionKind::Lift => Color::srgba(0.74, 0.98, 1.0, 0.72),
+            TransitionKind::Teleporter => Color::srgba(0.18, 1.0, 0.88, 0.90),
+        };
+        commands.spawn((
+            image_sprite(
+                asset_server,
+                "sprites/biomech/exit_marker.png",
+                transition.half_extents * 2.0,
+                color,
+            ),
+            Transform::from_xyz(transition.position.x, transition.position.y, 2.5),
+            TransitionZone {
+                id: transition.id.clone(),
+                target: transition.target.clone(),
+                entry_id: transition.entry_id.clone(),
+                kind: transition.kind,
+                required_objectives: transition.required_objectives.clone(),
+                required_clearance: transition.required_clearance.clone(),
+                half_extents: transition.half_extents,
             },
             LevelEntity,
         ));

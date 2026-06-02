@@ -22,6 +22,8 @@ pub struct LevelDefinition {
     pub entry_points: Vec<LevelEntryPoint>,
     pub exits: Vec<LevelExit>,
     #[serde(default)]
+    pub transitions: Vec<LevelTransition>,
+    #[serde(default)]
     pub spawn_points: Vec<Vec2>,
     #[serde(default)]
     pub spawn_interval_seconds: Option<f32>,
@@ -56,6 +58,28 @@ pub struct LevelExit {
     pub target: String,
     pub entry_id: String,
     pub required_objectives: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct LevelTransition {
+    pub id: String,
+    pub position: Vec2,
+    pub half_extents: Vec2,
+    pub target: String,
+    pub entry_id: String,
+    #[serde(default)]
+    pub kind: TransitionKind,
+    #[serde(default)]
+    pub required_objectives: Vec<String>,
+    #[serde(default)]
+    pub required_clearance: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum TransitionKind {
+    #[default]
+    Lift,
+    Teleporter,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -335,6 +359,53 @@ impl LevelDefinition {
             }
         }
 
+        let mut transition_ids = HashSet::new();
+        for transition in &self.transitions {
+            if transition.id.trim().is_empty() || !transition_ids.insert(transition.id.clone()) {
+                return Err(LevelValidationError::InvalidEntityId);
+            }
+
+            if transition.target.trim().is_empty() || transition.entry_id.trim().is_empty() {
+                return Err(LevelValidationError::InvalidTransition);
+            }
+
+            if matches!(transition.required_clearance, Some(ref clearance_id) if clearance_id.trim().is_empty())
+            {
+                return Err(LevelValidationError::InvalidClearanceId);
+            }
+
+            if let Some(clearance_id) = &transition.required_clearance {
+                if clearance_id != "open" && !available_clearances.contains(clearance_id) {
+                    return Err(LevelValidationError::UnreachableClearance);
+                }
+            }
+
+            if transition
+                .required_objectives
+                .iter()
+                .any(|objective_id| objective_id.trim().is_empty())
+            {
+                return Err(LevelValidationError::InvalidObjective);
+            }
+
+            if transition
+                .required_objectives
+                .iter()
+                .any(|objective_id| !objective_ids.contains(objective_id))
+            {
+                return Err(LevelValidationError::UnknownObjectiveReference);
+            }
+
+            if !point_inside_box(transition.position, self.bounds)
+                || self
+                    .walls
+                    .iter()
+                    .any(|wall| point_inside_box(transition.position, *wall))
+            {
+                return Err(LevelValidationError::InvalidTransition);
+            }
+        }
+
         for door in &self.doors {
             if door
                 .required_objectives
@@ -436,6 +507,7 @@ impl LevelDefinition {
                 entry_id: "from_quarantine_ward".to_string(),
                 required_objectives: vec!["analyze_contaminant_sample".to_string()],
             }],
+            transitions: vec![],
             spawn_points: vec![Vec2::new(-405.0, 205.0), Vec2::new(405.0, -205.0)],
             spawn_interval_seconds: Some(4.5),
         }
@@ -469,6 +541,7 @@ pub enum LevelValidationError {
     BlockedDoorApproach,
     InvalidDecorPlacement,
     InvalidTerminalAction,
+    InvalidTransition,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -557,6 +630,9 @@ fn decor_blocks_interaction_space(decor: &DecorDefinition, level: &LevelDefiniti
         decor.position.distance(door.position) <= DECOR_BLOCKING_RADIUS + DOOR_CLEARANCE_RADIUS
     }) || level.exits.iter().any(|exit| {
         decor.position.distance(exit.position) <= DECOR_BLOCKING_RADIUS + EXIT_CLEARANCE_RADIUS
+    }) || level.transitions.iter().any(|transition| {
+        decor.position.distance(transition.position)
+            <= DECOR_BLOCKING_RADIUS + EXIT_CLEARANCE_RADIUS
     }) || level.entry_points.iter().any(|entry| {
         decor.position.distance(entry.position) <= DECOR_BLOCKING_RADIUS + ENTRY_CLEARANCE_RADIUS
     }) || level.terminals.iter().any(|terminal| {

@@ -89,6 +89,17 @@ pub struct ExitZone {
 }
 
 #[derive(Component)]
+pub struct TransitionZone {
+    pub id: String,
+    pub target: String,
+    pub entry_id: String,
+    pub kind: game_core::TransitionKind,
+    pub required_objectives: Vec<String>,
+    pub required_clearance: Option<String>,
+    pub half_extents: Vec2,
+}
+
+#[derive(Component)]
 pub struct Door {
     pub id: String,
     pub clearance_id: String,

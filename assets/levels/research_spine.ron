@@ -342,6 +342,20 @@
             required_objectives: [],
         ),
     ],
+    transitions: [
+        (
+            id: "spine_power_lift",
+            position: (270.0, -18.0),
+            half_extents: (38.0, 38.0),
+            target: "triage_vault",
+            entry_id: "from_research_spine",
+            kind: Lift,
+            required_objectives: [
+                "route_lift_power",
+            ],
+            required_clearance: Some("lab_lift"),
+        ),
+    ],
     spawn_points: [
         (-660.0, 360.0),
         (-80.0, 355.0),

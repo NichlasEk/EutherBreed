@@ -1,9 +1,9 @@
 use bevy::prelude::*;
-use game_core::{ExitReadiness, TerminalKind};
+use game_core::{ExitReadiness, TerminalKind, TransitionKind};
 
 use crate::components::{
     Apothecary, BioText, Door, DoorOpening, ExitZone, HudGaugeKind, HudGaugePip, KeysText,
-    NoticeText, ObjectiveText, PromptText, SectionText, Terminal,
+    NoticeText, ObjectiveText, PromptText, SectionText, Terminal, TransitionZone,
 };
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, CurrentLevelMap, GameNotice, LevelRuntime, LocalLevelState,
@@ -135,6 +135,7 @@ pub fn update_prompt_text(
     terminal_query: Query<(&Transform, &Terminal)>,
     door_query: Query<(&Transform, &Door, Option<&DoorOpening>)>,
     exit_query: Query<(&Transform, &ExitZone)>,
+    transition_query: Query<(&Transform, &TransitionZone)>,
     level_state: Res<LocalLevelState>,
     mut text_query: Query<&mut Text, With<PromptText>>,
 ) {
@@ -147,6 +148,7 @@ pub fn update_prompt_text(
                 &terminal_query,
                 &door_query,
                 &exit_query,
+                &transition_query,
                 &level_state,
             )
         })
@@ -162,6 +164,7 @@ fn prompt_for_position(
     terminal_query: &Query<(&Transform, &Terminal)>,
     door_query: &Query<(&Transform, &Door, Option<&DoorOpening>)>,
     exit_query: &Query<(&Transform, &ExitZone)>,
+    transition_query: &Query<(&Transform, &TransitionZone)>,
     level_state: &LocalLevelState,
 ) -> Option<String> {
     for (transform, terminal) in terminal_query {
@@ -206,6 +209,36 @@ fn prompt_for_position(
                     }
                 },
             );
+        }
+    }
+
+    for (transform, transition) in transition_query {
+        if apothecary_position.distance(transform.translation.xy()) <= PROMPT_RADIUS {
+            let objective_ready = matches!(
+                level_state
+                    .0
+                    .objectives
+                    .exit_readiness(&transition.required_objectives),
+                ExitReadiness::Ready
+            );
+            let clearance_ready =
+                transition
+                    .required_clearance
+                    .as_deref()
+                    .is_none_or(|clearance_id| {
+                        clearance_id == "open" || level_state.0.has_clearance(clearance_id)
+                    });
+            if !objective_ready || !clearance_ready {
+                return Some(match transition.kind {
+                    TransitionKind::Lift => "LIFT <locked - route incomplete>".to_string(),
+                    TransitionKind::Teleporter => "TRANSIT <locked - route incomplete>".to_string(),
+                });
+            }
+
+            return Some(match transition.kind {
+                TransitionKind::Lift => "PRESS E <use lift>".to_string(),
+                TransitionKind::Teleporter => "PRESS E <use teleporter>".to_string(),
+            });
         }
     }
 

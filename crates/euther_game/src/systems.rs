@@ -7,6 +7,7 @@ pub mod pickups;
 pub mod progression;
 pub mod save;
 pub mod terminals;
+pub mod transitions;
 pub mod ui;
 
 pub use apothecary::{
@@ -24,6 +25,7 @@ pub use pickups::{collect_pickups, report_exit_overlap, unlock_doors, update_doo
 pub use progression::{restart_current_level_on_death, update_campaign_progress};
 pub use save::{apply_save_to_runtime, quick_load_on_key, quick_save_on_key};
 pub use terminals::interact_with_terminals;
+pub use transitions::{trigger_transition_zones, update_pending_transition};
 pub use ui::{
     update_notice_text, update_objective_text, update_prompt_text, update_section_text,
     update_status_text,

@@ -29,6 +29,17 @@ pub struct PendingExit {
     pub entry_id: String,
 }
 
+#[derive(Resource, Default)]
+pub struct PendingTransition {
+    pub travel: Option<TransitionTravel>,
+}
+
+pub struct TransitionTravel {
+    pub target: String,
+    pub entry_id: String,
+    pub timer: Timer,
+}
+
 #[derive(Resource)]
 pub struct CampaignRuntime {
     pub definition: CampaignDefinition,

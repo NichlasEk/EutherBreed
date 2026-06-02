@@ -7,7 +7,7 @@ mod systems;
 use bevy::prelude::*;
 use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
-    GameNotice, LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
+    GameNotice, LevelRuntime, LocalLevelState, PendingTransition, PersistentLevelStates, SaveSlot,
 };
 use setup::{apothecary_spawn_position, setup};
 use systems::{
@@ -16,10 +16,10 @@ use systems::{
     move_projectiles, quick_load_on_key, quick_save_on_key, quit_on_escape,
     render_map_overlay_on_shift, report_exit_overlap, resolve_contaminant_contact,
     resolve_projectile_hits, restart_current_level_on_death, spawn_contaminants,
-    sync_camera_to_level, toggle_fullscreen_on_f11, unlock_doors, update_campaign_progress,
-    update_contaminant_hit_flash, update_door_openings, update_effect_lifetimes,
-    update_notice_text, update_objective_text, update_prompt_text, update_section_text,
-    update_status_text,
+    sync_camera_to_level, toggle_fullscreen_on_f11, trigger_transition_zones, unlock_doors,
+    update_campaign_progress, update_contaminant_hit_flash, update_door_openings,
+    update_effect_lifetimes, update_notice_text, update_objective_text, update_pending_transition,
+    update_prompt_text, update_section_text, update_status_text,
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
@@ -81,6 +81,7 @@ fn run_game() {
         .insert_resource(LocalLevelState::default())
         .insert_resource(PersistentLevelStates::default())
         .insert_resource(CampaignSignal::default())
+        .insert_resource(PendingTransition::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
         .insert_resource(CurrentLevelMap::default())
@@ -125,6 +126,8 @@ fn run_game() {
                 unlock_doors,
                 update_door_openings,
                 interact_with_terminals,
+                trigger_transition_zones,
+                update_pending_transition,
                 report_exit_overlap,
                 update_campaign_progress,
                 restart_current_level_on_death,
@@ -149,6 +152,7 @@ fn run_headless_smoke() {
         .insert_resource(LocalLevelState::default())
         .insert_resource(PersistentLevelStates::default())
         .insert_resource(CampaignSignal::default())
+        .insert_resource(PendingTransition::default())
         .insert_resource(initial_campaign_runtime())
         .insert_resource(initial_level_runtime())
         .insert_resource(CurrentLevelMap::default())

@@ -57,24 +57,11 @@ impl CampaignDefinition {
 
         for level in &levels {
             for exit in &level.exits {
-                if !ids.contains(&exit.target) {
-                    return Err(CampaignValidationError::UnknownExitTarget);
-                }
+                validate_route(&levels, &ids, &exit.target, &exit.entry_id)?;
+            }
 
-                let Some(target_level) = levels
-                    .iter()
-                    .find(|candidate| candidate.name == exit.target)
-                else {
-                    return Err(CampaignValidationError::UnknownExitTarget);
-                };
-
-                if !target_level
-                    .entry_points
-                    .iter()
-                    .any(|entry_point| entry_point.id == exit.entry_id)
-                {
-                    return Err(CampaignValidationError::UnknownExitEntryPoint);
-                }
+            for transition in &level.transitions {
+                validate_route(&levels, &ids, &transition.target, &transition.entry_id)?;
             }
         }
 
@@ -145,6 +132,31 @@ impl CampaignDefinition {
 
         Ok(ids)
     }
+}
+
+fn validate_route(
+    levels: &[&LevelDefinition],
+    ids: &HashSet<String>,
+    target: &str,
+    entry_id: &str,
+) -> Result<(), CampaignValidationError> {
+    if !ids.contains(target) {
+        return Err(CampaignValidationError::UnknownExitTarget);
+    }
+
+    let Some(target_level) = levels.iter().find(|candidate| candidate.name == target) else {
+        return Err(CampaignValidationError::UnknownExitTarget);
+    };
+
+    if !target_level
+        .entry_points
+        .iter()
+        .any(|entry_point| entry_point.id == entry_id)
+    {
+        return Err(CampaignValidationError::UnknownExitEntryPoint);
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
