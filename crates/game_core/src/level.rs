@@ -430,6 +430,10 @@ impl LevelDefinition {
             return Err(LevelValidationError::InvalidSpawnInterval);
         }
 
+        if !level_has_reachable_critical_points(self) {
+            return Err(LevelValidationError::UnreachableInteraction);
+        }
+
         Ok(())
     }
 
@@ -542,6 +546,7 @@ pub enum LevelValidationError {
     InvalidDecorPlacement,
     InvalidTerminalAction,
     InvalidTransition,
+    UnreachableInteraction,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -641,6 +646,208 @@ fn decor_blocks_interaction_space(decor: &DecorDefinition, level: &LevelDefiniti
     }) || level.pickups.iter().any(|pickup| {
         decor.position.distance(pickup.position) <= DECOR_BLOCKING_RADIUS + PICKUP_CLEARANCE_RADIUS
     })
+}
+
+fn level_has_reachable_critical_points(level: &LevelDefinition) -> bool {
+    let path_map = PathMap::new(level);
+    let Some(reachable) = path_map.reachable_from(level.apothecary_start) else {
+        return false;
+    };
+
+    level
+        .entry_points
+        .iter()
+        .all(|entry| path_map.position_reachable(entry.position, 48.0, &reachable))
+        && level
+            .pickups
+            .iter()
+            .all(|pickup| path_map.position_reachable(pickup.position, 48.0, &reachable))
+        && level
+            .terminals
+            .iter()
+            .all(|terminal| path_map.position_reachable(terminal.position, 76.0, &reachable))
+        && level.exits.iter().all(|exit| {
+            path_map.position_reachable(
+                exit.position,
+                exit.half_extents.length() + 36.0,
+                &reachable,
+            )
+        })
+        && level.transitions.iter().all(|transition| {
+            path_map.position_reachable(
+                transition.position,
+                transition.half_extents.length() + 36.0,
+                &reachable,
+            )
+        })
+}
+
+struct PathMap<'a> {
+    level: &'a LevelDefinition,
+    origin: Vec2,
+    width: usize,
+    height: usize,
+    cell_size: f32,
+    passable: Vec<bool>,
+}
+
+impl<'a> PathMap<'a> {
+    fn new(level: &'a LevelDefinition) -> Self {
+        const CELL_SIZE: f32 = 24.0;
+
+        let min = level.bounds.center - level.bounds.half_extents;
+        let size = level.bounds.half_extents * 2.0;
+        let width = (size.x / CELL_SIZE).ceil().max(1.0) as usize;
+        let height = (size.y / CELL_SIZE).ceil().max(1.0) as usize;
+        let mut path_map = Self {
+            level,
+            origin: min,
+            width,
+            height,
+            cell_size: CELL_SIZE,
+            passable: vec![false; width * height],
+        };
+
+        for y in 0..height {
+            for x in 0..width {
+                let position = path_map.cell_center(x, y);
+                let is_passable =
+                    point_inside_box(position, level.bounds) && !path_map.point_blocked(position);
+                let index = path_map.index(x, y);
+                path_map.passable[index] = is_passable;
+            }
+        }
+
+        path_map
+    }
+
+    fn reachable_from(&self, start: Vec2) -> Option<Vec<bool>> {
+        let start = self.nearest_passable_cell(start, 64.0)?;
+        let mut reachable = vec![false; self.passable.len()];
+        let mut frontier = vec![start];
+        reachable[self.index(start.0, start.1)] = true;
+
+        while let Some((x, y)) = frontier.pop() {
+            for (next_x, next_y) in self.neighbor_cells(x, y) {
+                let index = self.index(next_x, next_y);
+                if !self.passable[index] || reachable[index] {
+                    continue;
+                }
+
+                reachable[index] = true;
+                frontier.push((next_x, next_y));
+            }
+        }
+
+        Some(reachable)
+    }
+
+    fn position_reachable(&self, position: Vec2, radius: f32, reachable: &[bool]) -> bool {
+        self.cells_within_radius(position, radius)
+            .into_iter()
+            .any(|(x, y)| reachable[self.index(x, y)])
+    }
+
+    fn nearest_passable_cell(&self, position: Vec2, radius: f32) -> Option<(usize, usize)> {
+        self.cells_within_radius(position, radius)
+            .into_iter()
+            .find(|(x, y)| self.passable[self.index(*x, *y)])
+    }
+
+    fn cells_within_radius(&self, position: Vec2, radius: f32) -> Vec<(usize, usize)> {
+        let min = position - Vec2::splat(radius.max(self.cell_size));
+        let max = position + Vec2::splat(radius.max(self.cell_size));
+        let min_cell = self.cell_for_position(min);
+        let max_cell = self.cell_for_position(max);
+        let mut cells = Vec::new();
+
+        for y in min_cell.1..=max_cell.1 {
+            for x in min_cell.0..=max_cell.0 {
+                if self.cell_center(x, y).distance(position) <= radius + self.cell_size {
+                    cells.push((x, y));
+                }
+            }
+        }
+
+        cells
+    }
+
+    fn neighbor_cells(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
+        let mut cells = Vec::with_capacity(8);
+        for y_offset in -1isize..=1 {
+            for x_offset in -1isize..=1 {
+                if x_offset == 0 && y_offset == 0 {
+                    continue;
+                }
+
+                let next_x = x as isize + x_offset;
+                let next_y = y as isize + y_offset;
+                if next_x < 0
+                    || next_y < 0
+                    || next_x >= self.width as isize
+                    || next_y >= self.height as isize
+                {
+                    continue;
+                }
+                cells.push((next_x as usize, next_y as usize));
+            }
+        }
+        cells
+    }
+
+    fn point_blocked(&self, point: Vec2) -> bool {
+        self.level
+            .walls
+            .iter()
+            .any(|wall| point_inside_box(point, *wall) && !self.point_inside_door_opening(point))
+            || self.level.decor.iter().any(|decor| {
+                decor.blocking
+                    && point.distance(decor.position) <= blocking_decor_radius(decor.kind)
+            })
+    }
+
+    fn point_inside_door_opening(&self, point: Vec2) -> bool {
+        self.level.doors.iter().any(|door| {
+            let opening = AxisAlignedBox::new(door.position, door.half_extents + Vec2::splat(8.0));
+            point_inside_box(point, opening)
+        })
+    }
+
+    fn cell_for_position(&self, position: Vec2) -> (usize, usize) {
+        let offset = position - self.origin;
+        let x = (offset.x / self.cell_size)
+            .floor()
+            .clamp(0.0, (self.width - 1) as f32) as usize;
+        let y = (offset.y / self.cell_size)
+            .floor()
+            .clamp(0.0, (self.height - 1) as f32) as usize;
+        (x, y)
+    }
+
+    fn cell_center(&self, x: usize, y: usize) -> Vec2 {
+        self.origin
+            + Vec2::new(
+                (x as f32 + 0.5) * self.cell_size,
+                (y as f32 + 0.5) * self.cell_size,
+            )
+    }
+
+    fn index(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
+    }
+}
+
+fn blocking_decor_radius(kind: DecorKind) -> f32 {
+    match kind {
+        DecorKind::LabTable | DecorKind::MedBed | DecorKind::BioTank => 48.0,
+        DecorKind::SupplyCrate | DecorKind::PipeCluster | DecorKind::CorpsePile => 34.0,
+        DecorKind::HazardFloor | DecorKind::FloorGrate => 24.0,
+        DecorKind::BloodDrops
+        | DecorKind::BloodSmear
+        | DecorKind::BloodPool
+        | DecorKind::AcidScorch
+        | DecorKind::CrackedPanel => 18.0,
+    }
 }
 
 #[cfg(test)]
@@ -827,6 +1034,34 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::InvalidTerminalAction)
+        );
+    }
+
+    #[test]
+    fn validation_accepts_reachable_transition() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.transitions.push(LevelTransition {
+            id: "ward_lift".to_string(),
+            position: Vec2::new(-310.0, -205.0),
+            half_extents: Vec2::new(32.0, 32.0),
+            target: "lab_access_corridor".to_string(),
+            entry_id: "from_quarantine_ward".to_string(),
+            kind: TransitionKind::Lift,
+            required_objectives: vec!["analyze_contaminant_sample".to_string()],
+            required_clearance: Some("quarantine_green".to_string()),
+        });
+
+        assert_eq!(level.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validation_rejects_unreachable_critical_points() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.walls.push(wall(150.0, 0.0, 24.0, 520.0));
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::UnreachableInteraction)
         );
     }
 
