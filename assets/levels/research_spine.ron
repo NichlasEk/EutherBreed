@@ -123,6 +123,14 @@
             kind: Bulkhead,
         ),
         (
+            id: "spine_mid_room_south_bulkhead",
+            position: (160.0, -118.0),
+            half_extents: (34.0, 10.0),
+            clearance_id: "open",
+            starts_locked: false,
+            kind: Bulkhead,
+        ),
+        (
             id: "spine_north_lab_east_bulkhead",
             position: (320.0, 230.0),
             half_extents: (34.0, 10.0),
