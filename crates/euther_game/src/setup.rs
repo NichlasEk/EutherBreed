@@ -20,7 +20,7 @@ const FLOOR_TILE_PATHS: [&str; 4] = [
     "sprites/biomech/tile_floor_biomech.png",
     "sprites/biomech/tile_floor_biomech_b.png",
     "sprites/biomech/tile_floor_biomech_c.png",
-    "sprites/biomech/tile_floor_biomech_d.png",
+    "sprites/biomech/v2_tile_floor_biomech_panel.png",
 ];
 const HUD_RAIL_TOP_PATH: &str = "sprites/ui/hud_rail_top.png";
 const HUD_RAIL_BOTTOM_PATH: &str = "sprites/ui/hud_rail_bottom.png";
@@ -731,154 +731,18 @@ fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
             LevelEntity,
         ));
 
-        spawn_section_floor_details(commands, section.bounds, section.kind);
         spawn_section_edge_accent(commands, section.bounds, section.kind);
     }
 }
 
 fn section_tint(kind: SectionKind) -> Color {
     match kind {
-        SectionKind::Corridor => Color::srgba(0.03, 0.08, 0.10, 0.20),
-        SectionKind::Lab => Color::srgba(0.04, 0.32, 0.27, 0.30),
-        SectionKind::Triage => Color::srgba(0.28, 0.10, 0.16, 0.28),
-        SectionKind::Supply => Color::srgba(0.34, 0.22, 0.05, 0.32),
-        SectionKind::Lift => Color::srgba(0.04, 0.30, 0.36, 0.34),
-        SectionKind::Containment => Color::srgba(0.32, 0.04, 0.08, 0.30),
-    }
-}
-
-fn spawn_section_floor_details(commands: &mut Commands, bounds: AxisAlignedBox, kind: SectionKind) {
-    match kind {
-        SectionKind::Corridor => spawn_section_stripes(
-            commands,
-            bounds,
-            Vec2::Y,
-            128.0,
-            2.0,
-            section_detail_color(kind),
-        ),
-        SectionKind::Lab => {
-            spawn_section_stripes(
-                commands,
-                bounds,
-                Vec2::X,
-                88.0,
-                2.0,
-                section_detail_color(kind),
-            );
-            spawn_section_stripes(
-                commands,
-                bounds,
-                Vec2::Y,
-                88.0,
-                2.0,
-                section_detail_color(kind).with_alpha(0.13),
-            );
-        }
-        SectionKind::Triage => spawn_section_cross_marks(commands, bounds, kind, 4),
-        SectionKind::Supply => spawn_section_cross_marks(commands, bounds, kind, 5),
-        SectionKind::Lift => {
-            spawn_section_stripes(
-                commands,
-                bounds,
-                Vec2::X,
-                52.0,
-                4.0,
-                section_detail_color(kind),
-            );
-            spawn_section_stripes(
-                commands,
-                bounds,
-                Vec2::Y,
-                70.0,
-                3.0,
-                Color::srgba(1.0, 0.72, 0.18, 0.18),
-            );
-        }
-        SectionKind::Containment => {
-            spawn_section_stripes(
-                commands,
-                bounds,
-                Vec2::X,
-                106.0,
-                3.0,
-                section_detail_color(kind),
-            );
-            spawn_section_cross_marks(commands, bounds, kind, 3);
-        }
-    }
-}
-
-fn spawn_section_stripes(
-    commands: &mut Commands,
-    bounds: AxisAlignedBox,
-    axis: Vec2,
-    spacing: f32,
-    thickness: f32,
-    color: Color,
-) {
-    let size = bounds.half_extents * 2.0;
-    let across = if axis == Vec2::X { size.y } else { size.x };
-    let count = (across / spacing).floor().max(1.0) as i32;
-    let z = -8.32;
-
-    for index in -count..=count {
-        let offset = index as f32 * spacing;
-        let position = if axis == Vec2::X {
-            bounds.center + Vec2::Y * offset
-        } else {
-            bounds.center + Vec2::X * offset
-        };
-        let stripe_size = if axis == Vec2::X {
-            Vec2::new(size.x * 0.92, thickness)
-        } else {
-            Vec2::new(thickness, size.y * 0.92)
-        };
-
-        commands.spawn((
-            Sprite::from_color(color, stripe_size),
-            Transform::from_xyz(position.x, position.y, z),
-            LevelEntity,
-        ));
-    }
-}
-
-fn spawn_section_cross_marks(
-    commands: &mut Commands,
-    bounds: AxisAlignedBox,
-    kind: SectionKind,
-    count: i32,
-) {
-    let color = section_detail_color(kind);
-    let z = -8.30;
-    let size = bounds.half_extents * 2.0;
-    let span = size.x.min(size.y) * 0.26;
-    let count = count.max(1);
-
-    for index in 0..count {
-        let phase = index as f32 / count as f32;
-        let x = bounds.center.x + (phase - 0.5) * size.x * 0.68;
-        let y = bounds.center.y + ((index * 37 % 100) as f32 / 100.0 - 0.5) * size.y * 0.58;
-        for rotation in [0.0, std::f32::consts::FRAC_PI_2] {
-            let mut transform = Transform::from_xyz(x, y, z);
-            transform.rotation = Quat::from_rotation_z(rotation + phase * 0.25);
-            commands.spawn((
-                Sprite::from_color(color, Vec2::new(span, 3.0)),
-                transform,
-                LevelEntity,
-            ));
-        }
-    }
-}
-
-fn section_detail_color(kind: SectionKind) -> Color {
-    match kind {
-        SectionKind::Corridor => Color::srgba(0.12, 0.36, 0.40, 0.12),
-        SectionKind::Lab => Color::srgba(0.14, 1.0, 0.88, 0.20),
-        SectionKind::Triage => Color::srgba(1.0, 0.28, 0.42, 0.20),
-        SectionKind::Supply => Color::srgba(1.0, 0.62, 0.12, 0.24),
-        SectionKind::Lift => Color::srgba(0.12, 0.90, 1.0, 0.24),
-        SectionKind::Containment => Color::srgba(1.0, 0.10, 0.18, 0.18),
+        SectionKind::Corridor => Color::srgba(0.03, 0.08, 0.10, 0.08),
+        SectionKind::Lab => Color::srgba(0.04, 0.24, 0.20, 0.12),
+        SectionKind::Triage => Color::srgba(0.22, 0.08, 0.14, 0.10),
+        SectionKind::Supply => Color::srgba(0.28, 0.17, 0.04, 0.12),
+        SectionKind::Lift => Color::srgba(0.04, 0.24, 0.30, 0.12),
+        SectionKind::Containment => Color::srgba(0.26, 0.03, 0.07, 0.12),
     }
 }
 
@@ -915,12 +779,12 @@ fn spawn_section_edge_accent(commands: &mut Commands, bounds: AxisAlignedBox, ki
 
 fn section_edge_color(kind: SectionKind) -> Color {
     match kind {
-        SectionKind::Corridor => Color::srgba(0.16, 0.34, 0.38, 0.18),
-        SectionKind::Lab => Color::srgba(0.18, 0.95, 0.82, 0.32),
-        SectionKind::Triage => Color::srgba(0.95, 0.28, 0.42, 0.28),
-        SectionKind::Supply => Color::srgba(1.00, 0.62, 0.16, 0.34),
-        SectionKind::Lift => Color::srgba(0.16, 0.86, 1.0, 0.34),
-        SectionKind::Containment => Color::srgba(1.0, 0.16, 0.24, 0.30),
+        SectionKind::Corridor => Color::srgba(0.16, 0.34, 0.38, 0.08),
+        SectionKind::Lab => Color::srgba(0.18, 0.95, 0.82, 0.14),
+        SectionKind::Triage => Color::srgba(0.95, 0.28, 0.42, 0.12),
+        SectionKind::Supply => Color::srgba(1.00, 0.62, 0.16, 0.14),
+        SectionKind::Lift => Color::srgba(0.16, 0.86, 1.0, 0.14),
+        SectionKind::Containment => Color::srgba(1.0, 0.16, 0.24, 0.12),
     }
 }
 
@@ -1183,19 +1047,19 @@ fn decor_visual(kind: DecorKind) -> (&'static str, Vec2, f32, Color) {
             Color::WHITE,
         ),
         DecorKind::BloodPool => (
-            "sprites/biomech/decor_blood_pool.png",
+            "sprites/biomech/v2_decor_blood_pool.png",
             Vec2::new(96.0, 72.0),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::AcidScorch => (
-            "sprites/biomech/decor_acid_scorch.png",
+            "sprites/biomech/v2_decor_acid_scorch.png",
             Vec2::new(90.0, 70.0),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::CrackedPanel => (
-            "sprites/biomech/decor_cracked_panel.png",
+            "sprites/biomech/v2_decor_cracked_panel.png",
             Vec2::new(84.0, 84.0),
             -1.0,
             Color::WHITE,
@@ -1207,43 +1071,43 @@ fn decor_visual(kind: DecorKind) -> (&'static str, Vec2, f32, Color) {
             Color::WHITE,
         ),
         DecorKind::MedBed => (
-            "sprites/biomech/decor_med_bed.png",
+            "sprites/biomech/v2_decor_med_bed.png",
             Vec2::new(70.0, 118.0),
             1.0,
             Color::WHITE,
         ),
         DecorKind::BioTank => (
-            "sprites/biomech/decor_bio_tank.png",
+            "sprites/biomech/v2_decor_bio_tank.png",
             Vec2::new(62.0, 96.0),
             1.0,
             Color::WHITE,
         ),
         DecorKind::SupplyCrate => (
-            "sprites/biomech/decor_supply_crate.png",
+            "sprites/biomech/v2_decor_supply_crate_small.png",
             Vec2::new(58.0, 48.0),
             1.0,
             Color::WHITE,
         ),
         DecorKind::PipeCluster => (
-            "sprites/biomech/decor_pipe_cluster.png",
+            "sprites/biomech/v2_decor_pipe_cluster.png",
             Vec2::new(116.0, 42.0),
             1.0,
             Color::WHITE,
         ),
         DecorKind::CorpsePile => (
-            "sprites/biomech/decor_corpse_pile.png",
+            "sprites/biomech/v2_decor_corpse_pile.png",
             Vec2::new(88.0, 74.0),
             1.0,
             Color::WHITE,
         ),
         DecorKind::FloorGrate => (
-            "sprites/biomech/decor_floor_grate.png",
+            "sprites/biomech/v2_decor_floor_grate.png",
             Vec2::new(112.0, 82.0),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::HazardFloor => (
-            "sprites/biomech/decor_hazard_floor.png",
+            "sprites/biomech/v2_decor_hazard_floor.png",
             Vec2::new(112.0, 38.0),
             -1.0,
             Color::WHITE,
@@ -1316,8 +1180,8 @@ fn door_requirements_met(
 
 fn door_sprite_path(kind: DoorKind) -> &'static str {
     match kind {
-        DoorKind::Bulkhead => "sprites/biomech/door_bulkhead.png",
-        DoorKind::EnergyBarrier => "sprites/biomech/door_energy_barrier.png",
+        DoorKind::Bulkhead => "sprites/biomech/v2_door_bulkhead.png",
+        DoorKind::EnergyBarrier => "sprites/biomech/v2_door_energy_barrier.png",
     }
 }
 
@@ -1354,9 +1218,9 @@ fn spawn_terminal(
     actions: Vec<game_core::LevelEvent>,
 ) {
     let (path, color) = match kind {
-        TerminalKind::LabAnalyzer => ("sprites/biomech/terminal_lab_analyzer.png", Color::WHITE),
+        TerminalKind::LabAnalyzer => ("sprites/biomech/v2_terminal_lab_analyzer.png", Color::WHITE),
         TerminalKind::ShipLog => (
-            "sprites/biomech/terminal_lab_analyzer.png",
+            "sprites/biomech/v2_terminal_lab_analyzer.png",
             Color::srgba(0.78, 0.88, 1.0, 1.0),
         ),
         TerminalKind::SupplyConsole => {
