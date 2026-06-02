@@ -18,9 +18,19 @@ pub struct LocalLevelState(pub LevelState);
 #[derive(Resource, Default)]
 pub struct PersistentLevelStates(pub HashMap<String, LevelState>);
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct CampaignSignal {
     pub pending_exit: Option<PendingExit>,
+    pub exit_lock_active: bool,
+}
+
+impl Default for CampaignSignal {
+    fn default() -> Self {
+        Self {
+            pending_exit: None,
+            exit_lock_active: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -88,6 +88,7 @@ pub fn update_campaign_progress(
         &level,
         &mut contaminant_timer,
     );
+    signal.exit_lock_active = true;
 
     let run_position =
         crate::setup::apothecary_spawn_position(&level, level_runtime.pending_entry_id.as_deref());

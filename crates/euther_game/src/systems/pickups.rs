@@ -354,6 +354,19 @@ pub fn report_exit_overlap(
     mut notice: ResMut<GameNotice>,
 ) {
     let apothecary_position = apothecary_query.translation.xy();
+    let overlapping_exit = exit_query.iter().any(|(transform, exit)| {
+        let exit_bounds = AxisAlignedBox::new(transform.translation.xy(), exit.half_extents);
+        point_inside_expanded_box(apothecary_position, exit_bounds, APOTHECARY_RADIUS)
+    });
+
+    if !overlapping_exit {
+        campaign_signal.exit_lock_active = false;
+        return;
+    }
+
+    if campaign_signal.exit_lock_active {
+        return;
+    }
 
     for (transform, exit) in &exit_query {
         let exit_bounds = AxisAlignedBox::new(transform.translation.xy(), exit.half_extents);
@@ -373,6 +386,7 @@ pub fn report_exit_overlap(
                         target: exit.target.clone(),
                         entry_id: exit.entry_id.clone(),
                     });
+                    campaign_signal.exit_lock_active = true;
                     spawn_exit_transit_effect(&mut commands, transform.translation.xy());
                     notice.show("Transit engaged", 0.8);
                     info!(
