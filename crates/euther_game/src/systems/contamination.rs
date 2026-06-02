@@ -8,6 +8,9 @@ use crate::setup::contaminant_animation;
 const APOTHECARY_RADIUS: f32 = 22.0;
 const CONTAMINANT_RADIUS: f32 = 18.0;
 const CONTAMINANT_SPEED: f32 = 92.0;
+const CONTAMINANT_PATROL_SPEED: f32 = 48.0;
+const CONTAMINANT_AGGRO_RADIUS: f32 = 270.0;
+const CONTAMINANT_RETURN_RADIUS: f32 = 88.0;
 const CONTAMINANT_WALK_PHASE_PER_UNIT: f32 = 0.22;
 const CONTAMINANT_WALK_WOBBLE: f32 = 0.13;
 const MAX_DYNAMIC_CONTAMINANTS: usize = 4;
@@ -55,6 +58,8 @@ pub fn spawn_contaminants(
             id: None,
             health: 2,
             hit_flash: Timer::from_seconds(0.0, TimerMode::Once),
+            home_position: position,
+            patrol_phase: position.x.mul_add(0.017, position.y * 0.011),
         },
         contaminant_animation(&asset_server),
         LevelEntity,
@@ -67,7 +72,12 @@ pub fn move_contaminants(
     apothecary_query: Single<&Transform, With<Apothecary>>,
     wall_query: Query<(&Transform, &Wall), Without<Contaminant>>,
     mut contaminant_query: Query<
-        (&mut Transform, &mut Sprite, &mut ContaminantAnimation),
+        (
+            &mut Transform,
+            &mut Sprite,
+            &mut Contaminant,
+            &mut ContaminantAnimation,
+        ),
         (With<Contaminant>, Without<Apothecary>),
     >,
 ) {
@@ -77,10 +87,24 @@ pub fn move_contaminants(
 
     let target = apothecary_query.translation.xy();
 
-    for (mut transform, mut sprite, mut animation) in &mut contaminant_query {
+    for (mut transform, mut sprite, mut contaminant, mut animation) in &mut contaminant_query {
         let current = transform.translation.xy();
-        let direction = (target - transform.translation.xy()).normalize_or_zero();
-        let delta = direction * CONTAMINANT_SPEED * time.delta_secs();
+        contaminant.patrol_phase += time.delta_secs();
+        let target_distance = current.distance(target);
+        let (direction, speed) = if target_distance <= CONTAMINANT_AGGRO_RADIUS {
+            ((target - current).normalize_or_zero(), CONTAMINANT_SPEED)
+        } else {
+            let patrol_target = contaminant.home_position
+                + Vec2::new(
+                    (contaminant.patrol_phase * 0.9).cos() * CONTAMINANT_RETURN_RADIUS,
+                    (contaminant.patrol_phase * 1.3).sin() * (CONTAMINANT_RETURN_RADIUS * 0.62),
+                );
+            (
+                (patrol_target - current).normalize_or_zero(),
+                CONTAMINANT_PATROL_SPEED,
+            )
+        };
+        let delta = direction * speed * time.delta_secs();
         let next = current + delta;
 
         if !circle_hits_any_wall(next, CONTAMINANT_RADIUS, &wall_query) {

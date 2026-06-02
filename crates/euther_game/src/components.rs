@@ -30,6 +30,8 @@ pub struct Contaminant {
     pub id: Option<String>,
     pub health: i32,
     pub hit_flash: Timer,
+    pub home_position: Vec2,
+    pub patrol_phase: f32,
 }
 
 #[derive(Component)]

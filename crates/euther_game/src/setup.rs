@@ -857,6 +857,8 @@ fn spawn_contaminant(
             id,
             health: 2,
             hit_flash: Timer::from_seconds(0.0, TimerMode::Once),
+            home_position: position,
+            patrol_phase: position.x.mul_add(0.017, position.y * 0.011),
         },
         contaminant_animation(asset_server),
         LevelEntity,
