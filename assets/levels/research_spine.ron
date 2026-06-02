@@ -187,14 +187,14 @@
             position: (-610.0, 352.0),
             kind: SupplyCrate,
             rotation_degrees: -12.0,
-            blocking: true,
+            blocking: false,
         ),
         (
             id: "spine_supply_crate_b",
             position: (-664.0, 284.0),
             kind: SupplyCrate,
             rotation_degrees: 18.0,
-            blocking: true,
+            blocking: false,
         ),
         (
             id: "spine_scan_room_grate",
@@ -222,14 +222,14 @@
             position: (292.0, 336.0),
             kind: LabTable,
             rotation_degrees: 0.0,
-            blocking: true,
+            blocking: false,
         ),
         (
             id: "spine_north_lab_tank",
             position: (388.0, 298.0),
             kind: BioTank,
             rotation_degrees: 0.0,
-            blocking: true,
+            blocking: false,
         ),
         (
             id: "spine_north_lab_hazard",
@@ -257,7 +257,7 @@
             position: (-374.0, -34.0),
             kind: CorpsePile,
             rotation_degrees: 28.0,
-            blocking: true,
+            blocking: false,
         ),
         (
             id: "spine_mid_blood_smear",
@@ -278,7 +278,7 @@
             position: (536.0, -264.0),
             kind: MedBed,
             rotation_degrees: 90.0,
-            blocking: true,
+            blocking: false,
         ),
         (
             id: "spine_containment_blood_pool",

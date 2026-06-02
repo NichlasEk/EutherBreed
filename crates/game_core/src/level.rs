@@ -265,6 +265,10 @@ impl LevelDefinition {
             if !point_inside_box(decor.position, self.bounds) {
                 return Err(LevelValidationError::DecorOutsideBounds);
             }
+
+            if decor.blocking && decor_blocks_interaction_space(decor, self) {
+                return Err(LevelValidationError::InvalidDecorPlacement);
+            }
         }
 
         let mut entry_ids = HashSet::new();
@@ -431,6 +435,7 @@ pub enum LevelValidationError {
     UnreachableObjective,
     InvalidDoorPlacement,
     BlockedDoorApproach,
+    InvalidDecorPlacement,
 }
 
 const fn wall(x: f32, y: f32, width: f32, height: f32) -> AxisAlignedBox {
@@ -505,6 +510,28 @@ fn aabb_intersects(a: AxisAlignedBox, b: AxisAlignedBox) -> bool {
     let b_max = b.center + b.half_extents;
 
     a_min.x <= b_max.x && a_max.x >= b_min.x && a_min.y <= b_max.y && a_max.y >= b_min.y
+}
+
+fn decor_blocks_interaction_space(decor: &DecorDefinition, level: &LevelDefinition) -> bool {
+    const DECOR_BLOCKING_RADIUS: f32 = 46.0;
+    const DOOR_CLEARANCE_RADIUS: f32 = 82.0;
+    const EXIT_CLEARANCE_RADIUS: f32 = 72.0;
+    const ENTRY_CLEARANCE_RADIUS: f32 = 72.0;
+    const TERMINAL_CLEARANCE_RADIUS: f32 = 76.0;
+    const PICKUP_CLEARANCE_RADIUS: f32 = 48.0;
+
+    level.doors.iter().any(|door| {
+        decor.position.distance(door.position) <= DECOR_BLOCKING_RADIUS + DOOR_CLEARANCE_RADIUS
+    }) || level.exits.iter().any(|exit| {
+        decor.position.distance(exit.position) <= DECOR_BLOCKING_RADIUS + EXIT_CLEARANCE_RADIUS
+    }) || level.entry_points.iter().any(|entry| {
+        decor.position.distance(entry.position) <= DECOR_BLOCKING_RADIUS + ENTRY_CLEARANCE_RADIUS
+    }) || level.terminals.iter().any(|terminal| {
+        decor.position.distance(terminal.position)
+            <= DECOR_BLOCKING_RADIUS + TERMINAL_CLEARANCE_RADIUS
+    }) || level.pickups.iter().any(|pickup| {
+        decor.position.distance(pickup.position) <= DECOR_BLOCKING_RADIUS + PICKUP_CLEARANCE_RADIUS
+    })
 }
 
 #[cfg(test)]
@@ -652,6 +679,23 @@ mod tests {
         assert_eq!(
             level.validate(),
             Err(LevelValidationError::BlockedDoorApproach)
+        );
+    }
+
+    #[test]
+    fn validation_rejects_blocking_decor_near_terminal() {
+        let mut level = LevelDefinition::prototype_quarantine_ward();
+        level.decor.push(DecorDefinition {
+            id: "bad_terminal_blocker".to_string(),
+            position: level.terminals[0].position + Vec2::new(24.0, 0.0),
+            kind: DecorKind::SupplyCrate,
+            rotation_degrees: 0.0,
+            blocking: true,
+        });
+
+        assert_eq!(
+            level.validate(),
+            Err(LevelValidationError::InvalidDecorPlacement)
         );
     }
 

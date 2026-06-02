@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use game_core::{ExitReadiness, TerminalKind};
 
 use crate::components::{
-    Apothecary, BioText, Door, ExitZone, HudGaugeKind, HudGaugePip, KeysText, NoticeText,
-    ObjectiveText, PromptText, SectionText, Terminal,
+    Apothecary, BioText, Door, DoorOpening, ExitZone, HudGaugeKind, HudGaugePip, KeysText,
+    NoticeText, ObjectiveText, PromptText, SectionText, Terminal,
 };
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, CurrentLevelMap, GameNotice, LevelRuntime, LocalLevelState,
@@ -133,7 +133,7 @@ pub fn update_objective_text(
 pub fn update_prompt_text(
     apothecary_query: Query<&Transform, With<Apothecary>>,
     terminal_query: Query<(&Transform, &Terminal)>,
-    door_query: Query<(&Transform, &Door)>,
+    door_query: Query<(&Transform, &Door, Option<&DoorOpening>)>,
     exit_query: Query<(&Transform, &ExitZone)>,
     level_state: Res<LocalLevelState>,
     mut text_query: Query<&mut Text, With<PromptText>>,
@@ -160,7 +160,7 @@ pub fn update_prompt_text(
 fn prompt_for_position(
     apothecary_position: Vec2,
     terminal_query: &Query<(&Transform, &Terminal)>,
-    door_query: &Query<(&Transform, &Door)>,
+    door_query: &Query<(&Transform, &Door, Option<&DoorOpening>)>,
     exit_query: &Query<(&Transform, &ExitZone)>,
     level_state: &LocalLevelState,
 ) -> Option<String> {
@@ -177,8 +177,11 @@ fn prompt_for_position(
         }
     }
 
-    for (transform, door) in door_query {
+    for (transform, door, opening) in door_query {
         if apothecary_position.distance(transform.translation.xy()) <= PROMPT_RADIUS {
+            if opening.is_some() {
+                return Some("DOOR <opening>".to_string());
+            }
             if door.opened {
                 return Some("DOOR <open>".to_string());
             }

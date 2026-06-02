@@ -13,7 +13,7 @@ use crate::resources::{
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
 const DOOR_OPEN_SECONDS: f32 = 0.42;
-const DOOR_TRIGGER_PADDING: f32 = 18.0;
+const DOOR_TRIGGER_PADDING: f32 = APOTHECARY_RADIUS + 24.0;
 
 pub fn collect_pickups(
     mut commands: Commands,
@@ -96,7 +96,6 @@ pub fn unlock_doors(
         }
 
         door.locked = false;
-        door.opened = true;
         level_state.0.unlock_door(door.id.clone());
         let door_size = sprite.custom_size.unwrap_or(Vec2::splat(32.0));
         spawn_door_opening_effects(
@@ -121,7 +120,7 @@ pub fn update_door_openings(
     mut commands: Commands,
     time: Res<Time>,
     mut door_query: Query<
-        (Entity, &Door, &mut DoorOpening, &mut Sprite),
+        (Entity, &mut Door, &mut DoorOpening, &mut Sprite),
         Without<DoorOpeningEffect>,
     >,
     mut effect_query: Query<
@@ -129,7 +128,7 @@ pub fn update_door_openings(
         Without<DoorOpening>,
     >,
 ) {
-    for (entity, door, mut opening, mut sprite) in &mut door_query {
+    for (entity, mut door, mut opening, mut sprite) in &mut door_query {
         opening.timer.tick(time.delta());
         let progress = opening.timer.fraction();
         let eased = ease_out_cubic(progress);
@@ -146,6 +145,7 @@ pub fn update_door_openings(
         sprite.color = door_opening_color(door.kind, eased);
 
         if opening.timer.is_finished() {
+            door.opened = true;
             sprite.custom_size = Some(opening.original_size);
             sprite.color = door_open_color(door.kind);
             commands.entity(entity).remove::<Wall>();
