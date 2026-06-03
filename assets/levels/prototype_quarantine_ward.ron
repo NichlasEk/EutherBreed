@@ -77,6 +77,7 @@
             clearance_id: "quarantine_green",
             starts_locked: true,
             kind: Bulkhead,
+            connects: Some((from: "ward_south_entry", to: "ward_north_lab")),
         ),
     ],
     terminals: [
@@ -85,6 +86,11 @@
             position: (360.0, -216.0),
             kind: LabAnalyzer,
             objective_id: Some("analyze_contaminant_sample"),
+            pattern: ObjectiveRouter,
+            actions: [
+                CompleteObjective("analyze_contaminant_sample"),
+                SetSpawnInterval(4.2),
+            ],
         ),
     ],
     objectives: [
@@ -92,6 +98,103 @@
             id: "analyze_contaminant_sample",
             label: "Analyze contaminant sample",
             required: true,
+        ),
+    ],
+    decor: [
+        (
+            id: "ward_west_cell_grate",
+            position: (-360.0, -132.0),
+            kind: FloorGrate,
+            rotation_degrees: 90.0,
+            blocking: false,
+        ),
+        (
+            id: "ward_west_blood_smear",
+            position: (-334.0, 110.0),
+            kind: BloodSmear,
+            rotation_degrees: -18.0,
+            blocking: false,
+        ),
+        (
+            id: "ward_south_supply_crate",
+            position: (-128.0, -216.0),
+            kind: SupplyCrate,
+            rotation_degrees: 8.0,
+            blocking: false,
+        ),
+        (
+            id: "ward_lab_table",
+            position: (334.0, -178.0),
+            kind: LabTable,
+            rotation_degrees: 0.0,
+            blocking: false,
+        ),
+        (
+            id: "ward_north_lab_tank",
+            position: (294.0, 150.0),
+            kind: BioTank,
+            rotation_degrees: 0.0,
+            blocking: false,
+        ),
+        (
+            id: "ward_mid_pipe_cluster",
+            position: (124.0, 18.0),
+            kind: PipeCluster,
+            rotation_degrees: 90.0,
+            blocking: false,
+        ),
+    ],
+    sections: [
+        (
+            id: "ward_south_entry",
+            label: "South quarantine entry",
+            bounds: (
+                center: (-120.0, -92.0),
+                half_extents: (300.0, 130.0),
+            ),
+            kind: Corridor,
+            connects: [
+                "ward_west_cells",
+                "ward_south_lab",
+            ],
+            access: Open,
+        ),
+        (
+            id: "ward_west_cells",
+            label: "West cell block",
+            bounds: (
+                center: (-360.0, 45.0),
+                half_extents: (80.0, 160.0),
+            ),
+            kind: Containment,
+            connects: [
+                "ward_north_lab",
+            ],
+            access: Open,
+        ),
+        (
+            id: "ward_south_lab",
+            label: "South analyzer bay",
+            bounds: (
+                center: (260.0, -174.0),
+                half_extents: (150.0, 64.0),
+            ),
+            kind: Lab,
+            connects: [
+                "ward_north_lab",
+            ],
+            access: Open,
+        ),
+        (
+            id: "ward_north_lab",
+            label: "North quarantine lab",
+            bounds: (
+                center: (150.0, 150.0),
+                half_extents: (300.0, 70.0),
+            ),
+            kind: Lab,
+            connects: [],
+            access: LockedDoor,
         ),
     ],
     entry_points: [
