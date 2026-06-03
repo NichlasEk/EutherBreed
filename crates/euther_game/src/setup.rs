@@ -1035,13 +1035,13 @@ fn spawn_decor(commands: &mut Commands, asset_server: &AssetServer, decor: &Deco
 fn decor_visual(kind: DecorKind) -> (&'static str, Vec2, f32, Color) {
     match kind {
         DecorKind::BloodDrops => (
-            "sprites/biomech/decor_blood_drops.png",
+            "sprites/biomech/v2_decor_blood_drops.png",
             Vec2::new(54.0, 42.0),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::BloodSmear => (
-            "sprites/biomech/decor_blood_smear.png",
+            "sprites/biomech/v2_decor_blood_smear.png",
             Vec2::new(92.0, 44.0),
             -1.0,
             Color::WHITE,
@@ -1065,7 +1065,7 @@ fn decor_visual(kind: DecorKind) -> (&'static str, Vec2, f32, Color) {
             Color::WHITE,
         ),
         DecorKind::LabTable => (
-            "sprites/biomech/decor_lab_table.png",
+            "sprites/biomech/v2_decor_lab_table.png",
             Vec2::new(112.0, 64.0),
             1.0,
             Color::WHITE,
@@ -1224,7 +1224,7 @@ fn spawn_terminal(
             Color::srgba(0.78, 0.88, 1.0, 1.0),
         ),
         TerminalKind::SupplyConsole => {
-            ("sprites/biomech/terminal_supply_console.png", Color::WHITE)
+            ("sprites/biomech/v2_terminal_lab_analyzer.png", Color::WHITE)
         }
     };
 
