@@ -2,8 +2,9 @@ use bevy::camera::ScalingMode;
 use bevy::prelude::*;
 use game_core::level::ContaminantDefinition;
 use game_core::{
-    AxisAlignedBox, DecorDefinition, DecorKind, DoorKind, LevelDefinition, PickupKind,
-    PrototypeEntity, TerminalKind,
+    AxisAlignedBox, DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition,
+    LevelEvent, PickupKind, PrototypeEntity, SectionConnection, TerminalDefinition, TerminalKind,
+    TerminalPattern,
 };
 use ron::ser::PrettyConfig;
 use std::fs;
@@ -50,6 +51,7 @@ pub fn run_editor(level_id: String) {
                 editor_palette_input,
                 editor_select_or_place_on_click,
                 editor_edit_input,
+                sync_editor_graph_lines,
                 editor_save_input,
                 sync_editor_text,
             ),
@@ -105,6 +107,7 @@ struct EditorState {
     message: String,
     placement_rotation_degrees: f32,
     last_cursor_world: Vec2,
+    graph_revision: u64,
 }
 
 impl EditorState {
@@ -120,6 +123,7 @@ impl EditorState {
             message: "ready".to_string(),
             placement_rotation_degrees: 0.0,
             last_cursor_world: Vec2::ZERO,
+            graph_revision: 1,
         }
     }
 
@@ -133,6 +137,8 @@ enum PaletteItem {
     Decor(DecorKind),
     Pickup(PickupKind),
     Contaminant,
+    Door(DoorKind),
+    Terminal(TerminalKind),
 }
 
 impl PaletteItem {
@@ -147,6 +153,8 @@ impl PaletteItem {
                 PickupKind::AreaScan => "pickup::area_scan".to_string(),
             },
             PaletteItem::Contaminant => "contaminant".to_string(),
+            PaletteItem::Door(kind) => format!("door::{kind:?}"),
+            PaletteItem::Terminal(kind) => format!("terminal::{kind:?}"),
         }
     }
 }
@@ -193,6 +201,9 @@ struct EditorSelectionRing;
 
 #[derive(Component)]
 struct EditorCursor;
+
+#[derive(Component)]
+struct EditorGraphLine;
 
 #[derive(Component)]
 struct EditorStatusText;
@@ -302,32 +313,11 @@ fn spawn_editor_level(
     }
 
     for door in &level.doors {
-        let (path, color) = door_visual(door.kind);
-        let mut sprite = Sprite::from_image(asset_server.load(path));
-        sprite.custom_size = Some(door.half_extents * 2.0);
-        sprite.color = color;
-        commands.spawn((
-            sprite,
-            Transform::from_xyz(door.position.x, door.position.y, 2.0),
-            EditorEntity {
-                editable: EditableRef::Door(door.id.clone()),
-            },
-            EditorVisual,
-        ));
+        spawn_door(commands, asset_server, door);
     }
 
     for terminal in &level.terminals {
-        let mut sprite = Sprite::from_image(asset_server.load(terminal_path(&terminal.kind)));
-        sprite.custom_size = Some(Vec2::new(62.0, 58.0));
-        sprite.color = terminal_color(&terminal.kind);
-        commands.spawn((
-            sprite,
-            Transform::from_xyz(terminal.position.x, terminal.position.y, 5.0),
-            EditorEntity {
-                editable: EditableRef::Terminal(terminal.id.clone()),
-            },
-            EditorVisual,
-        ));
+        spawn_terminal(commands, asset_server, terminal);
     }
 
     for (index, exit) in level.exits.iter().enumerate() {
@@ -534,6 +524,7 @@ fn editor_edit_input(
             }
         }
         state.dirty = true;
+        state.graph_revision += 1;
         state.message = format!("moved {}", selected.label());
     }
 
@@ -549,6 +540,7 @@ fn editor_edit_input(
             }
             state.selected = None;
             state.dirty = true;
+            state.graph_revision += 1;
             state.message = format!("deleted {}", selected.label());
         } else {
             state.message = format!("cannot delete {}", selected.label());
@@ -571,6 +563,74 @@ fn editor_edit_input(
             if let Some(message) = message {
                 state.dirty = true;
                 state.message = message;
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::KeyB) {
+        if let Some(EditableRef::Door(id)) = state.selected.clone() {
+            let mut message = None;
+            if let Some(door) = state.level.doors.iter_mut().find(|door| door.id == id) {
+                door.kind = match door.kind {
+                    DoorKind::Bulkhead => DoorKind::EnergyBarrier,
+                    DoorKind::EnergyBarrier => DoorKind::Bulkhead,
+                };
+                message = Some(format!("door kind {}", door.id));
+            }
+            if let Some(message) = message {
+                state.dirty = true;
+                state.message = message;
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::KeyL) {
+        if let Some(EditableRef::Door(id)) = state.selected.clone() {
+            let mut message = None;
+            if let Some(door) = state.level.doors.iter_mut().find(|door| door.id == id) {
+                door.starts_locked = !door.starts_locked;
+                message = Some(format!("door lock {}={}", door.id, door.starts_locked));
+            }
+            if let Some(message) = message {
+                state.dirty = true;
+                state.message = message;
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::KeyG) {
+        let Some(selected) = state.selected.clone() else {
+            return;
+        };
+        match selected {
+            EditableRef::Terminal(terminal_id) => {
+                if let Some(door_id) = nearest_door_id(&state.level, state.last_cursor_world) {
+                    if link_terminal_to_door(&mut state.level, &terminal_id, &door_id) {
+                        state.dirty = true;
+                        state.graph_revision += 1;
+                        state.message =
+                            format!("linked terminal::{terminal_id} -> door::{door_id}");
+                    } else {
+                        state.message =
+                            format!("terminal::{terminal_id} already unlocks door::{door_id}");
+                    }
+                } else {
+                    state.message = "no nearby door to link".to_string();
+                }
+            }
+            EditableRef::Door(door_id) => {
+                if auto_connect_door_sections(&mut state.level, &door_id) {
+                    state.dirty = true;
+                    state.graph_revision += 1;
+                    state.message = format!("auto-connected door::{door_id}");
+                } else {
+                    state.message = format!("no section pair for door::{door_id}");
+                }
+            }
+            _ => {
+                state.message =
+                    "G links selected terminal to nearest door, or auto-connects selected door"
+                        .to_string();
             }
         }
     }
@@ -607,6 +667,76 @@ fn editor_save_input(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<EditorSt
     }
 }
 
+fn sync_editor_graph_lines(
+    state: Res<EditorState>,
+    mut commands: Commands,
+    graph_query: Query<Entity, With<EditorGraphLine>>,
+    mut last_revision: Local<u64>,
+) {
+    if *last_revision == state.graph_revision {
+        return;
+    }
+    *last_revision = state.graph_revision;
+
+    for entity in &graph_query {
+        commands.entity(entity).despawn();
+    }
+
+    for door in &state.level.doors {
+        if let Some(connection) = &door.connects {
+            for section_id in [&connection.from, &connection.to] {
+                if let Some(section) = state
+                    .level
+                    .sections
+                    .iter()
+                    .find(|section| section.id == *section_id)
+                {
+                    spawn_graph_line(
+                        &mut commands,
+                        door.position,
+                        section.bounds.center,
+                        Color::srgba(0.20, 0.82, 1.0, 0.30),
+                    );
+                }
+            }
+        }
+    }
+
+    for terminal in &state.level.terminals {
+        for action in &terminal.actions {
+            let LevelEvent::UnlockDoor(door_id) = action else {
+                continue;
+            };
+            if let Some(door) = state.level.doors.iter().find(|door| door.id == *door_id) {
+                spawn_graph_line(
+                    &mut commands,
+                    terminal.position,
+                    door.position,
+                    Color::srgba(1.0, 0.72, 0.18, 0.42),
+                );
+            }
+        }
+    }
+}
+
+fn spawn_graph_line(commands: &mut Commands, from: Vec2, to: Vec2, color: Color) {
+    let delta = to - from;
+    let length = delta.length();
+    if length < 4.0 {
+        return;
+    }
+
+    let center = (from + to) * 0.5;
+    let mut transform = Transform::from_xyz(center.x, center.y, 24.0);
+    transform.rotation = Quat::from_rotation_z(delta.y.atan2(delta.x));
+    commands.spawn((
+        Sprite::from_color(color, Vec2::new(length, 3.0)),
+        transform,
+        EditorGraphLine,
+        EditorVisual,
+    ));
+}
+
 fn sync_editor_text(
     state: Res<EditorState>,
     mut text_query: Query<&mut Text, With<EditorStatusText>>,
@@ -621,7 +751,7 @@ fn sync_editor_text(
         .unwrap_or_else(|| "none".to_string());
     let dirty = if state.dirty { "dirty" } else { "clean" };
     let content = format!(
-        "EutherBreed editor | {} | {}\nPalette: {} | rot {:.0} deg\n{}\nSelected: {}\nCursor: {:.0},{:.0}\nControls: mouse select/place, Space place, M move, R rotate, Delete remove, Tab/Q/E palette, Ctrl+S save, +/- zoom, WASD pan\n{}",
+        "EutherBreed editor | {} | {}\nPalette: {} | rot {:.0} deg\n{}\nSelected: {}\nCursor: {:.0},{:.0}\nControls: mouse select/place, Space place, M move, R rotate, B door-kind, L lock, G link, Delete remove, Tab/Q/E palette, Ctrl+S save, +/- zoom, WASD pan\n{}",
         state.level_id,
         dirty,
         state.current_palette().label(),
@@ -701,9 +831,171 @@ fn place_palette_item(
             state.level.contaminants.push(contaminant);
             state.selected = Some(EditableRef::Contaminant(id));
         }
+        PaletteItem::Door(kind) => {
+            let id = unique_id(
+                "editor_door",
+                state.level.doors.iter().map(|door| door.id.as_str()),
+            );
+            let half_extents = if is_vertical_placement(state.placement_rotation_degrees) {
+                Vec2::new(10.0, 34.0)
+            } else {
+                Vec2::new(34.0, 10.0)
+            };
+            let door = DoorDefinition {
+                id: id.clone(),
+                position,
+                half_extents,
+                clearance_id: "open".to_string(),
+                starts_locked: false,
+                kind,
+                required_objectives: Vec::new(),
+                connects: None,
+            };
+            spawn_door(commands, asset_server, &door);
+            state.level.doors.push(door);
+            state.selected = Some(EditableRef::Door(id));
+        }
+        PaletteItem::Terminal(kind) => {
+            let id = unique_id(
+                "editor_terminal",
+                state
+                    .level
+                    .terminals
+                    .iter()
+                    .map(|terminal| terminal.id.as_str()),
+            );
+            let terminal = default_terminal(id.clone(), position, kind);
+            spawn_terminal(commands, asset_server, &terminal);
+            state.level.terminals.push(terminal);
+            state.selected = Some(EditableRef::Terminal(id));
+        }
     }
     state.dirty = true;
+    state.graph_revision += 1;
     state.message = format!("placed {}", state.selected.as_ref().unwrap().label());
+}
+
+fn default_terminal(id: String, position: Vec2, kind: TerminalKind) -> TerminalDefinition {
+    match kind {
+        TerminalKind::SupplyConsole => TerminalDefinition {
+            id,
+            position,
+            kind,
+            objective_id: None,
+            required_bio_samples: 0,
+            pattern: TerminalPattern::SupplyStation,
+            actions: vec![LevelEvent::AddAmmo(24), LevelEvent::Heal(24)],
+        },
+        TerminalKind::ShipLog => TerminalDefinition {
+            id,
+            position,
+            kind,
+            objective_id: None,
+            required_bio_samples: 0,
+            pattern: TerminalPattern::Default,
+            actions: Vec::new(),
+        },
+        TerminalKind::LabAnalyzer => TerminalDefinition {
+            id,
+            position,
+            kind,
+            objective_id: None,
+            required_bio_samples: 0,
+            pattern: TerminalPattern::Default,
+            actions: Vec::new(),
+        },
+    }
+}
+
+fn is_vertical_placement(rotation_degrees: f32) -> bool {
+    let normalized = rotation_degrees.rem_euclid(180.0);
+    (45.0..135.0).contains(&normalized)
+}
+
+fn nearest_door_id(level: &LevelDefinition, position: Vec2) -> Option<String> {
+    level
+        .doors
+        .iter()
+        .filter_map(|door| {
+            let distance = door.position.distance(position);
+            (distance <= 128.0).then_some((distance, door.id.clone()))
+        })
+        .min_by(|(left, _), (right, _)| left.total_cmp(right))
+        .map(|(_, id)| id)
+}
+
+fn link_terminal_to_door(level: &mut LevelDefinition, terminal_id: &str, door_id: &str) -> bool {
+    let Some(terminal) = level
+        .terminals
+        .iter_mut()
+        .find(|terminal| terminal.id == terminal_id)
+    else {
+        return false;
+    };
+
+    let already_linked = terminal
+        .actions
+        .iter()
+        .any(|action| matches!(action, LevelEvent::UnlockDoor(id) if id == door_id));
+    if already_linked {
+        return false;
+    }
+
+    terminal
+        .actions
+        .push(LevelEvent::UnlockDoor(door_id.to_string()));
+    true
+}
+
+fn auto_connect_door_sections(level: &mut LevelDefinition, door_id: &str) -> bool {
+    let Some(door_position) = level
+        .doors
+        .iter()
+        .find(|door| door.id == door_id)
+        .map(|door| door.position)
+    else {
+        return false;
+    };
+
+    let mut candidates = level
+        .sections
+        .iter()
+        .filter(|section| point_near_box(door_position, section.bounds, 128.0))
+        .map(|section| {
+            (
+                section.bounds.center.distance(door_position),
+                section.id.clone(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    if candidates.len() < 2 {
+        candidates = level
+            .sections
+            .iter()
+            .map(|section| {
+                (
+                    section.bounds.center.distance(door_position),
+                    section.id.clone(),
+                )
+            })
+            .collect();
+    }
+
+    candidates.sort_by(|(left, _), (right, _)| left.total_cmp(right));
+    let [from, to, ..] = candidates.as_slice() else {
+        return false;
+    };
+
+    if let Some(door) = level.doors.iter_mut().find(|door| door.id == door_id) {
+        door.connects = Some(SectionConnection {
+            from: from.1.clone(),
+            to: to.1.clone(),
+        });
+        return true;
+    }
+
+    false
 }
 
 fn move_selected_data(level: &mut LevelDefinition, selected: &EditableRef, position: Vec2) {
@@ -774,6 +1066,10 @@ fn remove_selected_data(level: &mut LevelDefinition, selected: &EditableRef) -> 
         EditableRef::Pickup(id) => remove_by_id(&mut level.pickups, id, |pickup| &pickup.id),
         EditableRef::Contaminant(id) => {
             remove_by_id(&mut level.contaminants, id, |contaminant| &contaminant.id)
+        }
+        EditableRef::Door(id) => remove_by_id(&mut level.doors, id, |door| &door.id),
+        EditableRef::Terminal(id) => {
+            remove_by_id(&mut level.terminals, id, |terminal| &terminal.id)
         }
         _ => false,
     }
@@ -910,6 +1206,39 @@ fn spawn_contaminant(
     ));
 }
 
+fn spawn_door(commands: &mut Commands, asset_server: &AssetServer, door: &DoorDefinition) {
+    let (path, color) = door_visual(door.kind);
+    let mut sprite = Sprite::from_image(asset_server.load(path));
+    sprite.custom_size = Some(door.half_extents * 2.0);
+    sprite.color = color;
+    commands.spawn((
+        sprite,
+        Transform::from_xyz(door.position.x, door.position.y, 2.0),
+        EditorEntity {
+            editable: EditableRef::Door(door.id.clone()),
+        },
+        EditorVisual,
+    ));
+}
+
+fn spawn_terminal(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    terminal: &TerminalDefinition,
+) {
+    let mut sprite = Sprite::from_image(asset_server.load(terminal_path(&terminal.kind)));
+    sprite.custom_size = Some(Vec2::new(62.0, 58.0));
+    sprite.color = terminal_color(&terminal.kind);
+    commands.spawn((
+        sprite,
+        Transform::from_xyz(terminal.position.x, terminal.position.y, 5.0),
+        EditorEntity {
+            editable: EditableRef::Terminal(terminal.id.clone()),
+        },
+        EditorVisual,
+    ));
+}
+
 fn spawn_marker(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -974,6 +1303,11 @@ fn default_palette() -> Vec<PaletteItem> {
         PaletteItem::Pickup(PickupKind::AreaScan),
         PaletteItem::Pickup(PickupKind::SecurityKeycard("open".to_string())),
         PaletteItem::Contaminant,
+        PaletteItem::Door(DoorKind::Bulkhead),
+        PaletteItem::Door(DoorKind::EnergyBarrier),
+        PaletteItem::Terminal(TerminalKind::SupplyConsole),
+        PaletteItem::Terminal(TerminalKind::ShipLog),
+        PaletteItem::Terminal(TerminalKind::LabAnalyzer),
     ]
 }
 
@@ -1107,6 +1441,13 @@ fn section_color(kind: game_core::SectionKind) -> Color {
         game_core::SectionKind::Lift => Color::srgba(0.04, 0.24, 0.30, 0.16),
         game_core::SectionKind::Containment => Color::srgba(0.28, 0.03, 0.07, 0.16),
     }
+}
+
+fn point_near_box(point: Vec2, area: AxisAlignedBox, margin: f32) -> bool {
+    let min = area.center - area.half_extents - Vec2::splat(margin);
+    let max = area.center + area.half_extents + Vec2::splat(margin);
+
+    point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
 }
 
 fn snap(position: Vec2) -> Vec2 {
