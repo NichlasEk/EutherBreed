@@ -5,7 +5,9 @@ mod resources;
 mod setup;
 mod systems;
 
+use bevy::app::AppExit;
 use bevy::prelude::*;
+use components::{MainMenuAction, MainMenuEntity};
 use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
     GameNotice, LevelRuntime, LocalLevelState, PendingTransition, PersistentLevelStates, SaveSlot,
@@ -24,6 +26,14 @@ use systems::{
 };
 
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
+const DEFAULT_EDITOR_LEVEL: &str = "research_spine";
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
+enum AppScreen {
+    #[default]
+    MainMenu,
+    InGame,
+}
 
 fn main() {
     if let Some(level_id) = argument_value("--editor") {
@@ -33,6 +43,11 @@ fn main() {
 
     if let Some(level_id) = argument_value("--editor-smoke") {
         editor::run_editor_smoke(level_id);
+        return;
+    }
+
+    if std::env::args().any(|arg| arg == "--menu-smoke") {
+        run_menu_smoke();
         return;
     }
 
@@ -113,7 +128,15 @@ fn run_game() {
                     ..default()
                 }),
         )
-        .add_systems(Startup, setup)
+        .init_state::<AppScreen>()
+        .add_systems(Startup, spawn_menu_camera)
+        .add_systems(OnEnter(AppScreen::MainMenu), spawn_main_menu)
+        .add_systems(
+            Update,
+            main_menu_input.run_if(in_state(AppScreen::MainMenu)),
+        )
+        .add_systems(OnExit(AppScreen::MainMenu), despawn_main_menu)
+        .add_systems(OnEnter(AppScreen::InGame), setup)
         .add_systems(
             Update,
             (
@@ -127,7 +150,8 @@ fn run_game() {
                 update_effect_lifetimes,
                 resolve_contaminant_contact,
                 collect_pickups,
-            ),
+            )
+                .run_if(in_state(AppScreen::InGame)),
         )
         .add_systems(
             Update,
@@ -151,9 +175,144 @@ fn run_game() {
                 render_map_overlay_on_shift,
                 toggle_fullscreen_on_f11,
                 quit_on_escape,
-            ),
+            )
+                .run_if(in_state(AppScreen::InGame)),
         )
         .run();
+}
+
+fn spawn_menu_camera(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+
+fn spawn_main_menu(mut commands: Commands) {
+    commands
+        .spawn((
+            Node {
+                width: percent(100),
+                height: percent(100),
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                row_gap: px(18),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.008, 0.010, 0.014)),
+            MainMenuEntity,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("EutherBreed"),
+                TextFont {
+                    font_size: 54.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.70, 1.0, 0.92)),
+                MainMenuEntity,
+            ));
+            parent.spawn((
+                Text::new("prototype command deck"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.42, 0.62, 0.68)),
+                MainMenuEntity,
+            ));
+
+            spawn_menu_button(parent, "PLAY", MainMenuAction::Play);
+            spawn_menu_button(parent, "EDITOR", MainMenuAction::Editor);
+            spawn_menu_button(parent, "QUIT", MainMenuAction::Quit);
+        });
+}
+
+fn spawn_menu_button(parent: &mut ChildSpawnerCommands, label: &str, action: MainMenuAction) {
+    parent
+        .spawn((
+            Button,
+            Node {
+                width: px(280),
+                height: px(48),
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border: UiRect::all(px(2)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.025, 0.05, 0.055, 0.95)),
+            BorderColor::all(Color::srgba(0.20, 0.95, 0.84, 0.52)),
+            action,
+            MainMenuEntity,
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 22.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.84, 0.96, 0.90)),
+                MainMenuEntity,
+            ));
+        });
+}
+
+fn main_menu_input(
+    mut interactions: Query<
+        (
+            &Interaction,
+            &MainMenuAction,
+            &mut BackgroundColor,
+            &mut BorderColor,
+        ),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut next_state: ResMut<NextState<AppScreen>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    for (interaction, action, mut background, mut border) in &mut interactions {
+        match *interaction {
+            Interaction::Pressed => {
+                match action {
+                    MainMenuAction::Play => next_state.set(AppScreen::InGame),
+                    MainMenuAction::Editor => {
+                        launch_editor_process(DEFAULT_EDITOR_LEVEL);
+                        exit.write(AppExit::Success);
+                    }
+                    MainMenuAction::Quit => {
+                        exit.write(AppExit::Success);
+                    }
+                }
+                background.0 = Color::srgba(0.10, 0.28, 0.26, 0.98);
+                *border = BorderColor::all(Color::srgba(1.0, 0.78, 0.26, 0.88));
+            }
+            Interaction::Hovered => {
+                background.0 = Color::srgba(0.045, 0.12, 0.12, 0.96);
+                *border = BorderColor::all(Color::srgba(0.34, 1.0, 0.88, 0.78));
+            }
+            Interaction::None => {
+                background.0 = Color::srgba(0.025, 0.05, 0.055, 0.95);
+                *border = BorderColor::all(Color::srgba(0.20, 0.95, 0.84, 0.52));
+            }
+        }
+    }
+}
+
+fn despawn_main_menu(mut commands: Commands, menu_entities: Query<Entity, With<MainMenuEntity>>) {
+    for entity in &menu_entities {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn launch_editor_process(level_id: &str) {
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
+    let _ = std::process::Command::new(exe)
+        .arg("--editor")
+        .arg(level_id)
+        .spawn();
 }
 
 fn run_headless_smoke() {
@@ -178,6 +337,31 @@ fn run_headless_smoke() {
         "headless smoke ok: health={} ammo={} bio_samples={}",
         vitals.0.health, vitals.0.ammo, vitals.0.bio_samples
     );
+}
+
+fn run_menu_smoke() {
+    let mut app = App::new();
+    app.insert_resource(initial_vitals())
+        .insert_resource(initial_contaminant_timer())
+        .insert_resource(LocalLevelState::default())
+        .insert_resource(PersistentLevelStates::default())
+        .insert_resource(CampaignSignal::default())
+        .insert_resource(PendingTransition::default())
+        .insert_resource(initial_campaign_runtime())
+        .insert_resource(initial_level_runtime())
+        .insert_resource(CurrentLevelMap::default())
+        .insert_resource(initial_save_slot())
+        .insert_resource(GameNotice::default())
+        .add_plugins(MinimalPlugins)
+        .add_plugins(bevy::state::app::StatesPlugin)
+        .init_state::<AppScreen>();
+
+    app.update();
+    let state = app.world().resource::<State<AppScreen>>();
+    assert_eq!(state.get(), &AppScreen::MainMenu);
+
+    println!("menu smoke ok");
+    println!("state: {:?}", state.get());
 }
 
 fn initial_vitals() -> ApothecaryVitals {

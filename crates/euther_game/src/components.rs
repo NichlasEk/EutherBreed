@@ -14,6 +14,16 @@ pub struct ApothecaryAnimation {
 pub struct LevelEntity;
 
 #[derive(Component)]
+pub struct MainMenuEntity;
+
+#[derive(Component, Clone, Copy)]
+pub enum MainMenuAction {
+    Play,
+    Editor,
+    Quit,
+}
+
+#[derive(Component)]
 pub struct MapOverlay;
 
 #[derive(Component)]
