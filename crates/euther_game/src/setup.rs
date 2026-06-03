@@ -36,7 +36,11 @@ pub fn setup(
     mut current_level_map: ResMut<CurrentLevelMap>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
 ) {
-    commands.spawn(Camera2d);
+    if current_level_map.level.is_some() {
+        return;
+    }
+
+    commands.spawn((Camera2d, LevelEntity));
 
     spawn_hud(&mut commands, &asset_server);
 

@@ -11,8 +11,7 @@ pub mod transitions;
 pub mod ui;
 
 pub use apothecary::{
-    aim_apothecary, animate_apothecary_walk, move_apothecary, quit_on_escape,
-    toggle_fullscreen_on_f11,
+    aim_apothecary, animate_apothecary_walk, move_apothecary, toggle_fullscreen_on_f11,
 };
 pub use camera::sync_camera_to_level;
 pub use combat::{

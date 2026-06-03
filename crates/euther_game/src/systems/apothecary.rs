@@ -145,12 +145,6 @@ pub fn animate_apothecary_walk(
     }
 }
 
-pub fn quit_on_escape(input: Res<ButtonInput<KeyCode>>, mut exit: MessageWriter<AppExit>) {
-    if input.just_pressed(KeyCode::Escape) {
-        exit.write(AppExit::Success);
-    }
-}
-
 pub fn toggle_fullscreen_on_f11(
     input: Res<ButtonInput<KeyCode>>,
     mut window_query: Single<&mut Window, With<PrimaryWindow>>,

@@ -24,6 +24,18 @@ pub enum MainMenuAction {
 }
 
 #[derive(Component)]
+pub struct PauseMenuEntity;
+
+#[derive(Component, Clone, Copy)]
+pub enum PauseMenuAction {
+    Resume,
+    Inventory,
+    Map,
+    MainMenu,
+    Quit,
+}
+
+#[derive(Component)]
 pub struct MapOverlay;
 
 #[derive(Component)]
