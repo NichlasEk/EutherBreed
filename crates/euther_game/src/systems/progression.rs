@@ -33,6 +33,7 @@ pub fn update_campaign_progress(
     let target = pending_exit.target;
     let is_known_level = runtime.definition.contains_level(&target);
     let previous_level = runtime.progress.current_level().to_string();
+    let requested_entry_id = pending_exit.entry_id;
 
     match runtime
         .progress
@@ -42,17 +43,21 @@ pub fn update_campaign_progress(
             "campaign traveled to level {}",
             runtime.progress.current_level()
         ),
-        Ok(false) => {
-            debug!("campaign already at level {}", target);
-            return;
-        }
+        Ok(false) => debug!("campaign already at level {}", target),
         Err(error) => {
+            signal.exit_lock_active = false;
             warn!("campaign travel to {} failed: {:?}", target, error);
             return;
         }
     }
 
-    if level_runtime.loaded_level_id.as_deref() == Some(runtime.progress.current_level()) {
+    if should_skip_campaign_reload(
+        level_runtime.loaded_level_id.as_deref(),
+        runtime.progress.current_level(),
+        level_runtime.pending_entry_id.as_deref(),
+        &requested_entry_id,
+    ) {
+        signal.exit_lock_active = false;
         return;
     }
 
@@ -72,7 +77,7 @@ pub fn update_campaign_progress(
     contaminant_timer.0.reset();
 
     let level = load_level_from_campaign(&runtime, runtime.progress.current_level());
-    level_runtime.pending_entry_id = Some(pending_exit.entry_id);
+    level_runtime.pending_entry_id = Some(requested_entry_id);
     spawn_level(
         &mut commands,
         &asset_server,
@@ -190,4 +195,38 @@ fn load_level_local_state(
         .get(level_id)
         .cloned()
         .unwrap_or_default();
+}
+
+fn should_skip_campaign_reload(
+    loaded_level_id: Option<&str>,
+    current_level_id: &str,
+    pending_entry_id: Option<&str>,
+    requested_entry_id: &str,
+) -> bool {
+    loaded_level_id == Some(current_level_id) && pending_entry_id == Some(requested_entry_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_skip_campaign_reload;
+
+    #[test]
+    fn same_level_different_entry_must_reload() {
+        assert!(!should_skip_campaign_reload(
+            Some("research_spine"),
+            "research_spine",
+            Some("from_lab_access_corridor"),
+            "from_triage_vault",
+        ));
+    }
+
+    #[test]
+    fn same_level_same_entry_can_skip_reload() {
+        assert!(should_skip_campaign_reload(
+            Some("research_spine"),
+            "research_spine",
+            Some("from_lab_access_corridor"),
+            "from_lab_access_corridor",
+        ));
+    }
 }
