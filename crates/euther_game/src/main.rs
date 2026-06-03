@@ -10,7 +10,8 @@ use bevy::prelude::*;
 use components::{LevelEntity, MainMenuAction, MainMenuEntity, PauseMenuAction, PauseMenuEntity};
 use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
-    GameNotice, LevelRuntime, LocalLevelState, PendingTransition, PersistentLevelStates, SaveSlot,
+    GameNotice, LevelRuntime, LocalLevelState, PendingTransition, PersistentLevelStates, RunLives,
+    SaveSlot,
 };
 use setup::{apothecary_spawn_position, setup};
 use systems::{
@@ -120,6 +121,7 @@ fn run_game() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.015, 0.018, 0.025)))
         .insert_resource(initial_vitals())
+        .insert_resource(RunLives::default())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(LocalLevelState::default())
         .insert_resource(PersistentLevelStates::default())
@@ -364,6 +366,7 @@ fn spawn_pause_menu(
     mut commands: Commands,
     pause_state: Res<PauseMenuState>,
     vitals: Res<ApothecaryVitals>,
+    lives: Res<RunLives>,
     level_state: Res<LocalLevelState>,
     campaign_runtime: Res<CampaignRuntime>,
     current_map: Res<CurrentLevelMap>,
@@ -415,6 +418,7 @@ fn spawn_pause_menu(
                         Text::new(pause_summary(
                             pause_state.tab,
                             &vitals,
+                            &lives,
                             &level_state,
                             &campaign_runtime,
                             current_map.level.as_ref(),
@@ -557,18 +561,24 @@ fn pause_menu_input(
 fn update_pause_menu_text(
     pause_state: Res<PauseMenuState>,
     vitals: Res<ApothecaryVitals>,
+    lives: Res<RunLives>,
     level_state: Res<LocalLevelState>,
     campaign_runtime: Res<CampaignRuntime>,
     current_map: Res<CurrentLevelMap>,
     mut text_query: Query<&mut Text, With<PauseMenuText>>,
 ) {
-    if !pause_state.is_changed() && !vitals.is_changed() && !level_state.is_changed() {
+    if !pause_state.is_changed()
+        && !vitals.is_changed()
+        && !lives.is_changed()
+        && !level_state.is_changed()
+    {
         return;
     }
 
     let content = pause_summary(
         pause_state.tab,
         &vitals,
+        &lives,
         &level_state,
         &campaign_runtime,
         current_map.level.as_ref(),
@@ -587,6 +597,7 @@ fn despawn_pause_menu(mut commands: Commands, entities: Query<Entity, With<Pause
 fn pause_summary(
     tab: PauseTab,
     vitals: &ApothecaryVitals,
+    lives: &RunLives,
     level_state: &LocalLevelState,
     campaign_runtime: &CampaignRuntime,
     level: Option<&game_core::LevelDefinition>,
@@ -603,7 +614,8 @@ fn pause_summary(
         .unwrap_or(0);
     match tab {
         PauseTab::Status => format!(
-            "STATUS\n\nSection: {level_name}\nHealth: {}\nReagent rounds: {}\nBio samples: {}\nClearances: {}\nObjectives complete: {}\n\nShortcuts: Esc pause/resume, I inventory, M map, Shift quick map overlay.",
+            "STATUS\n\nSection: {level_name}\nLives: {}\nHealth: {}\nReagent rounds: {}\nBio samples: {}\nClearances: {}\nObjectives complete: {}\n\nShortcuts: Esc pause/resume, I inventory, M map, Shift quick map overlay.",
+            lives.remaining.max(0),
             vitals.0.health,
             vitals.0.ammo,
             vitals.0.bio_samples,
@@ -730,6 +742,7 @@ fn exit_lines(level: &game_core::LevelDefinition, level_state: &LocalLevelState)
 fn run_headless_smoke() {
     let mut app = App::new();
     app.insert_resource(initial_vitals())
+        .insert_resource(RunLives::default())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(LocalLevelState::default())
         .insert_resource(PersistentLevelStates::default())
@@ -754,6 +767,7 @@ fn run_headless_smoke() {
 fn run_menu_smoke() {
     let mut app = App::new();
     app.insert_resource(initial_vitals())
+        .insert_resource(RunLives::default())
         .insert_resource(initial_contaminant_timer())
         .insert_resource(LocalLevelState::default())
         .insert_resource(PersistentLevelStates::default())

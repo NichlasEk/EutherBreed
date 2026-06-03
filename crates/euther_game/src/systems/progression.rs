@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::components::LevelEntity;
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
-    GameNotice, LevelRuntime, LocalLevelState, PersistentLevelStates, SaveSlot,
+    GameNotice, LevelRuntime, LocalLevelState, PersistentLevelStates, RunLives, SaveSlot,
 };
 use crate::setup::{load_level_from_campaign, spawn_level, update_level_runtime};
 use crate::systems::save::{build_runtime_save, write_runtime_save};
@@ -120,6 +120,7 @@ pub fn restart_current_level_on_death(
     input: Res<ButtonInput<KeyCode>>,
     asset_server: Res<AssetServer>,
     mut vitals: ResMut<ApothecaryVitals>,
+    mut lives: ResMut<RunLives>,
     runtime: Res<CampaignRuntime>,
     mut level_runtime: ResMut<LevelRuntime>,
     mut current_level_map: ResMut<CurrentLevelMap>,
@@ -133,8 +134,18 @@ pub fn restart_current_level_on_death(
     }
 
     if !input.just_pressed(KeyCode::KeyR) {
-        notice.show("Suit breached - press R to restart section", 0.4);
+        notice.show(
+            format!(
+                "Suit breached - press R to restart section | lives {}",
+                lives.remaining.max(0)
+            ),
+            0.4,
+        );
         return;
+    }
+
+    if lives.remaining > 0 {
+        lives.remaining -= 1;
     }
 
     for entity in &level_entities {
@@ -163,7 +174,10 @@ pub fn restart_current_level_on_death(
         &mut contaminant_timer,
     );
 
-    notice.show("Section restarted", 1.4);
+    notice.show(
+        format!("Section restarted | lives {}", lives.remaining.max(0)),
+        1.4,
+    );
 }
 
 fn load_level_local_state(

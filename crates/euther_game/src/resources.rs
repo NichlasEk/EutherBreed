@@ -10,6 +10,17 @@ use std::path::PathBuf;
 pub struct ApothecaryVitals(pub CoreApothecaryVitals);
 
 #[derive(Resource)]
+pub struct RunLives {
+    pub remaining: i32,
+}
+
+impl Default for RunLives {
+    fn default() -> Self {
+        Self { remaining: 4 }
+    }
+}
+
+#[derive(Resource)]
 pub struct ContaminantSpawnTimer(pub Timer);
 
 #[derive(Resource, Default)]

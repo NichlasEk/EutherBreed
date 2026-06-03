@@ -84,6 +84,9 @@ pub struct HudGaugePip {
 pub struct KeysText;
 
 #[derive(Component)]
+pub struct LivesText;
+
+#[derive(Component)]
 pub struct BioText;
 
 #[derive(Component)]

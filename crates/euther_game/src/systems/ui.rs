@@ -3,10 +3,11 @@ use game_core::{ExitReadiness, TerminalKind, TransitionKind};
 
 use crate::components::{
     Apothecary, BioText, Door, DoorOpening, ExitZone, HudGaugeKind, HudGaugePip, KeysText,
-    NoticeText, ObjectiveText, PromptText, SectionText, Terminal, TransitionZone,
+    LivesText, NoticeText, ObjectiveText, PromptText, SectionText, Terminal, TransitionZone,
 };
 use crate::resources::{
     ApothecaryVitals, CampaignRuntime, CurrentLevelMap, GameNotice, LevelRuntime, LocalLevelState,
+    RunLives,
 };
 
 const PROMPT_RADIUS: f32 = 72.0;
@@ -14,11 +15,13 @@ const PROMPT_RADIUS: f32 = 72.0;
 pub fn update_status_text(
     level_state: Res<LocalLevelState>,
     vitals: Res<ApothecaryVitals>,
+    lives: Res<RunLives>,
     mut pip_query: Query<(&HudGaugePip, &mut BackgroundColor, &mut BorderColor)>,
-    mut keys_query: Query<&mut Text, With<KeysText>>,
-    mut bio_query: Query<&mut Text, (With<BioText>, Without<KeysText>)>,
+    mut lives_query: Query<&mut Text, (With<LivesText>, Without<KeysText>, Without<BioText>)>,
+    mut keys_query: Query<&mut Text, (With<KeysText>, Without<LivesText>, Without<BioText>)>,
+    mut bio_query: Query<&mut Text, (With<BioText>, Without<KeysText>, Without<LivesText>)>,
 ) {
-    if !vitals.is_changed() && !level_state.is_changed() {
+    if !vitals.is_changed() && !level_state.is_changed() && !lives.is_changed() {
         return;
     }
 
@@ -53,6 +56,10 @@ pub fn update_status_text(
 
     for mut text in &mut keys_query {
         **text = format!("{:02}", level_state.0.clearances.len());
+    }
+
+    for mut text in &mut lives_query {
+        **text = format!("{:02}", lives.remaining.max(0));
     }
 
     for mut text in &mut bio_query {

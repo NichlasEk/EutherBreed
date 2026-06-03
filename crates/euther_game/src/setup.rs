@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use crate::components::{
     Apothecary, ApothecaryAnimation, BioText, Contaminant, ContaminantAnimation, Door, ExitZone,
-    HudGaugeKind, HudGaugePip, KeysText, LevelEntity, NoticeText, ObjectiveText, Pickup,
+    HudGaugeKind, HudGaugePip, KeysText, LevelEntity, LivesText, NoticeText, ObjectiveText, Pickup,
     PromptText, SectionText, Terminal, TransitionZone, Wall,
 };
 use crate::resources::{
@@ -107,10 +107,12 @@ fn spawn_hud(commands: &mut Commands, asset_server: &AssetServer) {
             218.0,
             12,
         );
-        spawn_static_hud_segment(
+        spawn_hud_value_segment(
             parent,
             asset_server,
-            "LIVES 01",
+            "LIVES",
+            "04",
+            LivesText,
             Color::srgb(0.55, 0.68, 0.68),
             132.0,
         );
