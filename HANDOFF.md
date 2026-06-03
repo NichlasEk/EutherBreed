@@ -1,199 +1,268 @@
 # EutherBreed Handoff
 
-Date: 2026-05-31
+Date: 2026-06-03
 
 ## Current State
 
 Repository:
 
 - Path: `/home/nichlas/EutherBreed`
-- Remote: `https://github.com/NichlasEk/EutherBreed`
 - Branch: `main`
-- Latest gameplay commit before this handoff: `e718af4 Add map overlay and section restart`
-- Local branch is ahead of `origin/main`.
+- Worktree at handoff: clean
+- Latest commit: `f5094b6 Add game over and terminal prompts`
 
-The project is a Rust/Bevy prototype for an original top-down sci-fi survival shooter. The game is inspired by the structure and tension of Alien Breed: Tower Assault, but it must not reuse the original name, story, graphics, audio, maps, or extracted assets.
+EutherBreed is currently a Rust/Bevy top-down sci-fi survival shooter prototype. It is an original project with classic Alien Breed / Tower Assault style structure as design inspiration only. Do not reuse original names, story, maps, extracted graphics, audio, or exact UI art.
 
-The player character is the ship's apothecary: a medical and biochemical specialist forced into survival combat during an alien outbreak. Keep the setting serious sci-fi. The apothecary theme should influence systems and language, but core progression objects should still feel grounded: keycards, security terminals, quarantine systems, lab analyzers, ship logistics, and bio-samples.
+The playable identity is now clear enough to keep building around:
 
-## Implemented Prototype Features
+- Hero: ship apothecary / biochemical specialist.
+- Core loop: explore hostile sections, gather reagents/bio-samples/keycards, use terminals, unlock routes, survive contamination pressure, choose exits.
+- Tone: dark biomechanical sci-fi, serious survival horror, not parody.
 
-- Rust workspace with:
-  - `crates/game_core`: pure gameplay/data rules and tests
-  - `crates/euther_game`: Bevy prototype
-  - `crates/abta_tools`: local-only research tooling
-- Three connected prototype sections:
+## Latest Commits
+
+Recent useful commits:
+
+- `f5094b6 Add game over and terminal prompts`
+- `e950823 Fix same-level route reloads`
+- `e4430aa Add room graph to quarantine ward`
+- `6255d12 Add prototype lives HUD state`
+- `a6432e6 Add room graphs to prototype levels`
+- `a06a8ca Expand editor and pause summaries`
+- `c7ad220 Add pause inventory map shell`
+- `1da7f16 Add prototype main menu`
+- `edf4778 Add editor node linking tools`
+- `4fc2a4d Add prototype level editor mode`
+
+## Implemented
+
+Core game:
+
+- Bevy app with main menu, gameplay, pause menu, and game over screen.
+- Movement, mouse aim, shooting, contaminants, pickups, doors, terminals, exits, transitions.
+- HUD with split top/bottom cyber-industrial rails.
+- Dynamic `LIVES` state in HUD.
+- Health 0 now either:
+  - allows section restart with `R` if lives remain
+  - routes to Game Over when lives are exhausted
+- Game Over screen has Continue, Main Menu, Quit.
+- Continue resets run state cleanly.
+- Fullscreen toggle: `F11`.
+
+Campaign/content:
+
+- Four campaign levels:
   - `prototype_quarantine_ward`
   - `lab_access_corridor`
   - `triage_vault`
-- Movement, mouse aiming, projectiles, contaminants, pickups, walls, terminals, locked doors, exits, and level transitions.
-- Campaign graph with named entry points for exits.
-- Persistent run state:
-  - current level
-  - player position
-  - vitals
-  - per-level pickups, doors, terminals, objectives, and killed handplaced contaminants
-- Quicksave/quickload:
-  - `F5`: save to `saves/slot1.ron`
-  - `F9`: load from `saves/slot1.ron`
-- Autosave after successful level transitions.
-- HUD notices for saves, loads, autosaves, interactions, damage, and contaminant kills.
-- Dynamic level spawn points:
-  - configured in RON level files
-  - capped temporary contaminants
-  - dynamic contaminants do not pollute persistent killed-enemy state
-- Basic level theme tinting and section/exit HUD text.
-- Hold-to-view map overlay:
-  - `Shift`: shows a simple generated map for the current level
-  - built from EutherBreed level data, not copied from original game resources
-- Death/restart:
-  - health 0 shows a restart prompt
-  - `R`: restarts the current section with fresh local state
-- HUD direction:
-  - compact industrial top/bottom rails
-  - segmented health/ammo/key/resource readouts inspired by classic survival-shooter readability
-  - keep it original; do not copy original UI art or exact layouts
-- First visible character/enemy/tile sprite pass is in place.
-- Current apothecary walk sprite frames are intentionally left for manual replacement; code supports frame cycling.
+  - `research_spine`
+- All four levels now have semantic `sections`.
+- Lab and triage have room graphs, doors, objectives, terminals, and decor passes.
+- Quarantine ward has room graph, objective router action, and decor pass.
+- Research spine remains the most advanced large level.
+- Same-level route reload bug fixed. A route to the same level with another entry now reloads correctly instead of silently returning.
 
-## Explicitly Deferred
+Editor:
 
-Do **not** spend the next pass polishing the map UI. The map is intentionally functional only for now.
+- Prototype editor mode exists.
+- Main menu has an Editor button.
+- Editor supports level picker with `[` and `]`.
+- Editor inspector shows selected entity details.
+- Editor can place/move/delete/rotate entities.
+- Editor can link terminal-to-door and auto-connect door sections.
+- Editor has quick terminal rule shortcuts:
+  - `1` add ammo action
+  - `2` heal action
+  - `3` grant clearance action
+  - `4` objective action / door objective requirement
+- Editor palette includes decor, pickups, contaminants, doors, terminals.
 
-Deferred map work:
+Pause/inventory/map:
 
-- fog of war / known-vs-unknown rooms
-- map labels and icon polish
-- nicer frame, legend, blinking player marker
-- extracted/reference-informed map renderer work
+- `Esc`: pause/status
+- `I`: inventory
+- `M`: strategic map summary
+- `Shift`: quick tactical overlay if area scan is acquired
+- Pause inventory now lists ammo, bio-samples, area scan, access tokens/keycards, pickup ids.
+- Pause map summarizes doors, exits, objectives, sections.
 
-Next effort should drive the playable slice: level flow, pressure, combat feel, enemy pacing, objectives, and balancing.
+Terminal prompts:
+
+- Nearby terminals now show what they do before pressing `E`, such as:
+  - ammo/heal
+  - objective
+  - unlock door
+  - key/access token
+  - area scan
+  - bio-sample requirement
+
+## Controls
+
+Gameplay:
+
+- `WASD` / arrows: move
+- Mouse: aim
+- Mouse button / `Z` / `X` / `C`: shoot, depending current code path
+- `E`: interact with terminals/transitions
+- `R`: restart section after death if lives remain
+- `Shift`: tactical map overlay when area scan exists
+- `Esc`: pause
+- `I`: inventory tab
+- `M`: map tab
+- `F5`: quicksave
+- `F9`: quickload
+- `F11`: toggle fullscreen
+
+Editor:
+
+- `WASD` / arrows: pan
+- `Shift`: faster pan
+- `+` / `-`: zoom
+- `[` / `]`: previous/next campaign level
+- Mouse left: select/place
+- `Space`: place palette item
+- `M`: move selected to cursor
+- `R`: rotate selected decor
+- `B`: toggle door kind
+- `L`: toggle door lock
+- `G`: link selected terminal to nearest door, or auto-connect selected door sections
+- `1`: terminal AddAmmo action
+- `2`: terminal Heal action
+- `3`: terminal GrantClearance action
+- `4`: terminal CompleteObjective or door objective requirement
+- `Delete` / `Backspace`: remove selected
+- `Tab` / `Q` / `E`: palette navigation
+- `Ctrl+S`: save level
+
+## Verification At Handoff
+
+Latest checked commands passed:
+
+```sh
+cargo check -p euther_game
+cargo test -p euther_game
+cargo run -p euther_game -- --menu-smoke
+cargo run -p euther_game -- --headless-smoke
+cargo run -p euther_game -- --validate-content
+git diff --check
+```
+
+Previous same-session checks also passed:
+
+```sh
+cargo test -p game_core
+cargo run -p euther_game -- --editor-smoke prototype_quarantine_ward
+cargo run -p euther_game -- --editor-smoke lab_access_corridor
+cargo run -p euther_game -- --editor-smoke triage_vault
+cargo run -p euther_game -- --editor-smoke research_spine
+```
+
+## Known Issues / Watch List
+
+- User reported a freeze near an exit/route area. A likely same-level route reload bug was fixed in `e950823`, but the exact GUI situation should be retested.
+- If freezing still happens, next suspects:
+  - exit overlap lock edge case
+  - spawn/entry position inside trigger zone
+  - runtime Bevy panic not visible in screenshot
+  - door/wall collision edge after transition
+- Vulkan validation warnings about SPIR-V atomics have appeared on this machine. They seem driver/wgpu/validation-layer related and not gameplay logic, but keep an eye on runtime output.
+- Map polish is intentionally deferred. Do not spend the next pass making map UI fancy unless explicitly requested.
+- Some player walk sprite sheet experiments are intentionally left in place but user may replace art manually.
+- Some collision/object placement still needs manual gameplay testing in GUI, especially newly sectioned older levels.
 
 ## Important Commands
 
-Run the full local verification suite:
-
-```sh
-./scripts/check.sh
-```
-
-Run the GUI prototype:
+Run game:
 
 ```sh
 scripts/run.sh
 ```
 
-Run directly:
+Direct run:
 
 ```sh
 cargo run -p euther_game
 ```
 
-Run headless when graphics are broken:
+Editor:
 
 ```sh
-cargo run -p euther_game -- --headless-smoke
+cargo run -p euther_game -- --editor research_spine
 ```
 
-Validate content:
+Content validation:
 
 ```sh
 cargo run -p euther_game -- --validate-content
+```
+
+Core checks:
+
+```sh
+cargo check -p euther_game
+cargo test -p game_core
+cargo test -p euther_game
+```
+
+Smoke checks:
+
+```sh
+cargo run -p euther_game -- --headless-smoke
+cargo run -p euther_game -- --menu-smoke
 cargo run -p euther_game -- --entry-smoke
 cargo run -p euther_game -- --notice-smoke
 ```
 
-## Last Verification
+## Next Plan
 
-The most recent focused verification passed after the map/restart pass:
+Recommended next development order:
 
-- `cargo fmt --check`
-- `cargo check -p euther_game`
-- `cargo run -p euther_game -- --validate-content`
-- `cargo run -p euther_game -- --headless-smoke`
-- `cargo run -p euther_game -- --save-smoke`
-- `cargo run -p euther_game -- --entry-smoke`
-- `cargo test -p euther_game`
+1. Retest the freeze spot from the screenshot in GUI.
+   - Confirm same-level route reload fix.
+   - If it still freezes, capture terminal output and patch the remaining route/trigger issue.
 
-Older full-suite verification via `./scripts/check.sh` passed after commit `e9e8715`.
+2. Finish game rules foundation.
+   - Save/load should include lives or consciously reset lives per run.
+   - Define game over continue semantics more strictly.
+   - Add mission complete / campaign complete state.
+   - Add better objective completion feedback.
 
-That suite included:
+3. Improve terminal UI beyond prompt text.
+   - Small terminal panel or modal with title, requirement, effects.
+   - Separate supply station, analyzer, ship log, area scan terminal presentations.
 
-- `cargo fmt --check`
-- `cargo check`
-- 49 `game_core` tests
-- ABTA tooling help smoke
-- campaign/level content validation
-- entry smoke
-- notice smoke
-- save/load/runtime/autosave smoke tests
-- headless startup smoke
+4. Improve inventory into actual item model.
+   - Store named keycards/access tokens.
+   - Display area scan, bio-samples, reagents, keycards, mission items.
+   - Later: upgrades/credits/shop if desired.
 
-## Graphics Reboot Context
+5. Editor evolution.
+   - Visual section editing.
+   - Draw/move section bounds.
+   - Door-to-section linking by click.
+   - Better object palette categories.
+   - Node/link mode for terminals, doors, objectives, exits.
 
-The next practical step is to reboot and fix/check local graphics. Earlier work favored headless mode because the GUI/GPU path was unreliable.
+6. Gameplay pressure.
+   - Enemy archetypes.
+   - Spawn pacing per objective state.
+   - Better enemy movement and attack telegraph.
+   - Gore/death feedback.
+   - Balance ammo, med-gel, bio-samples, spawn intervals.
 
-After reboot:
+7. Content pass.
+   - Play each level start to exit.
+   - Fix unreachable/annoying rooms.
+   - Add more variation in rooms and props.
+   - Keep map polish deferred until core flow is stronger.
 
-1. Check system graphics health:
+## Creative Direction Reminder
 
-```sh
-nvidia-smi
-```
+Keep pushing toward:
 
-2. Run the guarded GUI script:
-
-```sh
-scripts/run.sh
-```
-
-3. If Bevy still fails through the default backend, try the already-used GL fallback pattern:
-
-```sh
-env WGPU_BACKEND=gl cargo run -p euther_game
-```
-
-4. If the GUI launches, inspect:
-
-- level tinting and contrast
-- contaminant hit flash
-- HUD text positioning
-- section/exit HUD row
-- spawn pacing in each level
-- whether sprite scale/readability feels acceptable at current resolution
-
-## Recommended Next Development Pass
-
-Keep driving the first playable slice:
-
-- Improve `prototype_quarantine_ward` layout into a real loop:
-  - start pressure
-  - risky keycard side room
-  - locked route / shortcut
-  - terminal objective deeper in the section
-  - exit pressure after objective completion
-- Tune contamination pressure:
-  - slower before keycard
-  - faster after keycard
-  - strongest after terminal objective
-- Add combat feel:
-  - muzzle flash
-  - impact flash
-  - enemy death pop / sample pickup feedback
-- Balance:
-  - ammo and med-gel amounts
-  - spawn interval
-  - starting enemy positions
-  - exit distance and objective friction
-
-## Useful Design Notes
-
-- Keep keycards/security access as grounded sci-fi objects.
-- Apothecary framing should be substantial, not jokey:
-  - reagent rounds
-  - bio-samples
-  - quarantine terminals
-  - lab analysis objectives
-  - med/logistics supplies
-- The current goal is still a playable vertical slice, not a full remake.
-- Tauri remains planned, but the Bevy prototype should become credible first.
+- dark, high-resolution tiles and props
+- biomechanical / Giger-adjacent original art direction
+- readable top-down silhouettes
+- sexy but functional apothecary hero design, viewed clearly from top-down
+- bloody, unsettling medical/ship environments
+- original level layouts inspired by classic design principles, not copied maps
