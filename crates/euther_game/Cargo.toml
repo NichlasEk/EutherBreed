@@ -8,3 +8,4 @@ repository.workspace = true
 [dependencies]
 bevy.workspace = true
 game_core = { path = "../game_core" }
+ron.workspace = true

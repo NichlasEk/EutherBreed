@@ -1,4 +1,5 @@
 mod components;
+mod editor;
 mod geometry;
 mod resources;
 mod setup;
@@ -25,6 +26,16 @@ use systems::{
 const CONTAMINANT_SPAWN_SECONDS: f32 = 1.7;
 
 fn main() {
+    if let Some(level_id) = argument_value("--editor") {
+        editor::run_editor(level_id);
+        return;
+    }
+
+    if let Some(level_id) = argument_value("--editor-smoke") {
+        editor::run_editor_smoke(level_id);
+        return;
+    }
+
     if std::env::args().any(|arg| arg == "--headless-smoke") {
         run_headless_smoke();
         return;
