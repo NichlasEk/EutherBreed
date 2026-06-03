@@ -40,16 +40,148 @@
             kind: AreaScan,
         ),
     ],
-    doors: [],
+    doors: [
+        (
+            id: "lab_upper_gallery_bulkhead",
+            position: (-120.0, 92.0),
+            half_extents: (34.0, 10.0),
+            clearance_id: "open",
+            starts_locked: false,
+            kind: Bulkhead,
+            connects: Some((from: "lab_west_entry", to: "lab_upper_gallery")),
+        ),
+        (
+            id: "lab_archive_bulkhead",
+            position: (145.0, -92.0),
+            half_extents: (34.0, 10.0),
+            clearance_id: "open",
+            starts_locked: true,
+            kind: Bulkhead,
+            required_objectives: [
+                "download_lab_route_scan",
+            ],
+            connects: Some((from: "lab_midline", to: "lab_lower_archive")),
+        ),
+    ],
     terminals: [
         (
             id: "lab_ship_log_a",
             position: (330.0, 165.0),
             kind: ShipLog,
-            objective_id: None,
+            objective_id: Some("download_lab_route_scan"),
+            pattern: ObjectiveRouter,
+            actions: [
+                CompleteObjective("download_lab_route_scan"),
+                UnlockDoor("lab_archive_bulkhead"),
+                AcquireAreaScan,
+                SetSpawnInterval(4.5),
+            ],
         ),
     ],
-    objectives: [],
+    objectives: [
+        (
+            id: "download_lab_route_scan",
+            label: "Download lab route scan",
+            required: true,
+        ),
+    ],
+    decor: [
+        (
+            id: "lab_upper_grate",
+            position: (-205.0, 166.0),
+            kind: FloorGrate,
+            rotation_degrees: 0.0,
+            blocking: false,
+        ),
+        (
+            id: "lab_console_table",
+            position: (286.0, 162.0),
+            kind: LabTable,
+            rotation_degrees: 0.0,
+            blocking: false,
+        ),
+        (
+            id: "lab_archive_crate",
+            position: (170.0, -170.0),
+            kind: SupplyCrate,
+            rotation_degrees: -8.0,
+            blocking: false,
+        ),
+        (
+            id: "lab_lower_smear",
+            position: (312.0, -172.0),
+            kind: BloodSmear,
+            rotation_degrees: 18.0,
+            blocking: false,
+        ),
+        (
+            id: "lab_mid_pipe_cluster",
+            position: (40.0, 26.0),
+            kind: PipeCluster,
+            rotation_degrees: 90.0,
+            blocking: false,
+        ),
+        (
+            id: "lab_west_acid_scar",
+            position: (-314.0, -118.0),
+            kind: AcidScorch,
+            rotation_degrees: -18.0,
+            blocking: false,
+        ),
+    ],
+    sections: [
+        (
+            id: "lab_west_entry",
+            label: "West entry corridor",
+            bounds: (
+                center: (-330.0, 0.0),
+                half_extents: (120.0, 220.0),
+            ),
+            kind: Corridor,
+            connects: [
+                "lab_upper_gallery",
+                "lab_midline",
+            ],
+            access: Open,
+        ),
+        (
+            id: "lab_upper_gallery",
+            label: "Upper gallery",
+            bounds: (
+                center: (-40.0, 166.0),
+                half_extents: (260.0, 70.0),
+            ),
+            kind: Lab,
+            connects: [
+                "lab_midline",
+            ],
+            access: Door,
+        ),
+        (
+            id: "lab_midline",
+            label: "Access midline",
+            bounds: (
+                center: (80.0, 0.0),
+                half_extents: (300.0, 70.0),
+            ),
+            kind: Corridor,
+            connects: [
+                "lab_lower_archive",
+            ],
+            access: Open,
+        ),
+        (
+            id: "lab_lower_archive",
+            label: "Lower archive",
+            bounds: (
+                center: (180.0, -168.0),
+                half_extents: (260.0, 68.0),
+            ),
+            kind: Supply,
+            connects: [],
+            access: LockedDoor,
+        ),
+    ],
     entry_points: [
         (
             id: "from_quarantine_ward",
