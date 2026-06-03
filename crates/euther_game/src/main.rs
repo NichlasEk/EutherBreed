@@ -611,7 +611,7 @@ fn pause_summary(
             completed_objectives,
         ),
         PauseTab::Inventory => format!(
-            "INVENTORY\n\nReagent rounds: {}\nBio samples: {}\nArea scan: {}\nClearance keys: {}\nCollected pickups: {}\n\nThis is the first inventory shell. Next pass should list named keys/items instead of counts.",
+            "INVENTORY\n\nReagent rounds: {}\nBio samples: {}\nArea scan: {}\nClearance keys: {}\n{}\nCollected pickups: {}\n{}\n\nThis is the first real inventory readout. Next pass can add icons and item descriptions.",
             vitals.0.ammo,
             vitals.0.bio_samples,
             if level_state.0.area_scan_acquired {
@@ -620,22 +620,27 @@ fn pause_summary(
                 "missing"
             },
             level_state.0.clearances.len(),
+            list_set("Clearances", &level_state.0.clearances),
             level_state.0.collected_pickups.len(),
+            list_set("Recent pickup ids", &level_state.0.collected_pickups),
         ),
         PauseTab::Map => {
             let Some(level) = level else {
                 return "MAP\n\nNo level loaded.".to_string();
             };
             format!(
-                "MAP\n\nLevel: {}\nBounds: {:.0} x {:.0}\nRooms/sections: {}\nDoors: {} | unlocked: {}\nExits: {}\nTerminals: {}\nKnown pickups: {}\n\nHold Shift in-game for tactical overlay. This pause map is the strategic summary shell.",
+                "MAP\n\nLevel: {}\nBounds: {:.0} x {:.0}\nRooms/sections: {}\nDoors: {} | unlocked: {}\n{}\nExits: {}\n{}\nTerminals: {}\nObjectives:\n{}\nKnown pickups: {}\n\nHold Shift in-game for tactical overlay. This pause map is the strategic route summary.",
                 level.name,
                 level.bounds.half_extents.x * 2.0,
                 level.bounds.half_extents.y * 2.0,
                 level.sections.len(),
                 level.doors.len(),
                 level_state.0.unlocked_doors.len(),
+                door_status_lines(level, level_state),
                 level.exits.len(),
+                exit_lines(level, level_state),
                 level.terminals.len(),
+                objective_lines(level, level_state),
                 level
                     .pickups
                     .len()
@@ -643,6 +648,83 @@ fn pause_summary(
             )
         }
     }
+}
+
+fn list_set(label: &str, values: &std::collections::HashSet<String>) -> String {
+    if values.is_empty() {
+        return format!("{label}: none");
+    }
+
+    let mut values = values.iter().cloned().collect::<Vec<_>>();
+    values.sort();
+    values.truncate(8);
+    format!("{label}: {}", values.join(", "))
+}
+
+fn objective_lines(level: &game_core::LevelDefinition, level_state: &LocalLevelState) -> String {
+    if level.objectives.is_empty() {
+        return "  none".to_string();
+    }
+
+    level
+        .objectives
+        .iter()
+        .map(|objective| {
+            let state = if level_state.0.objectives.is_complete(&objective.id) {
+                "done"
+            } else if objective.required {
+                "required"
+            } else {
+                "optional"
+            };
+            format!("  {state}: {}", objective.label)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn door_status_lines(level: &game_core::LevelDefinition, level_state: &LocalLevelState) -> String {
+    if level.doors.is_empty() {
+        return "Door status: none".to_string();
+    }
+
+    let mut lines = level
+        .doors
+        .iter()
+        .take(8)
+        .map(|door| {
+            let state = if level_state.0.has_unlocked_door(&door.id) || !door.starts_locked {
+                "openable"
+            } else {
+                "locked"
+            };
+            format!("  {state}: {}", door.id)
+        })
+        .collect::<Vec<_>>();
+    if level.doors.len() > lines.len() {
+        lines.push(format!("  ...{} more", level.doors.len() - lines.len()));
+    }
+    format!("Door status:\n{}", lines.join("\n"))
+}
+
+fn exit_lines(level: &game_core::LevelDefinition, level_state: &LocalLevelState) -> String {
+    if level.exits.is_empty() {
+        return "Exit routes: none".to_string();
+    }
+
+    let lines = level
+        .exits
+        .iter()
+        .map(|exit| {
+            let ready = exit
+                .required_objectives
+                .iter()
+                .all(|objective| level_state.0.objectives.is_complete(objective));
+            let state = if ready { "ready" } else { "blocked" };
+            format!("  {state}: {} -> {}", level.name, exit.target)
+        })
+        .collect::<Vec<_>>();
+    format!("Exit routes:\n{}", lines.join("\n"))
 }
 
 fn run_headless_smoke() {

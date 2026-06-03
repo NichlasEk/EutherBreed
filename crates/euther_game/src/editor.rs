@@ -2,9 +2,9 @@ use bevy::camera::ScalingMode;
 use bevy::prelude::*;
 use game_core::level::ContaminantDefinition;
 use game_core::{
-    AxisAlignedBox, DecorDefinition, DecorKind, DoorDefinition, DoorKind, LevelDefinition,
-    LevelEvent, PickupKind, PrototypeEntity, SectionConnection, TerminalDefinition, TerminalKind,
-    TerminalPattern,
+    AxisAlignedBox, CampaignDefinition, CampaignLevel, DecorDefinition, DecorKind, DoorDefinition,
+    DoorKind, LevelDefinition, LevelEvent, PickupKind, PrototypeEntity, SectionConnection,
+    TerminalDefinition, TerminalKind, TerminalPattern,
 };
 use ron::ser::PrettyConfig;
 use std::fs;
@@ -15,6 +15,7 @@ const SELECT_RADIUS: f32 = 42.0;
 
 pub fn run_editor(level_id: String) {
     let level_path = level_path(&level_id);
+    let levels = campaign_levels();
     let level = LevelDefinition::from_ron_file(&level_path).unwrap_or_else(|error| {
         panic!(
             "failed to load editor level {}: {error:?}",
@@ -27,7 +28,7 @@ pub fn run_editor(level_id: String) {
 
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.010, 0.012, 0.016)))
-        .insert_resource(EditorState::new(level_id, level_path, level))
+        .insert_resource(EditorState::new(level_id, level_path, level, levels))
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
@@ -48,6 +49,7 @@ pub fn run_editor(level_id: String) {
             Update,
             (
                 editor_camera_controls,
+                editor_level_picker_input,
                 editor_palette_input,
                 editor_select_or_place_on_click,
                 editor_edit_input,
@@ -99,6 +101,7 @@ pub fn run_editor_smoke(level_id: String) {
 struct EditorState {
     level_id: String,
     level_path: PathBuf,
+    levels: Vec<CampaignLevel>,
     level: LevelDefinition,
     palette: Vec<PaletteItem>,
     palette_index: usize,
@@ -111,10 +114,16 @@ struct EditorState {
 }
 
 impl EditorState {
-    fn new(level_id: String, level_path: PathBuf, level: LevelDefinition) -> Self {
+    fn new(
+        level_id: String,
+        level_path: PathBuf,
+        level: LevelDefinition,
+        levels: Vec<CampaignLevel>,
+    ) -> Self {
         Self {
             level_id,
             level_path,
+            levels,
             level,
             palette: default_palette(),
             palette_index: 0,
@@ -447,6 +456,62 @@ fn editor_camera_controls(
     }
 }
 
+fn editor_level_picker_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut state: ResMut<EditorState>,
+    visual_query: Query<Entity, With<EditorVisual>>,
+    mut camera_query: Single<&mut Transform, With<Camera2d>>,
+) {
+    let direction = if keys.just_pressed(KeyCode::BracketRight) {
+        1
+    } else if keys.just_pressed(KeyCode::BracketLeft) {
+        -1
+    } else {
+        0
+    };
+    if direction == 0 || state.levels.is_empty() {
+        return;
+    }
+
+    let current_index = state
+        .levels
+        .iter()
+        .position(|level| level.id == state.level_id)
+        .unwrap_or(0);
+    let next_index =
+        (current_index as isize + direction).rem_euclid(state.levels.len() as isize) as usize;
+    let next_level = state.levels[next_index].clone();
+    let next_path = PathBuf::from(&next_level.path);
+    let Ok(level) = LevelDefinition::from_ron_file(&next_path) else {
+        state.message = format!("failed to load {}", next_path.display());
+        return;
+    };
+    if let Err(error) = level.validate() {
+        state.message = format!("invalid {}: {error:?}", next_level.id);
+        return;
+    }
+
+    for entity in &visual_query {
+        commands.entity(entity).despawn();
+    }
+
+    state.level_id = next_level.id;
+    state.level_path = next_path;
+    state.level = level;
+    state.selected = None;
+    state.dirty = false;
+    state.graph_revision += 1;
+    state.message = format!("loaded {}", state.level_id);
+
+    camera_query.translation.x = state.level.bounds.center.x;
+    camera_query.translation.y = state.level.bounds.center.y;
+    spawn_grid(&mut commands, state.level.bounds);
+    spawn_editor_level(&mut commands, &asset_server, &state.level);
+    spawn_editor_overlay(&mut commands);
+}
+
 fn editor_palette_input(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<EditorState>) {
     if keys.just_pressed(KeyCode::Tab) || keys.just_pressed(KeyCode::KeyE) {
         state.palette_index = (state.palette_index + 1) % state.palette.len();
@@ -595,6 +660,88 @@ fn editor_edit_input(
                 state.dirty = true;
                 state.message = message;
             }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::Digit1) {
+        if let Some(EditableRef::Terminal(id)) = state.selected.clone() {
+            if push_terminal_action(&mut state.level, &id, LevelEvent::AddAmmo(24)) {
+                state.dirty = true;
+                state.graph_revision += 1;
+                state.message = format!("terminal::{id} add ammo action");
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::Digit2) {
+        if let Some(EditableRef::Terminal(id)) = state.selected.clone() {
+            if push_terminal_action(&mut state.level, &id, LevelEvent::Heal(24)) {
+                state.dirty = true;
+                state.graph_revision += 1;
+                state.message = format!("terminal::{id} heal action");
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::Digit3) {
+        if let Some(EditableRef::Terminal(id)) = state.selected.clone() {
+            let clearance = nearest_door_id(&state.level, state.last_cursor_world)
+                .and_then(|door_id| {
+                    state
+                        .level
+                        .doors
+                        .iter()
+                        .find(|door| door.id == door_id)
+                        .map(|door| door.clearance_id.clone())
+                })
+                .filter(|clearance| clearance != "open")
+                .unwrap_or_else(|| "editor_clearance".to_string());
+            if push_terminal_action(&mut state.level, &id, LevelEvent::GrantClearance(clearance)) {
+                state.dirty = true;
+                state.graph_revision += 1;
+                state.message = format!("terminal::{id} grant clearance action");
+            }
+        }
+    }
+
+    if keys.just_pressed(KeyCode::Digit4) {
+        match state.selected.clone() {
+            Some(EditableRef::Terminal(id)) => {
+                if let Some(objective_id) = nearest_objective_id(&state.level, &id) {
+                    if push_terminal_action(
+                        &mut state.level,
+                        &id,
+                        LevelEvent::CompleteObjective(objective_id.clone()),
+                    ) {
+                        state.dirty = true;
+                        state.graph_revision += 1;
+                        state.message = format!("terminal::{id} completes {objective_id}");
+                    }
+                } else {
+                    state.message = "no objective available".to_string();
+                }
+            }
+            Some(EditableRef::Door(id)) => {
+                if let Some(objective_id) = state
+                    .level
+                    .objectives
+                    .first()
+                    .map(|objective| objective.id.clone())
+                {
+                    if let Some(door) = state.level.doors.iter_mut().find(|door| door.id == id) {
+                        if !door.required_objectives.contains(&objective_id) {
+                            door.required_objectives.push(objective_id.clone());
+                            door.starts_locked = true;
+                            state.dirty = true;
+                            state.graph_revision += 1;
+                            state.message = format!("door::{id} requires {objective_id}");
+                        }
+                    }
+                } else {
+                    state.message = "no objective available".to_string();
+                }
+            }
+            _ => {}
         }
     }
 
@@ -749,15 +896,21 @@ fn sync_editor_text(
         .as_ref()
         .map(EditableRef::label)
         .unwrap_or_else(|| "none".to_string());
+    let inspector = state
+        .selected
+        .as_ref()
+        .map(|selected| inspect_editable(&state.level, selected))
+        .unwrap_or_else(|| "Inspector: no selection".to_string());
     let dirty = if state.dirty { "dirty" } else { "clean" };
     let content = format!(
-        "EutherBreed editor | {} | {}\nPalette: {} | rot {:.0} deg\n{}\nSelected: {}\nCursor: {:.0},{:.0}\nControls: mouse select/place, Space place, M move, R rotate, B door-kind, L lock, G link, Delete remove, Tab/Q/E palette, Ctrl+S save, +/- zoom, WASD pan\n{}",
+        "EutherBreed editor | {} | {}\nPalette: {} | rot {:.0} deg\n{}\nSelected: {}\n{}\nCursor: {:.0},{:.0}\nControls: [/] level, mouse select/place, Space place, M move, R rotate, B door-kind, L lock, G link, 1 ammo, 2 heal, 3 clearance, 4 objective, Delete remove, Tab/Q/E palette, Ctrl+S save, +/- zoom, WASD pan\n{}",
         state.level_id,
         dirty,
         state.current_palette().label(),
         state.placement_rotation_degrees,
         palette_window(&state.palette, state.palette_index),
         selected,
+        inspector,
         state.last_cursor_world.x,
         state.last_cursor_world.y,
         state.message
@@ -947,6 +1100,50 @@ fn link_terminal_to_door(level: &mut LevelDefinition, terminal_id: &str, door_id
     true
 }
 
+fn push_terminal_action(
+    level: &mut LevelDefinition,
+    terminal_id: &str,
+    action: LevelEvent,
+) -> bool {
+    let Some(terminal) = level
+        .terminals
+        .iter_mut()
+        .find(|terminal| terminal.id == terminal_id)
+    else {
+        return false;
+    };
+
+    if terminal.actions.contains(&action) {
+        return false;
+    }
+
+    if let LevelEvent::CompleteObjective(objective_id) = &action {
+        terminal.objective_id = Some(objective_id.clone());
+        terminal.pattern = TerminalPattern::ObjectiveRouter;
+    }
+
+    terminal.actions.push(action);
+    true
+}
+
+fn nearest_objective_id(level: &LevelDefinition, terminal_id: &str) -> Option<String> {
+    let terminal = level
+        .terminals
+        .iter()
+        .find(|terminal| terminal.id == terminal_id)?;
+
+    level
+        .objectives
+        .iter()
+        .find(|objective| {
+            !terminal.actions.iter().any(
+                |action| matches!(action, LevelEvent::CompleteObjective(id) if id == &objective.id),
+            )
+        })
+        .or_else(|| level.objectives.first())
+        .map(|objective| objective.id.clone())
+}
+
 fn auto_connect_door_sections(level: &mut LevelDefinition, door_id: &str) -> bool {
     let Some(door_position) = level
         .doors
@@ -1114,6 +1311,162 @@ fn editable_position(level: &LevelDefinition, selected: &EditableRef) -> Option<
             .find(|entry| entry.id == *id)
             .map(|entry| entry.position),
         EditableRef::SpawnPoint(index) => level.spawn_points.get(*index).copied(),
+    }
+}
+
+fn inspect_editable(level: &LevelDefinition, selected: &EditableRef) -> String {
+    match selected {
+        EditableRef::Decor(id) => level
+            .decor
+            .iter()
+            .find(|decor| decor.id == *id)
+            .map(|decor| {
+                format!(
+                    "Inspector: decor id={} kind={:?} pos=({:.0},{:.0}) rot={:.0} blocking={}",
+                    decor.id,
+                    decor.kind,
+                    decor.position.x,
+                    decor.position.y,
+                    decor.rotation_degrees,
+                    decor.blocking
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing decor".to_string()),
+        EditableRef::Pickup(id) => level
+            .pickups
+            .iter()
+            .find(|pickup| pickup.id == *id)
+            .map(|pickup| {
+                format!(
+                    "Inspector: pickup id={} kind={:?} pos=({:.0},{:.0})",
+                    pickup.id, pickup.kind, pickup.position.x, pickup.position.y
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing pickup".to_string()),
+        EditableRef::Contaminant(id) => level
+            .contaminants
+            .iter()
+            .find(|contaminant| contaminant.id == *id)
+            .map(|contaminant| {
+                format!(
+                    "Inspector: contaminant id={} pos=({:.0},{:.0})",
+                    contaminant.id, contaminant.position.x, contaminant.position.y
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing contaminant".to_string()),
+        EditableRef::Door(id) => level
+            .doors
+            .iter()
+            .find(|door| door.id == *id)
+            .map(|door| {
+                let connects = door
+                    .connects
+                    .as_ref()
+                    .map(|connection| format!("{}->{}", connection.from, connection.to))
+                    .unwrap_or_else(|| "none".to_string());
+                format!(
+                    "Inspector: door id={} kind={:?} pos=({:.0},{:.0}) size=({:.0},{:.0}) locked={} clearance={} objectives={} connects={}",
+                    door.id,
+                    door.kind,
+                    door.position.x,
+                    door.position.y,
+                    door.half_extents.x * 2.0,
+                    door.half_extents.y * 2.0,
+                    door.starts_locked,
+                    door.clearance_id,
+                    door.required_objectives.join(","),
+                    connects
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing door".to_string()),
+        EditableRef::Terminal(id) => level
+            .terminals
+            .iter()
+            .find(|terminal| terminal.id == *id)
+            .map(|terminal| {
+                let actions = terminal
+                    .actions
+                    .iter()
+                    .map(level_event_label)
+                    .collect::<Vec<_>>()
+                    .join(",");
+                format!(
+                    "Inspector: terminal id={} kind={:?} pos=({:.0},{:.0}) objective={:?} bio_req={} pattern={:?} actions=[{}]",
+                    terminal.id,
+                    terminal.kind,
+                    terminal.position.x,
+                    terminal.position.y,
+                    terminal.objective_id,
+                    terminal.required_bio_samples,
+                    terminal.pattern,
+                    actions
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing terminal".to_string()),
+        EditableRef::Exit(index) => level
+            .exits
+            .get(*index)
+            .map(|exit| {
+                format!(
+                    "Inspector: exit target={} entry={} pos=({:.0},{:.0}) objectives={}",
+                    exit.target,
+                    exit.entry_id,
+                    exit.position.x,
+                    exit.position.y,
+                    exit.required_objectives.join(",")
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing exit".to_string()),
+        EditableRef::Transition(id) => level
+            .transitions
+            .iter()
+            .find(|transition| transition.id == *id)
+            .map(|transition| {
+                format!(
+                    "Inspector: transition id={} target={} entry={} kind={:?} pos=({:.0},{:.0}) clearance={:?}",
+                    transition.id,
+                    transition.target,
+                    transition.entry_id,
+                    transition.kind,
+                    transition.position.x,
+                    transition.position.y,
+                    transition.required_clearance
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing transition".to_string()),
+        EditableRef::EntryPoint(id) => level
+            .entry_points
+            .iter()
+            .find(|entry| entry.id == *id)
+            .map(|entry| {
+                format!(
+                    "Inspector: entry id={} pos=({:.0},{:.0})",
+                    entry.id, entry.position.x, entry.position.y
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing entry".to_string()),
+        EditableRef::SpawnPoint(index) => level
+            .spawn_points
+            .get(*index)
+            .map(|spawn| {
+                format!(
+                    "Inspector: spawn index={} pos=({:.0},{:.0})",
+                    index, spawn.x, spawn.y
+                )
+            })
+            .unwrap_or_else(|| "Inspector: missing spawn".to_string()),
+    }
+}
+
+fn level_event_label(event: &LevelEvent) -> String {
+    match event {
+        LevelEvent::CompleteObjective(id) => format!("complete:{id}"),
+        LevelEvent::GrantClearance(id) => format!("clearance:{id}"),
+        LevelEvent::UnlockDoor(id) => format!("unlock:{id}"),
+        LevelEvent::AddAmmo(amount) => format!("ammo:+{amount}"),
+        LevelEvent::Heal(amount) => format!("heal:+{amount}"),
+        LevelEvent::AcquireAreaScan => "area_scan".to_string(),
+        LevelEvent::SetSpawnInterval(seconds) => format!("spawn:{seconds:.1}s"),
     }
 }
 
@@ -1459,6 +1812,17 @@ fn snap(position: Vec2) -> Vec2 {
 
 fn level_path(level_id: &str) -> PathBuf {
     PathBuf::from(format!("assets/levels/{level_id}.ron"))
+}
+
+fn campaign_levels() -> Vec<CampaignLevel> {
+    CampaignDefinition::from_ron_file("assets/campaigns/prototype.ron")
+        .map(|campaign| campaign.levels)
+        .unwrap_or_else(|_| {
+            vec![CampaignLevel {
+                id: "research_spine".to_string(),
+                path: "assets/levels/research_spine.ron".to_string(),
+            }]
+        })
 }
 
 fn unique_id<'a>(prefix: &str, existing: impl Iterator<Item = &'a str>) -> String {
