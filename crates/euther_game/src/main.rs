@@ -7,7 +7,10 @@ mod systems;
 
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use components::{LevelEntity, MainMenuAction, MainMenuEntity, PauseMenuAction, PauseMenuEntity};
+use components::{
+    GameOverAction, GameOverEntity, LevelEntity, MainMenuAction, MainMenuEntity, PauseMenuAction,
+    PauseMenuEntity,
+};
 use resources::{
     ApothecaryVitals, CampaignRuntime, CampaignSignal, ContaminantSpawnTimer, CurrentLevelMap,
     GameNotice, LevelRuntime, LocalLevelState, PendingTransition, PersistentLevelStates, RunLives,
@@ -35,6 +38,7 @@ enum AppScreen {
     MainMenu,
     InGame,
     Paused,
+    GameOver,
 }
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
@@ -163,6 +167,12 @@ fn run_game() {
             (pause_menu_input, update_pause_menu_text).run_if(in_state(AppScreen::Paused)),
         )
         .add_systems(OnExit(AppScreen::Paused), despawn_pause_menu)
+        .add_systems(OnEnter(AppScreen::GameOver), spawn_game_over_menu)
+        .add_systems(
+            Update,
+            game_over_menu_input.run_if(in_state(AppScreen::GameOver)),
+        )
+        .add_systems(OnExit(AppScreen::GameOver), despawn_game_over_menu)
         .add_systems(
             Update,
             (
@@ -594,6 +604,202 @@ fn despawn_pause_menu(mut commands: Commands, entities: Query<Entity, With<Pause
     }
 }
 
+fn spawn_game_over_menu(mut commands: Commands) {
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                width: percent(100),
+                height: percent(100),
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                row_gap: px(16),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.76)),
+            GameOverEntity,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("SUIT BREACH FATAL"),
+                TextFont {
+                    font_size: 38.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.45, 0.24)),
+                GameOverEntity,
+            ));
+            parent.spawn((
+                Text::new("run terminated - containment record archived"),
+                TextFont {
+                    font_size: 17.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.58, 0.82, 0.80)),
+                GameOverEntity,
+            ));
+            spawn_game_over_button(parent, "CONTINUE", GameOverAction::Continue);
+            spawn_game_over_button(parent, "MAIN MENU", GameOverAction::MainMenu);
+            spawn_game_over_button(parent, "QUIT", GameOverAction::Quit);
+        });
+}
+
+fn spawn_game_over_button(parent: &mut ChildSpawnerCommands, label: &str, action: GameOverAction) {
+    parent
+        .spawn((
+            Button,
+            Node {
+                width: px(280),
+                height: px(46),
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border: UiRect::all(px(2)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.035, 0.035, 0.040, 0.96)),
+            BorderColor::all(Color::srgba(0.95, 0.35, 0.22, 0.56)),
+            action,
+            GameOverEntity,
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.92, 0.94, 0.88)),
+                GameOverEntity,
+            ));
+        });
+}
+
+fn game_over_menu_input(
+    mut commands: Commands,
+    mut interactions: Query<
+        (
+            &Interaction,
+            &GameOverAction,
+            &mut BackgroundColor,
+            &mut BorderColor,
+        ),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut next_state: ResMut<NextState<AppScreen>>,
+    mut exit: MessageWriter<AppExit>,
+    mut vitals: ResMut<ApothecaryVitals>,
+    mut lives: ResMut<RunLives>,
+    mut level_state: ResMut<LocalLevelState>,
+    mut persistent_level_states: ResMut<PersistentLevelStates>,
+    mut campaign_runtime: ResMut<CampaignRuntime>,
+    mut level_runtime: ResMut<LevelRuntime>,
+    mut current_map: ResMut<CurrentLevelMap>,
+    mut campaign_signal: ResMut<CampaignSignal>,
+    mut pending_transition: ResMut<PendingTransition>,
+    mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
+    mut notice: ResMut<GameNotice>,
+    level_entities: Query<Entity, With<LevelEntity>>,
+) {
+    for (interaction, action, mut background, mut border) in &mut interactions {
+        match *interaction {
+            Interaction::Pressed => {
+                match action {
+                    GameOverAction::Continue => {
+                        reset_run_state(
+                            &mut commands,
+                            &level_entities,
+                            &mut vitals,
+                            &mut lives,
+                            &mut level_state,
+                            &mut persistent_level_states,
+                            &mut campaign_runtime,
+                            &mut level_runtime,
+                            &mut current_map,
+                            &mut campaign_signal,
+                            &mut pending_transition,
+                            &mut contaminant_timer,
+                            &mut notice,
+                        );
+                        next_state.set(AppScreen::InGame);
+                    }
+                    GameOverAction::MainMenu => {
+                        reset_run_state(
+                            &mut commands,
+                            &level_entities,
+                            &mut vitals,
+                            &mut lives,
+                            &mut level_state,
+                            &mut persistent_level_states,
+                            &mut campaign_runtime,
+                            &mut level_runtime,
+                            &mut current_map,
+                            &mut campaign_signal,
+                            &mut pending_transition,
+                            &mut contaminant_timer,
+                            &mut notice,
+                        );
+                        next_state.set(AppScreen::MainMenu);
+                    }
+                    GameOverAction::Quit => {
+                        exit.write(AppExit::Success);
+                    }
+                }
+                background.0 = Color::srgba(0.22, 0.06, 0.04, 0.98);
+                *border = BorderColor::all(Color::srgba(1.0, 0.70, 0.24, 0.90));
+            }
+            Interaction::Hovered => {
+                background.0 = Color::srgba(0.10, 0.04, 0.035, 0.96);
+                *border = BorderColor::all(Color::srgba(1.0, 0.44, 0.24, 0.78));
+            }
+            Interaction::None => {
+                background.0 = Color::srgba(0.035, 0.035, 0.040, 0.96);
+                *border = BorderColor::all(Color::srgba(0.95, 0.35, 0.22, 0.56));
+            }
+        }
+    }
+}
+
+fn reset_run_state(
+    commands: &mut Commands,
+    level_entities: &Query<Entity, With<LevelEntity>>,
+    vitals: &mut ApothecaryVitals,
+    lives: &mut RunLives,
+    level_state: &mut LocalLevelState,
+    persistent_level_states: &mut PersistentLevelStates,
+    campaign_runtime: &mut CampaignRuntime,
+    level_runtime: &mut LevelRuntime,
+    current_map: &mut CurrentLevelMap,
+    campaign_signal: &mut CampaignSignal,
+    pending_transition: &mut PendingTransition,
+    contaminant_timer: &mut ContaminantSpawnTimer,
+    notice: &mut GameNotice,
+) {
+    for entity in level_entities.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    *vitals = initial_vitals();
+    *lives = RunLives::default();
+    *level_state = LocalLevelState::default();
+    *persistent_level_states = PersistentLevelStates::default();
+    *campaign_runtime = initial_campaign_runtime();
+    *level_runtime = initial_level_runtime();
+    *current_map = CurrentLevelMap::default();
+    *campaign_signal = CampaignSignal::default();
+    *pending_transition = PendingTransition::default();
+    *contaminant_timer = initial_contaminant_timer();
+    notice.clear();
+}
+
+fn despawn_game_over_menu(mut commands: Commands, entities: Query<Entity, With<GameOverEntity>>) {
+    for entity in &entities {
+        commands.entity(entity).despawn();
+    }
+}
+
 fn pause_summary(
     tab: PauseTab,
     vitals: &ApothecaryVitals,
@@ -623,7 +829,7 @@ fn pause_summary(
             completed_objectives,
         ),
         PauseTab::Inventory => format!(
-            "INVENTORY\n\nReagent rounds: {}\nBio samples: {}\nArea scan: {}\nClearance keys: {}\n{}\nCollected pickups: {}\n{}\n\nThis is the first real inventory readout. Next pass can add icons and item descriptions.",
+            "INVENTORY\n\nReagent rounds: {}\nBio samples: {}\nArea scan: {}\nAccess tokens: {}\n{}\nRecovered item ids: {}\n{}",
             vitals.0.ammo,
             vitals.0.bio_samples,
             if level_state.0.area_scan_acquired {
@@ -632,7 +838,7 @@ fn pause_summary(
                 "missing"
             },
             level_state.0.clearances.len(),
-            list_set("Clearances", &level_state.0.clearances),
+            list_set("Keycards", &level_state.0.clearances),
             level_state.0.collected_pickups.len(),
             list_set("Recent pickup ids", &level_state.0.collected_pickups),
         ),

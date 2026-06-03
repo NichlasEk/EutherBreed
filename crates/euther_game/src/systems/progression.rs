@@ -126,6 +126,7 @@ pub fn restart_current_level_on_death(
     asset_server: Res<AssetServer>,
     mut vitals: ResMut<ApothecaryVitals>,
     mut lives: ResMut<RunLives>,
+    mut next_state: ResMut<NextState<crate::AppScreen>>,
     runtime: Res<CampaignRuntime>,
     mut level_runtime: ResMut<LevelRuntime>,
     mut current_level_map: ResMut<CurrentLevelMap>,
@@ -135,6 +136,11 @@ pub fn restart_current_level_on_death(
     level_entities: Query<Entity, With<LevelEntity>>,
 ) {
     if vitals.0.health > 0 {
+        return;
+    }
+
+    if lives.remaining <= 0 {
+        next_state.set(crate::AppScreen::GameOver);
         return;
     }
 

@@ -24,6 +24,16 @@ pub enum MainMenuAction {
 }
 
 #[derive(Component)]
+pub struct GameOverEntity;
+
+#[derive(Component, Clone, Copy)]
+pub enum GameOverAction {
+    Continue,
+    MainMenu,
+    Quit,
+}
+
+#[derive(Component)]
 pub struct PauseMenuEntity;
 
 #[derive(Component, Clone, Copy)]

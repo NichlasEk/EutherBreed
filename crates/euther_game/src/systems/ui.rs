@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_core::{ExitReadiness, TerminalKind, TransitionKind};
+use game_core::{ExitReadiness, LevelEvent, TerminalKind, TransitionKind};
 
 use crate::components::{
     Apothecary, BioText, Door, DoorOpening, ExitZone, HudGaugeKind, HudGaugePip, KeysText,
@@ -184,15 +184,13 @@ fn prompt_for_position(
             }
             if terminal.required_bio_samples > 0 {
                 return Some(format!(
-                    "PRESS E <analyze: bio {}/{}>",
-                    vitals.0.bio_samples, terminal.required_bio_samples
+                    "PRESS E <bio {}/{} | {}>",
+                    vitals.0.bio_samples,
+                    terminal.required_bio_samples,
+                    terminal_prompt_summary(terminal)
                 ));
             }
-            return Some(match terminal.kind {
-                TerminalKind::LabAnalyzer => "PRESS E <analyze terminal>".to_string(),
-                TerminalKind::ShipLog => "PRESS E <read ship log>".to_string(),
-                TerminalKind::SupplyConsole => "PRESS E <use supply station>".to_string(),
-            });
+            return Some(format!("PRESS E <{}>", terminal_prompt_summary(terminal)));
         }
     }
 
@@ -259,6 +257,42 @@ fn prompt_for_position(
     }
 
     None
+}
+
+fn terminal_prompt_summary(terminal: &Terminal) -> String {
+    if !terminal.actions.is_empty() {
+        let mut labels = terminal
+            .actions
+            .iter()
+            .filter_map(terminal_action_label)
+            .collect::<Vec<_>>();
+        labels.dedup();
+        if !labels.is_empty() {
+            return labels.join(" + ");
+        }
+    }
+
+    if terminal.objective_id.is_some() {
+        return "complete objective".to_string();
+    }
+
+    match terminal.kind {
+        TerminalKind::LabAnalyzer => "analyze terminal".to_string(),
+        TerminalKind::ShipLog => "read ship log".to_string(),
+        TerminalKind::SupplyConsole => "ammo + med-gel".to_string(),
+    }
+}
+
+fn terminal_action_label(action: &LevelEvent) -> Option<String> {
+    match action {
+        LevelEvent::CompleteObjective(_) => Some("objective".to_string()),
+        LevelEvent::GrantClearance(clearance_id) => Some(format!("key {clearance_id}")),
+        LevelEvent::UnlockDoor(_) => Some("unlock door".to_string()),
+        LevelEvent::AddAmmo(amount) => Some(format!("ammo +{amount}")),
+        LevelEvent::Heal(amount) => Some(format!("heal +{amount}")),
+        LevelEvent::AcquireAreaScan => Some("area scan".to_string()),
+        LevelEvent::SetSpawnInterval(_) => None,
+    }
 }
 
 fn locked_door_prompt(door: &Door, level_state: &LocalLevelState) -> String {
