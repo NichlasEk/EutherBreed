@@ -147,14 +147,14 @@
         ),
         (
             id: "triage_east_hazard_floor",
-            position: (204.0, -92.0),
+            position: (204.0, -100.0),
             kind: HazardFloor,
             rotation_degrees: 90.0,
             blocking: false,
         ),
         (
             id: "triage_mid_pipe_cluster",
-            position: (82.0, 48.0),
+            position: (98.0, 48.0),
             kind: PipeCluster,
             rotation_degrees: 0.0,
             blocking: false,

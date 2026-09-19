@@ -157,3 +157,19 @@ cargo run -p euther_game -- --visual-smoke /tmp/eutherbreed-visual
 ```
 
 The check uses `/tmp/eutherbreed-visual/smoke-save.ron`, leaving the normal save slot alone. Original door sounds can be regenerated with `python3 scripts/generate-door-audio.py` (requires ffmpeg).
+
+## Graphics and music pass (2026-09-19)
+
+- Decor and terminals now use complete regions of the original atlas instead of cropped standalone exports, with preserved proportions and smaller room-scale footprints.
+- Wall tile ends terminate at their collision boundaries. All four maps have a decor placement pass; rotated bounds are checked against walls, doors and map edges. Room signs avoid props where space permits.
+- Smaller enemy sprites have navigation clearance matching their rotated visual footprint.
+- Two original ACE-Step horror/electronic loops adapt to visible nearby threats. **F6** toggles music; **F7/F8** adjust its volume independently of effects. Details and provenance: `assets/music/README.md`.
+- To inspect a particular map without overwriting the normal save slot: `cargo run -p euther_game -- --visual-smoke /tmp/eutherbreed-art-review --visual-level research_spine`. This captures the full map before checking a transition.
+
+## Terminal feedback and audio settings (2026-09-19)
+
+- **SETTINGS** in the main menu or Esc pause menu offers separate music and SFX sliders. Drag with the mouse, or use Tab and left/right arrows. Preferences save automatically in `saves/audio-settings.ron`.
+- Successful analysis changes the terminal display and sample indicator. Completing the sector's required objectives changes its lighting and brings up a faint ventilation hum; objective-controlled energy barriers release remotely. These changes return when loading a save.
+- Pressing **E** at an already-used terminal gives a hollow double knock and a small display reaction. Missing requirements give a short dull buzz. Neither adds an explanatory text box.
+- Original synthesized cues can be regenerated with `python3 scripts/generate-terminal-audio.py` (NumPy and ffmpeg).
+- Automated graphical interaction review: `cargo run -p euther_game -- --visual-smoke /tmp/eutherbreed-terminal-review-new --terminal-review`. Use a fresh output directory for default-volume assertions. It captures terminal responses, verifies save/load state and adjusts both audio channels using isolated saves/settings.

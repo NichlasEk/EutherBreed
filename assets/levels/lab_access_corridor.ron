@@ -95,7 +95,7 @@
         ),
         (
             id: "lab_console_table",
-            position: (286.0, 162.0),
+            position: (250.0, 162.0),
             kind: LabTable,
             rotation_degrees: 0.0,
             blocking: false,

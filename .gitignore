@@ -1,3 +1,6 @@
 .git-local/
 target/
 saves/
+assets/music/*-master.wav
+assets/music/abyssal-circuit.json
+assets/music/quarantine-pulse.json

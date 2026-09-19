@@ -74,6 +74,8 @@ pub fn collect_pickups(
 pub fn unlock_doors(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
+    input: Option<Res<ButtonInput<KeyCode>>>,
+    audio: Option<Res<crate::audio_settings::AudioSettings>>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     vitals: Res<ApothecaryVitals>,
     mut level_state: ResMut<LocalLevelState>,
@@ -86,16 +88,43 @@ pub fn unlock_doors(
     let apothecary_position = apothecary_query.translation.xy();
 
     for (entity, transform, mut door, sprite) in &mut door_query {
-        if door.opened
-            || !(level_state.0.has_unlocked_door(&door.id)
-                || door_requirements_met(&door, &level_state, &vitals))
-        {
+        if door.opened {
             continue;
         }
-
+        let ready = level_state.0.has_unlocked_door(&door.id)
+            || door_requirements_met(&door, &level_state, &vitals);
         let door_half_extents = sprite.custom_size.unwrap_or(Vec2::splat(32.0)) * 0.5;
         let trigger_bounds = AxisAlignedBox::new(transform.translation.xy(), door_half_extents);
-        if !point_inside_expanded_box(apothecary_position, trigger_bounds, DOOR_TRIGGER_PADDING) {
+        let nearby =
+            point_inside_expanded_box(apothecary_position, trigger_bounds, DOOR_TRIGGER_PADDING);
+        if !ready {
+            if nearby
+                && input
+                    .as_ref()
+                    .is_some_and(|keys| keys.just_pressed(KeyCode::KeyE))
+            {
+                commands
+                    .entity(entity)
+                    .insert(crate::door_visuals::DoorRejection(Timer::from_seconds(
+                        0.45,
+                        TimerMode::Once,
+                    )));
+                if let Some(assets) = &asset_server {
+                    crate::audio_settings::play_sfx(
+                        &mut commands,
+                        assets,
+                        &audio.as_deref().cloned().unwrap_or_default(),
+                        "audio/terminal-denied.ogg",
+                    );
+                }
+            }
+            continue;
+        }
+        // Objective-controlled fields discharge remotely when the analysis/power
+        // action succeeds. Ordinary doors and keycard fields still use approach.
+        if !nearby
+            && !(door.kind == DoorKind::EnergyBarrier && !door.required_objectives.is_empty())
+        {
             continue;
         }
 
@@ -104,11 +133,12 @@ pub fn unlock_doors(
                 DoorKind::Bulkhead => "audio/bulkhead-open.ogg",
                 DoorKind::EnergyBarrier => "audio/field-release.ogg",
             };
-            commands.spawn((
-                AudioPlayer::new(assets.load(cue)),
-                PlaybackSettings::DESPAWN,
-                LevelEntity,
-            ));
+            crate::audio_settings::play_sfx(
+                &mut commands,
+                assets,
+                &audio.as_deref().cloned().unwrap_or_default(),
+                cue,
+            );
         }
         door.locked = false;
         level_state.0.unlock_door(door.id.clone());
@@ -126,7 +156,9 @@ pub fn unlock_doors(
             DoorKind::Bulkhead => "Door opening",
             DoorKind::EnergyBarrier => "Energy barrier collapsing",
         };
-        notice.show(message, 1.4);
+        if nearby {
+            notice.show(message, 1.4);
+        }
     }
 }
 

@@ -7,6 +7,7 @@ use crate::setup::contaminant_animation;
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const CONTAMINANT_RADIUS: f32 = 18.0;
+const CONTAMINANT_NAV_RADIUS: f32 = 30.5;
 const CONTAMINANT_SPEED: f32 = 92.0;
 const CONTAMINANT_PATROL_SPEED: f32 = 48.0;
 const CONTAMINANT_AGGRO_RADIUS: f32 = 270.0;
@@ -49,7 +50,7 @@ pub fn spawn_contaminants(
     level_runtime.dynamic_spawn_cursor += 1;
 
     let mut sprite = Sprite::from_image(asset_server.load("sprites/biomech/contaminant.png"));
-    sprite.custom_size = Some(Vec2::new(64.0, 50.0));
+    sprite.custom_size = Some(Vec2::new(48.0, 37.5));
 
     commands.spawn((
         sprite,
@@ -107,7 +108,7 @@ pub fn move_contaminants(
         let delta = direction * speed * time.delta_secs();
         let next = current + delta;
 
-        if !circle_hits_any_wall(next, CONTAMINANT_RADIUS, &wall_query) {
+        if !circle_hits_any_wall(next, CONTAMINANT_NAV_RADIUS, &wall_query) {
             transform.translation = next.extend(transform.translation.z);
             apply_contaminant_walk(
                 &mut transform,
@@ -122,13 +123,13 @@ pub fn move_contaminants(
         let mut moved = Vec2::ZERO;
 
         let x_only = Vec2::new(next.x, current.y);
-        if !circle_hits_any_wall(x_only, CONTAMINANT_RADIUS, &wall_query) {
+        if !circle_hits_any_wall(x_only, CONTAMINANT_NAV_RADIUS, &wall_query) {
             transform.translation.x = x_only.x;
             moved.x = x_only.x - current.x;
         }
 
         let y_only = Vec2::new(transform.translation.x, next.y);
-        if !circle_hits_any_wall(y_only, CONTAMINANT_RADIUS, &wall_query) {
+        if !circle_hits_any_wall(y_only, CONTAMINANT_NAV_RADIUS, &wall_query) {
             transform.translation.y = y_only.y;
             moved.y = y_only.y - current.y;
         }

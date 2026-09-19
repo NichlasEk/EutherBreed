@@ -21,6 +21,7 @@ pub struct MainMenuEntity;
 
 #[derive(Component, Clone, Copy)]
 pub enum MainMenuAction {
+    Settings,
     Play,
     Editor,
     Quit,
@@ -41,6 +42,7 @@ pub struct PauseMenuEntity;
 
 #[derive(Component, Clone, Copy)]
 pub enum PauseMenuAction {
+    Settings,
     Resume,
     Inventory,
     Map,

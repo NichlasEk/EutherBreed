@@ -1,10 +1,13 @@
+mod audio_settings;
 mod components;
 mod door_visuals;
 mod editor;
 mod geometry;
+mod music;
 mod resources;
 mod setup;
 mod systems;
+mod terminal_visuals;
 mod visual_smoke;
 
 use bevy::app::AppExit;
@@ -40,6 +43,7 @@ enum AppScreen {
     MainMenu,
     InGame,
     Paused,
+    Settings,
     GameOver,
 }
 
@@ -125,6 +129,7 @@ fn main() {
 
 fn run_game() {
     let mut app = App::new();
+    audio_settings::install(&mut app);
     app.insert_resource(ClearColor(Color::srgb(0.015, 0.018, 0.025)))
         .insert_resource(initial_vitals())
         .insert_resource(RunLives::default())
@@ -155,7 +160,22 @@ fn run_game() {
                 }),
         )
         .init_state::<AppScreen>()
-        .add_systems(Startup, spawn_game_camera)
+        .init_resource::<music::MusicMix>()
+        .add_systems(Startup, (spawn_game_camera, music::start_music))
+        .add_systems(
+            Update,
+            (music::update_music, terminal_visuals::update_ventilation),
+        )
+        .add_systems(
+            Update,
+            (
+                door_visuals::tick_rejections,
+                terminal_visuals::tick_responses,
+                terminal_visuals::update_terminal_art,
+            )
+                .chain()
+                .run_if(in_state(AppScreen::InGame)),
+        )
         .add_systems(Update, sync_hud_visibility)
         .add_systems(OnEnter(AppScreen::MainMenu), spawn_main_menu)
         .add_systems(
@@ -279,6 +299,7 @@ fn spawn_main_menu(mut commands: Commands) {
 
             spawn_menu_button(parent, "PLAY", MainMenuAction::Play);
             spawn_menu_button(parent, "EDITOR", MainMenuAction::Editor);
+            spawn_menu_button(parent, "SETTINGS", MainMenuAction::Settings);
             spawn_menu_button(parent, "QUIT", MainMenuAction::Quit);
         });
 }
@@ -326,11 +347,16 @@ fn main_menu_input(
     >,
     mut next_state: ResMut<NextState<AppScreen>>,
     mut exit: MessageWriter<AppExit>,
+    mut settings_return: ResMut<audio_settings::SettingsReturn>,
 ) {
     for (interaction, action, mut background, mut border) in &mut interactions {
         match *interaction {
             Interaction::Pressed => {
                 match action {
+                    MainMenuAction::Settings => {
+                        settings_return.0 = AppScreen::MainMenu;
+                        next_state.set(AppScreen::Settings);
+                    }
                     MainMenuAction::Play => next_state.set(AppScreen::InGame),
                     MainMenuAction::Editor => {
                         launch_editor_process(DEFAULT_EDITOR_LEVEL);
@@ -476,6 +502,7 @@ fn spawn_pause_menu(
                             spawn_pause_button(buttons, "RESUME", PauseMenuAction::Resume);
                             spawn_pause_button(buttons, "INVENTORY", PauseMenuAction::Inventory);
                             spawn_pause_button(buttons, "MAP", PauseMenuAction::Map);
+                            spawn_pause_button(buttons, "SETTINGS", PauseMenuAction::Settings);
                             spawn_pause_button(buttons, "MAIN MENU", PauseMenuAction::MainMenu);
                             spawn_pause_button(buttons, "QUIT", PauseMenuAction::Quit);
                         });
@@ -516,6 +543,7 @@ fn spawn_pause_button(parent: &mut ChildSpawnerCommands, label: &str, action: Pa
 
 fn pause_menu_input(
     input: Res<ButtonInput<KeyCode>>,
+    mut settings_return: ResMut<audio_settings::SettingsReturn>,
     mut interactions: Query<
         (
             &Interaction,
@@ -554,6 +582,10 @@ fn pause_menu_input(
         match *interaction {
             Interaction::Pressed => {
                 match action {
+                    PauseMenuAction::Settings => {
+                        settings_return.0 = AppScreen::Paused;
+                        next_state.set(AppScreen::Settings);
+                    }
                     PauseMenuAction::Resume => next_state.set(AppScreen::InGame),
                     PauseMenuAction::Inventory => {
                         pause_state.tab = PauseTab::Inventory;

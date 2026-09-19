@@ -2333,6 +2333,7 @@ dependencies = [
  "bevy",
  "game_core",
  "ron",
+ "serde",
 ]
 
 [[package]]

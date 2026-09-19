@@ -6,6 +6,21 @@ use game_core::{DoorKind, RuleContext, RuleGate};
 use crate::components::{Door, DoorOpening};
 use crate::resources::{ApothecaryVitals, LocalLevelState};
 
+#[derive(Component)]
+pub struct DoorRejection(pub Timer);
+pub fn tick_rejections(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut doors: Query<(Entity, &mut DoorRejection)>,
+) {
+    for (entity, mut rejection) in &mut doors {
+        rejection.0.tick(time.delta());
+        if rejection.0.is_finished() {
+            commands.entity(entity).remove::<DoorRejection>();
+        }
+    }
+}
+
 const ARC_SEGMENTS: usize = 12;
 
 #[derive(Component)]
@@ -252,12 +267,12 @@ pub fn animate_door_visuals(
     time: Res<Time>,
     state: Res<LocalLevelState>,
     vitals: Res<ApothecaryVitals>,
-    doors: Query<(&Door, Option<&DoorOpening>)>,
+    doors: Query<(&Door, Option<&DoorOpening>, Option<&DoorRejection>)>,
     mut parts: Query<(&DoorPart, &mut Transform, &mut Sprite)>,
 ) {
     let t = time.elapsed_secs();
     for (part, mut transform, mut sprite) in &mut parts {
-        let Ok((door, opening)) = doors.get(part.owner) else {
+        let Ok((door, opening, rejection)) = doors.get(part.owner) else {
             continue;
         };
         let progress = if door.opened {
@@ -287,6 +302,15 @@ pub fn animate_door_visuals(
                 transform.translation.y = position.y;
             }
             PartRole::Indicator => {
+                if let Some(rejection) = rejection {
+                    sprite.color = Color::srgba(
+                        1.0,
+                        0.18,
+                        0.04,
+                        0.55 + 0.45 * (rejection.0.elapsed_secs() * 24.0).sin().abs(),
+                    );
+                    continue;
+                }
                 let ready = door.opened
                     || opening.is_some()
                     || state.0.has_unlocked_door(&door.id)
@@ -457,6 +481,34 @@ mod tests {
             world.despawn(owner);
             assert_eq!(world.query::<&DoorPart>().iter(world).count(), 0);
         }
+    }
+
+    #[test]
+    fn objective_field_releases_remotely_after_analysis() {
+        let (mut app, owner) = scene(DoorKind::EnergyBarrier, false, Vec2::new(24.0, 96.0));
+        app.world_mut()
+            .get_mut::<Transform>(owner)
+            .unwrap()
+            .translation
+            .x = 500.0;
+        {
+            let mut door = app.world_mut().get_mut::<Door>(owner).unwrap();
+            door.clearance_id = "open".into();
+            door.required_objectives = vec!["analysis".into()];
+        }
+        app.update();
+        assert!(app.world().get::<DoorOpening>(owner).is_none());
+        app.world_mut()
+            .resource_mut::<LocalLevelState>()
+            .0
+            .complete_objective("analysis");
+        app.update();
+        assert!(app.world().get::<DoorOpening>(owner).is_some());
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_secs_f32(1.0));
+        app.update();
+        assert!(app.world().get::<Wall>(owner).is_none());
     }
 
     #[test]

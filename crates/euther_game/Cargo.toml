@@ -9,3 +9,4 @@ repository.workspace = true
 bevy.workspace = true
 game_core = { path = "../game_core" }
 ron.workspace = true
+serde.workspace = true

@@ -477,6 +477,15 @@ pub fn spawn_level(
     entry_id: Option<&str>,
     run_position: Option<Vec2>,
 ) {
+    commands.spawn((
+        AudioPlayer::new(asset_server.load("audio/ventilation.ogg")),
+        PlaybackSettings {
+            volume: bevy::audio::Volume::SILENT,
+            ..PlaybackSettings::LOOP
+        },
+        crate::terminal_visuals::Ventilation,
+        LevelEntity,
+    ));
     let apothecary_start =
         run_position.unwrap_or_else(|| apothecary_spawn_position(level, entry_id));
     let floor_size = visual_floor_size(level.bounds.half_extents * 2.0);
@@ -680,17 +689,21 @@ fn spawn_tiled_area(
 ) {
     let columns = (size.x / tile_size.x).ceil() as i32;
     let rows = (size.y / tile_size.y).ceil() as i32;
-    let origin = center - Vec2::new(columns as f32 * tile_size.x, rows as f32 * tile_size.y) * 0.5;
-
+    let origin = center - size * 0.5;
     for y in 0..rows {
         for x in 0..columns {
-            let position = origin
-                + Vec2::new(
-                    x as f32 * tile_size.x + tile_size.x * 0.5,
-                    y as f32 * tile_size.y + tile_size.y * 0.5,
-                );
+            let offset = Vec2::new(x as f32 * tile_size.x, y as f32 * tile_size.y);
+            let clipped = (size - offset).min(tile_size);
+            let position = origin + offset + clipped * 0.5;
+            let mut sprite = image_sprite(asset_server, path, clipped, color);
+            // This helper renders the 499x264 wall source. Crop terminal tiles,
+            // so their pixels and collision terminate at exactly the same edge.
+            sprite.rect = Some(Rect::from_corners(
+                Vec2::ZERO,
+                Vec2::new(499.0, 264.0) * clipped / tile_size,
+            ));
             commands.spawn((
-                image_sprite(asset_server, path, tile_size, color),
+                sprite,
                 Transform::from_xyz(position.x, position.y, z),
                 LevelEntity,
             ));
@@ -777,11 +790,7 @@ fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
         ));
 
         spawn_section_edge_accent(commands, section.bounds, section.kind);
-        let label_position = section.bounds.center
-            + Vec2::new(
-                -section.bounds.half_extents.x + 12.0,
-                section.bounds.half_extents.y - 16.0,
-            );
+        let label_position = section_label_position(level, section);
         commands.spawn((
             Text2d::new(section.label.to_uppercase()),
             TextFont {
@@ -809,15 +818,68 @@ fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
                     Vec2::new(76.0 + spread * 8.0, 12.0 + spread * 7.0),
                 ),
                 Transform::from_xyz(light_position.x, light_position.y - spread * 3.0, -8.1),
+                crate::terminal_visuals::RoomLight {
+                    base: light.with_alpha(0.022),
+                },
                 LevelEntity,
             ));
         }
         commands.spawn((
             Sprite::from_color(light, Vec2::new(62.0, 2.0)),
             Transform::from_xyz(light_position.x, light_position.y, -7.9),
+            crate::terminal_visuals::RoomLight { base: light },
             LevelEntity,
         ));
     }
+}
+
+fn decor_half_extents(decor: &DecorDefinition) -> Vec2 {
+    let (_, size, _, _) = decor_visual(decor.kind);
+    let (sin, cos) = decor.rotation_degrees.to_radians().sin_cos();
+    Vec2::new(
+        cos.abs() * size.x + sin.abs() * size.y,
+        sin.abs() * size.x + cos.abs() * size.y,
+    ) * 0.5
+}
+
+fn section_label_position(level: &LevelDefinition, section: &game_core::SectionDefinition) -> Vec2 {
+    let half = Vec2::new(section.label.len() as f32 * 2.8, 7.0);
+    let origin = section.bounds.center
+        + Vec2::new(
+            -section.bounds.half_extents.x + 12.0,
+            section.bounds.half_extents.y - 16.0,
+        );
+    let rows = ((section.bounds.half_extents.y * 2.0 - 24.0) / 14.0).max(1.0) as i32;
+    let columns =
+        ((section.bounds.half_extents.x * 2.0 - half.x * 2.0 - 24.0) / 20.0).max(0.0) as i32;
+    for row in 0..rows {
+        for column in 0..=columns {
+            let left = origin + Vec2::new(column as f32 * 20.0, -row as f32 * 14.0);
+            let center = left + Vec2::X * half.x;
+            let misses = |position: Vec2, extent: Vec2| {
+                let delta = (center - position).abs();
+                let padding = half + extent + Vec2::splat(4.0);
+                delta.x >= padding.x || delta.y >= padding.y
+            };
+            let clear = level
+                .decor
+                .iter()
+                .all(|d| misses(d.position, decor_half_extents(d)))
+                && level.walls.iter().all(|w| misses(w.center, w.half_extents))
+                && level
+                    .doors
+                    .iter()
+                    .all(|d| misses(d.position, d.half_extents + Vec2::splat(12.0)))
+                && level
+                    .terminals
+                    .iter()
+                    .all(|t| misses(t.position, Vec2::splat(24.0)));
+            if clear {
+                return left;
+            }
+        }
+    }
+    origin
 }
 
 fn section_tint(kind: SectionKind) -> Color {
@@ -1062,7 +1124,7 @@ fn spawn_contaminant(
         image_sprite(
             asset_server,
             "sprites/biomech/contaminant.png",
-            Vec2::new(64.0, 50.0),
+            Vec2::new(48.0, 37.5),
             Color::WHITE,
         ),
         Transform::from_xyz(position.x, position.y, 15.0),
@@ -1126,11 +1188,9 @@ fn spawn_decor(commands: &mut Commands, asset_server: &AssetServer, decor: &Deco
     let mut transform = Transform::from_xyz(decor.position.x, decor.position.y, z);
     transform.rotation = Quat::from_rotation_z(decor.rotation_degrees.to_radians());
 
-    let mut entity = commands.spawn((
-        image_sprite(asset_server, path, size, color),
-        transform,
-        LevelEntity,
-    ));
+    let mut sprite = image_sprite(asset_server, path, size, color);
+    sprite.rect = decor_atlas_rect(decor.kind);
+    let mut entity = commands.spawn((sprite, transform, LevelEntity));
 
     if decor.blocking {
         entity.insert(Wall {
@@ -1139,83 +1199,101 @@ fn spawn_decor(commands: &mut Commands, asset_server: &AssetServer, decor: &Deco
     }
 }
 
+fn decor_atlas_rect(kind: DecorKind) -> Option<Rect> {
+    match kind {
+        DecorKind::MedBed => Some(Rect::new(33.0, 14.0, 298.0, 426.0)),
+        DecorKind::BioTank => Some(Rect::new(638.0, 14.0, 856.0, 410.0)),
+        DecorKind::SupplyCrate => Some(Rect::new(935.0, 190.0, 1084.0, 291.0)),
+        DecorKind::LabTable => Some(Rect::new(874.0, 32.0, 1144.0, 186.0)),
+        DecorKind::FloorGrate => Some(Rect::new(1190.0, 30.0, 1494.0, 220.0)),
+        DecorKind::HazardFloor => Some(Rect::new(1188.0, 227.0, 1495.0, 423.0)),
+        DecorKind::CrackedPanel => Some(Rect::new(38.0, 434.0, 403.0, 674.0)),
+        DecorKind::PipeCluster => Some(Rect::new(426.0, 434.0, 787.0, 669.0)),
+        DecorKind::BloodPool => Some(Rect::new(823.0, 438.0, 1148.0, 685.0)),
+        DecorKind::AcidScorch => Some(Rect::new(1176.0, 438.0, 1492.0, 686.0)),
+        DecorKind::CorpsePile => Some(Rect::new(30.0, 690.0, 404.0, 981.0)),
+        DecorKind::BloodSmear => Some(Rect::new(823.0, 438.0, 1148.0, 685.0)),
+        _ => None,
+    }
+}
+
 fn decor_visual(kind: DecorKind) -> (&'static str, Vec2, f32, Color) {
     match kind {
         DecorKind::BloodDrops => (
             "sprites/biomech/v2_decor_blood_drops.png",
-            Vec2::new(54.0, 42.0),
+            Vec2::new(48.00, 30.28),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::BloodSmear => (
-            "sprites/biomech/v2_decor_blood_smear.png",
-            Vec2::new(92.0, 44.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(70.00, 53.20),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::BloodPool => (
-            "sprites/biomech/v2_decor_blood_pool.png",
-            Vec2::new(96.0, 72.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(78.00, 59.28),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::AcidScorch => (
-            "sprites/biomech/v2_decor_acid_scorch.png",
-            Vec2::new(90.0, 70.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(72.00, 56.51),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::CrackedPanel => (
-            "sprites/biomech/v2_decor_cracked_panel.png",
-            Vec2::new(84.0, 84.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(66.00, 43.40),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::LabTable => (
-            "sprites/biomech/v2_decor_lab_table.png",
-            Vec2::new(112.0, 64.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(84.00, 47.91),
             1.0,
             Color::WHITE,
         ),
         DecorKind::MedBed => (
-            "sprites/biomech/v2_decor_med_bed.png",
-            Vec2::new(70.0, 118.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(55.32, 86.00),
             1.0,
             Color::WHITE,
         ),
         DecorKind::BioTank => (
-            "sprites/biomech/v2_decor_bio_tank.png",
-            Vec2::new(62.0, 96.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(41.84, 76.00),
             1.0,
             Color::WHITE,
         ),
         DecorKind::SupplyCrate => (
-            "sprites/biomech/v2_decor_supply_crate_small.png",
-            Vec2::new(58.0, 48.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(48.00, 32.54),
             1.0,
             Color::WHITE,
         ),
         DecorKind::PipeCluster => (
-            "sprites/biomech/v2_decor_pipe_cluster.png",
-            Vec2::new(116.0, 42.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(78.00, 50.78),
             1.0,
             Color::WHITE,
         ),
         DecorKind::CorpsePile => (
-            "sprites/biomech/v2_decor_corpse_pile.png",
-            Vec2::new(88.0, 74.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(70.00, 54.47),
             1.0,
             Color::WHITE,
         ),
         DecorKind::FloorGrate => (
-            "sprites/biomech/v2_decor_floor_grate.png",
-            Vec2::new(112.0, 82.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(82.00, 51.25),
             -1.0,
             Color::WHITE,
         ),
         DecorKind::HazardFloor => (
-            "sprites/biomech/v2_decor_hazard_floor.png",
-            Vec2::new(112.0, 38.0),
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Vec2::new(76.00, 48.52),
             -1.0,
             Color::WHITE,
         ),
@@ -1289,29 +1367,38 @@ fn spawn_terminal(
     actions: Vec<game_core::LevelEvent>,
 ) {
     let (path, color) = match kind {
-        TerminalKind::LabAnalyzer => ("sprites/biomech/v2_terminal_lab_analyzer.png", Color::WHITE),
+        TerminalKind::LabAnalyzer => (
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Color::WHITE,
+        ),
         TerminalKind::ShipLog => (
-            "sprites/biomech/v2_terminal_lab_analyzer.png",
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
             Color::srgba(0.78, 0.88, 1.0, 1.0),
         ),
-        TerminalKind::SupplyConsole => {
-            ("sprites/biomech/v2_terminal_lab_analyzer.png", Color::WHITE)
-        }
+        TerminalKind::SupplyConsole => (
+            "generated_atlas/biomech_props_atlas_v1_alpha.png",
+            Color::WHITE,
+        ),
     };
 
-    commands.spawn((
-        image_sprite(asset_server, path, Vec2::new(42.0, 40.0), color),
-        Transform::from_xyz(position.x, position.y, 4.0),
-        Terminal {
-            id,
-            kind,
-            objective_id,
-            required_bio_samples,
-            pattern,
-            actions,
-        },
-        LevelEntity,
-    ));
+    let mut sprite = image_sprite(asset_server, path, Vec2::new(37.27, 40.0), color);
+    sprite.rect = Some(Rect::new(325.0, 43.0, 612.0, 351.0));
+    let owner = commands
+        .spawn((
+            sprite,
+            Transform::from_xyz(position.x, position.y, 4.0),
+            Terminal {
+                id,
+                kind,
+                objective_id,
+                required_bio_samples,
+                pattern,
+                actions,
+            },
+            LevelEntity,
+        ))
+        .id();
+    crate::terminal_visuals::spawn_parts(commands, owner);
 }
 
 #[cfg(test)]
@@ -1409,6 +1496,83 @@ mod layout_tests {
                 "unreachable pickup {}",
                 pickup.id
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod art_tests {
+    use super::*;
+    #[test]
+    fn all_campaign_decor_fits_inside_floor_without_wall_overlap() {
+        for name in [
+            "prototype_quarantine_ward",
+            "lab_access_corridor",
+            "triage_vault",
+            "research_spine",
+        ] {
+            let level =
+                LevelDefinition::from_ron_file(format!("../../assets/levels/{name}.ron")).unwrap();
+            for decor in &level.decor {
+                let half = decor_half_extents(decor);
+                let extent = (decor.position - level.bounds.center).abs() + half;
+                assert!(
+                    extent.x <= level.bounds.half_extents.x
+                        && extent.y <= level.bounds.half_extents.y,
+                    "{name}: {} outside playable floor",
+                    decor.id
+                );
+                for wall in &level.walls {
+                    let distance = (decor.position - wall.center).abs();
+                    let limit = half + wall.half_extents;
+                    assert!(
+                        distance.x >= limit.x || distance.y >= limit.y,
+                        "{name}: {} overlaps wall",
+                        decor.id
+                    );
+                }
+                for door in &level.doors {
+                    let distance = (decor.position - door.position).abs();
+                    let limit = half + door.half_extents;
+                    assert!(
+                        distance.x >= limit.x || distance.y >= limit.y,
+                        "{name}: {} overlaps door {}",
+                        decor.id,
+                        door.id
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod actor_art_tests {
+    use super::*;
+    #[test]
+    fn enemy_spawns_leave_room_for_the_rotated_sprite() {
+        for name in [
+            "prototype_quarantine_ward",
+            "lab_access_corridor",
+            "triage_vault",
+            "research_spine",
+        ] {
+            let level =
+                LevelDefinition::from_ron_file(format!("../../assets/levels/{name}.ron")).unwrap();
+            let walls = split_walls_around_doors(&level.walls, &level.doors);
+            for position in level
+                .contaminants
+                .iter()
+                .map(|c| c.position)
+                .chain(level.spawn_points.iter().copied())
+            {
+                assert!(
+                    !walls
+                        .iter()
+                        .any(|wall| game_core::circle_intersects_aabb(position, 30.5, *wall)),
+                    "{name}: enemy at {position:?} touches a wall"
+                );
+            }
         }
     }
 }

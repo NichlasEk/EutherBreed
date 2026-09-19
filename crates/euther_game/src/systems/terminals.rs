@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use game_core::{LevelEvent, TerminalKind, TerminalPattern};
 
-use crate::components::{Apothecary, EffectLifetime, LevelEntity, Terminal};
+use crate::components::{Apothecary, Terminal};
 use crate::resources::{
     ApothecaryVitals, ContaminantSpawnTimer, GameNotice, LevelRuntime, LocalLevelState,
 };
@@ -11,8 +11,10 @@ const TERMINAL_INTERACTION_RADIUS: f32 = 42.0;
 pub fn interact_with_terminals(
     mut commands: Commands,
     input: Res<ButtonInput<KeyCode>>,
+    assets: Res<AssetServer>,
+    audio: Res<crate::audio_settings::AudioSettings>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
-    terminal_query: Query<(&Transform, &Terminal)>,
+    terminal_query: Query<(Entity, &Transform, &Terminal)>,
     mut level_state: ResMut<LocalLevelState>,
     mut level_runtime: ResMut<LevelRuntime>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
@@ -25,41 +27,67 @@ pub fn interact_with_terminals(
 
     let apothecary_position = apothecary_query.translation.xy();
 
-    for (transform, terminal) in &terminal_query {
-        if apothecary_position.distance(transform.translation.xy()) > TERMINAL_INTERACTION_RADIUS {
-            continue;
-        }
+    let Some((entity, transform, terminal)) = terminal_query
+        .iter()
+        .filter(|(_, t, _)| {
+            apothecary_position.distance(t.translation.xy()) <= TERMINAL_INTERACTION_RADIUS
+        })
+        .min_by(|a, b| {
+            apothecary_position
+                .distance_squared(a.1.translation.xy())
+                .total_cmp(&apothecary_position.distance_squared(b.1.translation.xy()))
+        })
+    else {
+        return;
+    };
+    let response = response_for(terminal, &level_state, &vitals);
+    let cue = match response {
+        crate::terminal_visuals::Response::Success => "audio/terminal-analysis.ogg",
+        crate::terminal_visuals::Response::Used => "audio/terminal-used.ogg",
+        crate::terminal_visuals::Response::Denied => "audio/terminal-denied.ogg",
+    };
+    crate::audio_settings::play_sfx(&mut commands, &assets, &audio, cue);
+    crate::terminal_visuals::respond(&mut commands, entity, response);
+    if response != crate::terminal_visuals::Response::Success {
+        return;
+    }
+    level_state.0.activate_terminal(terminal.id.clone());
+    let actions = terminal_actions(terminal);
+    let summary = execute_terminal_actions(
+        &actions,
+        &mut level_state,
+        &mut level_runtime,
+        &mut contaminant_timer,
+        &mut vitals,
+    );
+    notice.show(
+        match terminal.kind {
+            TerminalKind::LabAnalyzer => "Analysis complete",
+            TerminalKind::ShipLog => "Link established",
+            TerminalKind::SupplyConsole => "Supplies released",
+        },
+        1.4,
+    );
+    info!(
+        "terminal {} at {:?}: {}",
+        terminal.id,
+        transform.translation.xy(),
+        summary
+    );
+}
 
-        if terminal.required_bio_samples > vitals.0.bio_samples {
-            notice.show(
-                format!(
-                    "Bio-samples required {}/{}",
-                    vitals.0.bio_samples, terminal.required_bio_samples
-                ),
-                1.8,
-            );
-            continue;
-        }
-
-        if !level_state.0.activate_terminal(terminal.id.clone()) {
-            notice.show("Terminal already processed", 1.4);
-            continue;
-        }
-
-        spawn_terminal_activation_effect(&mut commands, transform.translation.xy(), &terminal.kind);
-        let actions = terminal_actions(terminal);
-        let summary = execute_terminal_actions(
-            &actions,
-            &mut level_state,
-            &mut level_runtime,
-            &mut contaminant_timer,
-            &mut vitals,
-        );
-        notice.show(summary, 1.8);
-        info!(
-            "terminal {:?} executed actions {:?}",
-            terminal.kind, actions
-        );
+fn response_for(
+    terminal: &Terminal,
+    state: &LocalLevelState,
+    vitals: &ApothecaryVitals,
+) -> crate::terminal_visuals::Response {
+    use crate::terminal_visuals::Response;
+    if state.0.activated_terminals.contains(&terminal.id) {
+        Response::Used
+    } else if vitals.0.bio_samples < terminal.required_bio_samples {
+        Response::Denied
+    } else {
+        Response::Success
     }
 }
 
@@ -162,17 +190,27 @@ fn execute_terminal_actions(
     }
 }
 
-fn spawn_terminal_activation_effect(commands: &mut Commands, position: Vec2, kind: &TerminalKind) {
-    let color = match kind {
-        TerminalKind::LabAnalyzer => Color::srgba(0.30, 1.0, 0.84, 0.62),
-        TerminalKind::ShipLog => Color::srgba(0.45, 0.70, 1.0, 0.58),
-        TerminalKind::SupplyConsole => Color::srgba(1.0, 0.72, 0.22, 0.62),
-    };
-
-    commands.spawn((
-        Sprite::from_color(color, Vec2::new(70.0, 46.0)),
-        Transform::from_xyz(position.x, position.y, 5.5),
-        EffectLifetime(Timer::from_seconds(0.34, TimerMode::Once)),
-        LevelEntity,
-    ));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::terminal_visuals::Response;
+    #[test]
+    fn used_terminal_reports_empty_even_if_samples_are_no_longer_available() {
+        let terminal = Terminal {
+            id: "analyzer".into(),
+            kind: TerminalKind::LabAnalyzer,
+            objective_id: None,
+            required_bio_samples: 1,
+            pattern: TerminalPattern::Default,
+            actions: vec![],
+        };
+        let mut state = LocalLevelState::default();
+        let mut vitals = ApothecaryVitals(game_core::ApothecaryVitals::new(100, 48, 0));
+        assert_eq!(response_for(&terminal, &state, &vitals), Response::Denied);
+        vitals.0.bio_samples = 1;
+        assert_eq!(response_for(&terminal, &state, &vitals), Response::Success);
+        state.0.activate_terminal("analyzer");
+        vitals.0.bio_samples = 0;
+        assert_eq!(response_for(&terminal, &state, &vitals), Response::Used);
+    }
 }

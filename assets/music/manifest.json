@@ -1,0 +1,42 @@
+[
+  {
+    "name": "abyssal-circuit",
+    "generator": "ACE-Step 1.5",
+    "model": "acestep-v15-turbo",
+    "task_id": "24f5af5a-e22f-4023-8589-caa30cdf4814",
+    "seed": "2432307201",
+    "prompt": "Instrumental cosmic horror survival game soundtrack, 88 BPM, D minor, oppressive alien medical spaceship ambience, immense sub bass drones, dissonant distant wordless choir textures, detuned metallic bells, restrained dark cyber techno pulse, sparse industrial clicks, slowly evolving unsettling harmony, ancient incomprehensible presence inside machinery. Subtle steady groove underneath long atmospheric phrases. No vocals or lyrics, no pop melody, no big risers or drops, no abrupt ending. Seamless looping game underscore, spacious mix, ominous and beautiful.",
+    "generated_caption": "An ominous and cinematic instrumental piece that opens with a deep, resonant cello or double bass playing a brooding, repetitive motif in a cavernous space. The tension gradually builds as a hypnotic, rhythmic ostinato enters, driven by a mix of orchestral percussion and world drums like hand drums. The arrangement swells into a powerful, epic climax with the introduction of a full string section, featuring soaring violins and dramatic cello lines, all propelled by forceful, driving percussion. The track then deconstructs, stripping back to the initial ominous bass motif before fading into silence.",
+    "bpm": 88.0,
+    "bars": 24,
+    "sample_rate": 48000,
+    "channels": 2,
+    "loop_seconds": 65.45454166666667,
+    "crossfade_seconds": 2.7272708333333333,
+    "rms_db": -22.0,
+    "peak_db": -4.387739658355713,
+    "master_path": "/home/nichlas/ai/eutherstudio/worker/work/output/eutherbreed-20260919-abyssal-circuit.wav",
+    "master_sha256": "d47b823c5c30c2a3facdff0344562b069eeb86b53cc961bf343a7373ca5fde7e",
+    "runtime_sha256": "66f22187d17e76287707e83aa6653ebadf014599173ec82cbf860112494c6c6f"
+  },
+  {
+    "name": "quarantine-pulse",
+    "generator": "ACE-Step 1.5",
+    "model": "acestep-v15-turbo",
+    "task_id": "d5010f50-103e-41d8-8e2d-43a0ac6a5350",
+    "seed": "2844901728",
+    "prompt": "Instrumental cosmic horror meets dark cyber techno combat game soundtrack, 112 BPM, D minor, ominous pulsing analog bass, tight muted industrial kick, syncopated metallic percussion, distorted machine rhythms, eerie dissonant string and wordless choir pads, haunted alien laboratory, terrifying ancient intelligence waking inside computers. Controlled relentless tension, layered rhythm with breathing space for gunfire, no EDM festival drop, no cheerful melody, no singing, no lyrics, sustained ending for looping.",
+    "generated_caption": "An intense, driving darksynth track built on a foundation of a punchy, four-on-the-floor drum machine beat and a relentless, sequenced synth bassline. The arrangement opens with ominous, low-frequency rumbles before a sharp riser slams into the main groove. A powerful, anthemic synth lead carries the primary melody, soaring over atmospheric pads and aggressive synth stabs. The track evolves through dynamic sections, including a melodic breakdown featuring arpeggiated synths and a more atmospheric, cinematic bridge with choir-like pads, before rebuilding to a powerful climax and an abrupt, impactful ending.",
+    "bpm": 111.0,
+    "bars": 32,
+    "sample_rate": 48000,
+    "channels": 2,
+    "loop_seconds": 69.1891875,
+    "crossfade_seconds": 2.162166666666667,
+    "rms_db": -21.999998092651367,
+    "peak_db": -6.564859390258789,
+    "master_path": "/home/nichlas/ai/eutherstudio/worker/work/output/eutherbreed-20260919-quarantine-pulse.wav",
+    "master_sha256": "77b830dcfbda5e13c69985b9eb63a2ae9f108c5ddd6f633101b105f855e05108",
+    "runtime_sha256": "8045ef8ffbcedd06af84f6f653051624245bd1a889774f82d1a2048278900e72"
+  }
+]
