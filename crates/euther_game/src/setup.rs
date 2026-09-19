@@ -35,14 +35,15 @@ pub fn setup(
     mut level_runtime: ResMut<LevelRuntime>,
     mut current_level_map: ResMut<CurrentLevelMap>,
     mut contaminant_timer: ResMut<ContaminantSpawnTimer>,
+    hud_roots: Query<Entity, With<crate::components::HudRoot>>,
 ) {
     if current_level_map.level.is_some() {
         return;
     }
 
-    commands.spawn((Camera2d, LevelEntity));
-
-    spawn_hud(&mut commands, &asset_server);
+    if hud_roots.is_empty() {
+        spawn_hud(&mut commands, &asset_server);
+    }
 
     let current_level_id = campaign_runtime.progress.current_level().to_string();
     let level = load_level_from_campaign(&campaign_runtime, &current_level_id);
@@ -144,40 +145,55 @@ fn spawn_hud(commands: &mut Commands, asset_server: &AssetServer) {
     });
 
     spawn_hud_rail(commands, asset_server, HudRail::Bottom, |parent| {
-        spawn_hud_value_segment(
-            parent,
-            asset_server,
-            "OBJ",
-            "standby",
-            ObjectiveText,
-            Color::srgb(0.90, 0.84, 0.52),
-            390.0,
-        );
-        spawn_hud_value_segment(
-            parent,
-            asset_server,
-            "SECTION",
-            "loading",
-            SectionText,
-            Color::srgb(0.55, 0.75, 0.92),
-            360.0,
-        );
-        spawn_hud_segment(
-            parent,
-            asset_server,
-            "",
-            PromptText,
-            Color::srgb(0.72, 0.96, 0.86),
-            430.0,
-        );
-        spawn_hud_segment(
-            parent,
-            asset_server,
-            "",
-            NoticeText,
-            Color::srgb(0.95, 0.78, 0.32),
-            330.0,
-        );
+        for row in 0..2 {
+            parent
+                .spawn(Node {
+                    width: percent(100),
+                    height: px(26),
+                    display: Display::Flex,
+                    column_gap: px(8),
+                    ..default()
+                })
+                .with_children(|line| {
+                    if row == 0 {
+                        spawn_hud_value_segment(
+                            line,
+                            asset_server,
+                            "OBJ",
+                            "standby",
+                            ObjectiveText,
+                            Color::srgb(0.90, 0.84, 0.52),
+                            640.0,
+                        );
+                        spawn_hud_value_segment(
+                            line,
+                            asset_server,
+                            "AREA",
+                            "loading",
+                            SectionText,
+                            Color::srgb(0.55, 0.75, 0.92),
+                            640.0,
+                        );
+                    } else {
+                        spawn_hud_segment(
+                            line,
+                            asset_server,
+                            "",
+                            PromptText,
+                            Color::srgb(0.72, 0.96, 0.86),
+                            640.0,
+                        );
+                        spawn_hud_segment(
+                            line,
+                            asset_server,
+                            "",
+                            NoticeText,
+                            Color::srgb(0.95, 0.78, 0.32),
+                            640.0,
+                        );
+                    }
+                });
+        }
     });
 }
 
@@ -207,7 +223,13 @@ fn spawn_hud_rail(
 
     match rail {
         HudRail::Top => node.top = px(0),
-        HudRail::Bottom => node.bottom = px(0),
+        HudRail::Bottom => {
+            node.bottom = px(0);
+            node.height = px(62);
+            node.flex_direction = FlexDirection::Column;
+            node.justify_content = JustifyContent::Center;
+            node.row_gap = px(3);
+        }
     }
 
     let image = match rail {
@@ -218,6 +240,7 @@ fn spawn_hud_rail(
     commands
         .spawn((
             node,
+            crate::components::HudRoot,
             ImageNode {
                 image,
                 image_mode: NodeImageMode::Sliced(TextureSlicer {
@@ -246,6 +269,9 @@ fn spawn_hud_segment<M: Component>(
         .spawn((
             Node {
                 width: px(width),
+                min_width: px(0),
+                flex_grow: 1.0,
+                overflow: Overflow::clip(),
                 height: px(26),
                 display: Display::Flex,
                 align_items: AlignItems::Center,
@@ -261,10 +287,16 @@ fn spawn_hud_segment<M: Component>(
             segment.spawn((
                 Text::new(text),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(color),
+                TextLayout::new_with_linebreak(bevy::text::LineBreak::NoWrap),
+                Node {
+                    min_width: px(0),
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
                 marker,
             ));
         });
@@ -348,6 +380,9 @@ fn spawn_hud_value_segment<M: Component>(
         .spawn((
             Node {
                 width: px(width),
+                min_width: px(0),
+                flex_grow: 1.0,
+                overflow: Overflow::clip(),
                 height: px(26),
                 display: Display::Flex,
                 align_items: AlignItems::Center,
@@ -364,7 +399,7 @@ fn spawn_hud_value_segment<M: Component>(
             segment.spawn((
                 Text::new(label),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.42, 0.54, 0.54)),
@@ -372,10 +407,16 @@ fn spawn_hud_value_segment<M: Component>(
             segment.spawn((
                 Text::new(value),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(color),
+                TextLayout::new_with_linebreak(bevy::text::LineBreak::NoWrap),
+                Node {
+                    min_width: px(0),
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
                 marker,
             ));
         });
@@ -690,9 +731,18 @@ fn spawn_floor_area(
 
 fn floor_tile_path(level: &LevelDefinition, position: Vec2, x: i32, y: i32) -> &'static str {
     let variant = tile_variant_index(x, y);
-    let offset = section_at(level, position).map_or(0, floor_variant_offset);
-
-    FLOOR_TILE_PATHS[(variant + offset) % FLOOR_TILE_PATHS.len()]
+    match section_at(level, position) {
+        Some(SectionKind::Lab) => [
+            FLOOR_TILE_PATHS[3],
+            FLOOR_TILE_PATHS[1],
+            FLOOR_TILE_PATHS[3],
+            FLOOR_TILE_PATHS[3],
+        ][variant],
+        Some(SectionKind::Containment) => "sprites/biomech/tile_floor_biomech_d.png",
+        Some(SectionKind::Triage) => "sprites/biomech/tile_floor_biomech_c.png",
+        Some(SectionKind::Supply) => "sprites/biomech/tile_floor_biomech_b.png",
+        _ => FLOOR_TILE_PATHS[variant],
+    }
 }
 
 fn tile_variant_index(x: i32, y: i32) -> usize {
@@ -715,17 +765,6 @@ fn point_inside_area(point: Vec2, area: AxisAlignedBox) -> bool {
     point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
 }
 
-fn floor_variant_offset(kind: SectionKind) -> usize {
-    match kind {
-        SectionKind::Corridor => 0,
-        SectionKind::Lab => 1,
-        SectionKind::Triage => 2,
-        SectionKind::Supply => 3,
-        SectionKind::Lift => 1,
-        SectionKind::Containment => 2,
-    }
-}
-
 fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
     for section in &level.sections {
         commands.spawn((
@@ -738,6 +777,46 @@ fn spawn_section_tints(commands: &mut Commands, level: &LevelDefinition) {
         ));
 
         spawn_section_edge_accent(commands, section.bounds, section.kind);
+        let label_position = section.bounds.center
+            + Vec2::new(
+                -section.bounds.half_extents.x + 12.0,
+                section.bounds.half_extents.y - 16.0,
+            );
+        commands.spawn((
+            Text2d::new(section.label.to_uppercase()),
+            TextFont {
+                font_size: 10.0,
+                ..default()
+            },
+            TextColor(Color::srgba(0.52, 0.70, 0.75, 0.62)),
+            bevy::sprite::Anchor::CENTER_LEFT,
+            Transform::from_xyz(label_position.x, label_position.y, -7.8),
+            LevelEntity,
+        ));
+        // Short luminaire and reflected light at the back of each room.
+        let light_position =
+            section.bounds.center + Vec2::new(0.0, section.bounds.half_extents.y - 5.0);
+        let light = match section.kind {
+            SectionKind::Containment => Color::srgb(0.24, 0.48, 1.0),
+            SectionKind::Supply => Color::srgb(0.95, 0.61, 0.22),
+            _ => Color::srgb(0.30, 0.83, 0.86),
+        };
+        for layer in 0..6 {
+            let spread = layer as f32;
+            commands.spawn((
+                Sprite::from_color(
+                    light.with_alpha(0.022),
+                    Vec2::new(76.0 + spread * 8.0, 12.0 + spread * 7.0),
+                ),
+                Transform::from_xyz(light_position.x, light_position.y - spread * 3.0, -8.1),
+                LevelEntity,
+            ));
+        }
+        commands.spawn((
+            Sprite::from_color(light, Vec2::new(62.0, 2.0)),
+            Transform::from_xyz(light_position.x, light_position.y, -7.9),
+            LevelEntity,
+        ));
     }
 }
 
@@ -828,6 +907,28 @@ fn spawn_wall(
     size: Vec2,
     level_name: &str,
 ) {
+    // Ground shadow, raised lower face, and a fine upper bevel give the wall height.
+    for layer in 0..3 {
+        let spread = layer as f32 * 3.0;
+        commands.spawn((
+            Sprite::from_color(
+                Color::srgba(0.0, 0.0, 0.0, 0.15),
+                size + Vec2::splat(spread),
+            ),
+            Transform::from_xyz(center.x + 3.0, center.y - 5.0 - spread * 0.5, -6.2),
+            LevelEntity,
+        ));
+    }
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.065, 0.09, 0.11), size),
+        Transform::from_xyz(center.x, center.y - 4.0, -5.2),
+        LevelEntity,
+    ));
+    commands.spawn((
+        Sprite::from_color(Color::srgba(0.42, 0.54, 0.59, 0.55), Vec2::new(size.x, 1.3)),
+        Transform::from_xyz(center.x, center.y + size.y * 0.5 - 1.0, -4.9),
+        LevelEntity,
+    ));
     spawn_tiled_area(
         commands,
         asset_server,
@@ -1133,17 +1234,9 @@ fn spawn_door(
     kind: DoorKind,
     required_objectives: Vec<String>,
 ) {
-    let visual_size = if opened { opened_door_size(size) } else { size };
-    let color = if opened {
-        door_open_color(kind)
-    } else if locked {
-        door_locked_color(kind)
-    } else {
-        door_closed_color(kind)
-    };
-
+    // Gameplay geometry stays fixed. The visible leaves and field are separate children.
     let mut entity = commands.spawn((
-        image_sprite(asset_server, door_sprite_path(kind), visual_size, color),
+        Sprite::from_color(Color::NONE, size),
         Transform::from_xyz(center.x, center.y, -3.0),
         Door {
             id,
@@ -1155,20 +1248,20 @@ fn spawn_door(
         },
         LevelEntity,
     ));
-
     if !opened {
         entity.insert(Wall {
             half_extents: size * 0.5,
         });
     }
-}
-
-fn opened_door_size(size: Vec2) -> Vec2 {
-    if size.x >= size.y {
-        Vec2::new(8.0, size.y.max(18.0))
-    } else {
-        Vec2::new(size.x.max(18.0), 8.0)
-    }
+    let owner = entity.id();
+    crate::door_visuals::spawn_door_visuals(
+        commands,
+        owner,
+        size,
+        kind,
+        opened,
+        asset_server.load("sprites/biomech/v2_door_bulkhead.png"),
+    );
 }
 
 fn door_requirements_met(
@@ -1182,34 +1275,6 @@ fn door_requirements_met(
         .all(|objective_id| level_state.objectives.is_complete(objective_id));
 
     clearance_met && objectives_met
-}
-
-fn door_sprite_path(kind: DoorKind) -> &'static str {
-    match kind {
-        DoorKind::Bulkhead => "sprites/biomech/v2_door_bulkhead.png",
-        DoorKind::EnergyBarrier => "sprites/biomech/v2_door_energy_barrier.png",
-    }
-}
-
-fn door_locked_color(kind: DoorKind) -> Color {
-    match kind {
-        DoorKind::Bulkhead => Color::WHITE,
-        DoorKind::EnergyBarrier => Color::srgba(0.90, 0.35, 1.0, 1.0),
-    }
-}
-
-fn door_closed_color(kind: DoorKind) -> Color {
-    match kind {
-        DoorKind::Bulkhead => Color::srgba(0.78, 1.0, 0.92, 0.90),
-        DoorKind::EnergyBarrier => Color::srgba(0.72, 0.45, 1.0, 0.90),
-    }
-}
-
-fn door_open_color(kind: DoorKind) -> Color {
-    match kind {
-        DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
-        DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
-    }
 }
 
 fn spawn_terminal(
@@ -1247,4 +1312,103 @@ fn spawn_terminal(
         },
         LevelEntity,
     ));
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+    use std::collections::{HashSet, VecDeque};
+
+    // Rasterize the actual split collision geometry with the player's radius,
+    // rather than trusting the semantic section graph to prove reachability.
+    fn reachable(level: &LevelDefinition, clearance: bool, analyzed: bool) -> Vec<Vec2> {
+        let mut blockers = split_walls_around_doors(&level.walls, &level.doors);
+        for door in &level.doors {
+            let available = (door.clearance_id == "open" || clearance)
+                && (door.required_objectives.is_empty() || analyzed);
+            if !available {
+                blockers.push(AxisAlignedBox::new(door.position, door.half_extents));
+            }
+        }
+        let start = (
+            (level.apothecary_start.x / 4.0).round() as i32,
+            (level.apothecary_start.y / 4.0).round() as i32,
+        );
+        let mut visited = HashSet::from([start]);
+        let mut queue = VecDeque::from([start]);
+        while let Some((x, y)) = queue.pop_front() {
+            for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+                let position = Vec2::new(next.0 as f32 * 4.0, next.1 as f32 * 4.0);
+                if position.x.abs() > 428.0 || position.y.abs() > 238.0 || visited.contains(&next) {
+                    continue;
+                }
+                if blockers
+                    .iter()
+                    .any(|wall| game_core::circle_intersects_aabb(position, 22.0, *wall))
+                {
+                    continue;
+                }
+                visited.insert(next);
+                queue.push_back(next);
+            }
+        }
+        visited
+            .into_iter()
+            .map(|(x, y)| Vec2::new(x as f32 * 4.0, y as f32 * 4.0))
+            .collect()
+    }
+
+    #[test]
+    fn quarantine_has_a_playable_key_sample_analyzer_exit_route() {
+        let level: LevelDefinition = ron::from_str(include_str!(
+            "../../../assets/levels/prototype_quarantine_ward.ron"
+        ))
+        .unwrap();
+        level.validate().unwrap();
+        let key = level
+            .pickups
+            .iter()
+            .find(|p| matches!(p.kind, PickupKind::SecurityKeycard(_)))
+            .unwrap()
+            .position;
+        let sample = level
+            .pickups
+            .iter()
+            .find(|p| matches!(p.kind, PickupKind::BioSample))
+            .unwrap()
+            .position;
+        let close =
+            |points: &[Vec2], target: Vec2| points.iter().any(|p| p.distance(target) < 20.0);
+        let initial = reachable(&level, false, false);
+        assert!(
+            close(&initial, key),
+            "key must be reachable before clearance"
+        );
+        assert!(
+            !close(&initial, sample),
+            "blue field must actually gate the lab"
+        );
+        let cleared = reachable(&level, true, false);
+        assert!(close(&cleared, sample));
+        assert!(close(&cleared, level.terminals[0].position));
+        assert!(
+            !close(&cleared, level.exits[0].position),
+            "analysis must gate transit room"
+        );
+        let complete = reachable(&level, true, true);
+        assert!(close(&complete, level.exits[0].position));
+        for entry in &level.entry_points {
+            assert!(
+                close(&complete, entry.position),
+                "return entry must be inside usable space"
+            );
+        }
+        for pickup in &level.pickups {
+            assert!(
+                close(&complete, pickup.position),
+                "unreachable pickup {}",
+                pickup.id
+            );
+        }
+    }
 }

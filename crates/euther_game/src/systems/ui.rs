@@ -5,10 +5,7 @@ use crate::components::{
     Apothecary, BioText, Door, DoorOpening, ExitZone, HudGaugeKind, HudGaugePip, KeysText,
     LivesText, NoticeText, ObjectiveText, PromptText, SectionText, Terminal, TransitionZone,
 };
-use crate::resources::{
-    ApothecaryVitals, CampaignRuntime, CurrentLevelMap, GameNotice, LevelRuntime, LocalLevelState,
-    RunLives,
-};
+use crate::resources::{ApothecaryVitals, CurrentLevelMap, GameNotice, LocalLevelState, RunLives};
 
 const PROMPT_RADIUS: f32 = 72.0;
 
@@ -68,22 +65,28 @@ pub fn update_status_text(
 }
 
 pub fn update_section_text(
-    runtime: Res<CampaignRuntime>,
-    level_runtime: Res<LevelRuntime>,
+    current_map: Res<CurrentLevelMap>,
+    player: Query<&Transform, With<Apothecary>>,
     mut text_query: Query<&mut Text, With<SectionText>>,
 ) {
-    if !runtime.is_changed() && !level_runtime.is_changed() {
+    let Ok(player) = player.single() else { return };
+    let Some(level) = &current_map.level else {
         return;
-    }
-
-    let exits = if level_runtime.available_exits.is_empty() {
-        "none".to_string()
-    } else {
-        level_runtime.available_exits.join(", ")
     };
-
+    let position = player.translation.xy();
+    let label = level
+        .sections
+        .iter()
+        .find(|section| {
+            let delta = (position - section.bounds.center).abs();
+            delta.x <= section.bounds.half_extents.x && delta.y <= section.bounds.half_extents.y
+        })
+        .map(|section| section.label.as_str())
+        .unwrap_or("Connecting passage");
     for mut text in &mut text_query {
-        **text = format!("{} | exits {}", runtime.progress.current_level(), exits);
+        if text.0 != label {
+            text.0 = label.to_string();
+        }
     }
 }
 

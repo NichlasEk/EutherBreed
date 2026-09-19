@@ -2,6 +2,21 @@
 
 Date: 2026-06-03
 
+## Update 2026-09-19: doors, ward and HUD
+
+This update supersedes the older visual/layout state below.
+
+- `door_visuals.rs` builds fixed tracks/jambs, independently cropped sliding leaves and animated blue electric fields. Gameplay door sprites retain a fixed invisible footprint; collision is removed only when the 0.85-second opening completes.
+- Door visual children belong to the door entity and are recursively cleaned up. Saved open doors reconstruct without a blocking field.
+- Original synthesized Vorbis cues live in `assets/audio/`; their deterministic source is `scripts/generate-door-audio.py`.
+- Rebuilt quarantine ward as six rooms with a physical keycard -> lab sample -> analyzer -> transit route, an analysis-gated return shortcut and an optional supply room. Existing content IDs were retained where possible. Use a fresh game to review the new layout; old saves can contain old coordinates.
+- Room-specific floor selection, labels, light strips and wall shadows/bevels are implemented in `setup.rs`.
+- User observed HUD blinking during the first graphical check: two cameras were rendering simultaneously. There is now one persistent app camera, and HUD roots are reused across new runs and hidden in the main menu. The bottom HUD has two bounded rows and a current-room label.
+- `--visual-smoke <directory>` captures closed/opening/open doors, then performs a real campaign transition and captures the destination. It asserts one camera and two HUD roots, uses its own save path and exits automatically.
+- Tests cover locked/opening/open collision, both orientations/kinds, restored visuals, child cleanup, animated arc endpoints and physical player-radius reachability through the revised ward.
+
+Validation: 78 unit tests passed (72 core + 6 game); content, headless, entry, save and notice smoke checks passed. Graphical smoke passed through a real level transition with one camera and two HUD roots. Render captures are under `/tmp/eutherbreed-visual/`; Vulkan emits the previously observed SPIR-V validation warnings on this host. Full manual combat balancing remains to be done.
+
 ## Current State
 
 Repository:

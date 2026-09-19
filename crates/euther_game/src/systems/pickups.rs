@@ -12,7 +12,7 @@ use crate::resources::{
 
 const APOTHECARY_RADIUS: f32 = 22.0;
 const PICKUP_RADIUS: f32 = 14.0;
-const DOOR_OPEN_SECONDS: f32 = 0.42;
+const DOOR_OPEN_SECONDS: f32 = 0.85;
 const DOOR_TRIGGER_PADDING: f32 = APOTHECARY_RADIUS + 24.0;
 
 pub fn collect_pickups(
@@ -73,6 +73,7 @@ pub fn collect_pickups(
 
 pub fn unlock_doors(
     mut commands: Commands,
+    asset_server: Option<Res<AssetServer>>,
     apothecary_query: Single<&Transform, With<Apothecary>>,
     vitals: Res<ApothecaryVitals>,
     mut level_state: ResMut<LocalLevelState>,
@@ -98,6 +99,17 @@ pub fn unlock_doors(
             continue;
         }
 
+        if let Some(assets) = &asset_server {
+            let cue = match door.kind {
+                DoorKind::Bulkhead => "audio/bulkhead-open.ogg",
+                DoorKind::EnergyBarrier => "audio/field-release.ogg",
+            };
+            commands.spawn((
+                AudioPlayer::new(assets.load(cue)),
+                PlaybackSettings::DESPAWN,
+                LevelEntity,
+            ));
+        }
         door.locked = false;
         level_state.0.unlock_door(door.id.clone());
         let door_size = sprite.custom_size.unwrap_or(Vec2::splat(32.0));
@@ -109,7 +121,6 @@ pub fn unlock_doors(
         );
         commands.entity(entity).insert(DoorOpening {
             timer: Timer::from_seconds(DOOR_OPEN_SECONDS, TimerMode::Once),
-            original_size: door_size,
         });
         let message = match door.kind {
             DoorKind::Bulkhead => "Door opening",
@@ -133,24 +144,9 @@ pub fn update_door_openings(
 ) {
     for (entity, mut door, mut opening, mut sprite) in &mut door_query {
         opening.timer.tick(time.delta());
-        let progress = opening.timer.fraction();
-        let eased = ease_out_cubic(progress);
-        let collapse = (1.0 - eased).max(0.05);
-        let mut size = opening.original_size;
-
-        if opening.original_size.x >= opening.original_size.y {
-            size.x = opening.original_size.x * collapse;
-        } else {
-            size.y = opening.original_size.y * collapse;
-        }
-
-        sprite.custom_size = Some(size);
-        sprite.color = door_opening_color(door.kind, eased);
-
         if opening.timer.is_finished() {
             door.opened = true;
-            sprite.custom_size = Some(opened_door_size(opening.original_size));
-            sprite.color = door_open_color(door.kind);
+            sprite.color = Color::NONE;
             commands.entity(entity).remove::<Wall>();
             commands.entity(entity).remove::<DoorOpening>();
         }
@@ -184,66 +180,24 @@ fn spawn_door_opening_effects(commands: &mut Commands, center: Vec2, size: Vec2,
 }
 
 fn spawn_bulkhead_opening_effects(commands: &mut Commands, center: Vec2, size: Vec2) {
-    let horizontal = size.x >= size.y;
-    let axis = if horizontal { Vec2::X } else { Vec2::Y };
-    let cross = if horizontal { Vec2::Y } else { Vec2::X };
-    let panel_size = if horizontal {
-        Vec2::new((size.x * 0.46).max(8.0), size.y.max(8.0))
-    } else {
-        Vec2::new(size.x.max(8.0), (size.y * 0.46).max(8.0))
-    };
-    let panel_offset = axis
-        * (if horizontal {
-            panel_size.x
-        } else {
-            panel_size.y
-        } * 0.52);
-    let slide = axis * (if horizontal { size.x } else { size.y } * 0.48 + 12.0);
-
-    spawn_opening_effect(
-        commands,
-        center - panel_offset,
-        -slide,
-        panel_size,
-        Color::srgba(0.34, 0.58, 0.60, 0.88),
-        0.46,
-        -2.2,
-    );
-    spawn_opening_effect(
-        commands,
-        center + panel_offset,
-        slide,
-        panel_size,
-        Color::srgba(0.28, 0.48, 0.50, 0.88),
-        0.46,
-        -2.2,
-    );
-    spawn_opening_effect(
-        commands,
-        center,
-        Vec2::ZERO,
-        if horizontal {
-            Vec2::new(5.0, size.y + 22.0)
-        } else {
-            Vec2::new(size.x + 22.0, 5.0)
-        },
-        Color::srgba(0.28, 1.0, 0.92, 0.76),
-        0.34,
-        -2.0,
-    );
-    spawn_opening_effect(
-        commands,
-        center + cross * 2.0,
-        cross * 5.0,
-        if horizontal {
-            Vec2::new(size.x + 18.0, 3.0)
-        } else {
-            Vec2::new(3.0, size.y + 18.0)
-        },
-        Color::srgba(0.96, 0.72, 0.30, 0.54),
-        0.28,
-        -1.9,
-    );
+    let axis = if size.x >= size.y { Vec2::X } else { Vec2::Y };
+    let span = size.x.max(size.y);
+    for side in [-1.0, 1.0] {
+        for index in 0..5 {
+            spawn_opening_effect(
+                commands,
+                center + axis * side * span * 0.48,
+                Vec2::new(
+                    side * (8.0 + index as f32 * 3.0),
+                    -10.0 - index as f32 * 4.0,
+                ),
+                Vec2::splat(4.0 + index as f32 * 2.0),
+                Color::srgba(0.60, 0.76, 0.83, 0.13),
+                0.6,
+                -1.8,
+            );
+        }
+    }
 }
 
 fn spawn_energy_barrier_opening_effects(commands: &mut Commands, center: Vec2, size: Vec2) {
@@ -270,7 +224,7 @@ fn spawn_energy_barrier_opening_effects(commands: &mut Commands, center: Vec2, s
             slide,
             long_size,
             if index % 2 == 0 {
-                Color::srgba(0.86, 0.16, 1.0, 0.68)
+                Color::srgba(0.08, 0.38, 1.0, 0.68)
             } else {
                 Color::srgba(0.12, 0.98, 1.0, 0.58)
             },
@@ -284,7 +238,7 @@ fn spawn_energy_barrier_opening_effects(commands: &mut Commands, center: Vec2, s
         center,
         Vec2::ZERO,
         beam_size,
-        Color::srgba(0.98, 0.30, 1.0, 0.84),
+        Color::srgba(0.65, 0.90, 1.0, 0.84),
         0.34,
         -1.7,
     );
@@ -326,30 +280,6 @@ fn door_requirements_met(
         level_state: &level_state.0,
         vitals: &vitals.0,
     })
-}
-
-fn door_opening_color(kind: DoorKind, progress: f32) -> Color {
-    match kind {
-        DoorKind::Bulkhead => Color::srgba(0.90, 1.0, 0.94, 1.0 - progress * 0.55),
-        DoorKind::EnergyBarrier => {
-            Color::srgba(0.85, 0.25 + progress * 0.70, 1.0, 1.0 - progress * 0.70)
-        }
-    }
-}
-
-fn door_open_color(kind: DoorKind) -> Color {
-    match kind {
-        DoorKind::Bulkhead => Color::srgba(0.55, 0.85, 0.80, 0.42),
-        DoorKind::EnergyBarrier => Color::srgba(0.20, 0.95, 1.0, 0.26),
-    }
-}
-
-fn opened_door_size(size: Vec2) -> Vec2 {
-    if size.x >= size.y {
-        Vec2::new(8.0, size.y.max(18.0))
-    } else {
-        Vec2::new(size.x.max(18.0), 8.0)
-    }
 }
 
 pub fn report_exit_overlap(

@@ -1,9 +1,11 @@
 mod components;
+mod door_visuals;
 mod editor;
 mod geometry;
 mod resources;
 mod setup;
 mod systems;
+mod visual_smoke;
 
 use bevy::app::AppExit;
 use bevy::prelude::*;
@@ -122,8 +124,8 @@ fn main() {
 }
 
 fn run_game() {
-    App::new()
-        .insert_resource(ClearColor(Color::srgb(0.015, 0.018, 0.025)))
+    let mut app = App::new();
+    app.insert_resource(ClearColor(Color::srgb(0.015, 0.018, 0.025)))
         .insert_resource(initial_vitals())
         .insert_resource(RunLives::default())
         .insert_resource(initial_contaminant_timer())
@@ -153,7 +155,8 @@ fn run_game() {
                 }),
         )
         .init_state::<AppScreen>()
-        .add_systems(Startup, spawn_menu_camera)
+        .add_systems(Startup, spawn_game_camera)
+        .add_systems(Update, sync_hud_visibility)
         .add_systems(OnEnter(AppScreen::MainMenu), spawn_main_menu)
         .add_systems(
             Update,
@@ -195,7 +198,7 @@ fn run_game() {
                 quick_save_on_key,
                 quick_load_on_key,
                 unlock_doors,
-                update_door_openings,
+                (update_door_openings, door_visuals::animate_door_visuals).chain(),
                 interact_with_terminals,
                 trigger_transition_zones,
                 update_pending_transition,
@@ -213,12 +216,29 @@ fn run_game() {
                 open_pause_menu,
             )
                 .run_if(in_state(AppScreen::InGame)),
-        )
-        .run();
+        );
+    if let Some(directory) = argument_value("--visual-smoke") {
+        visual_smoke::configure(&mut app, directory);
+    }
+    app.run();
 }
 
-fn spawn_menu_camera(mut commands: Commands) {
-    commands.spawn((Camera2d, MainMenuEntity));
+fn spawn_game_camera(mut commands: Commands) {
+    // One camera for the app lifetime, including menus, loads and level transitions.
+    commands.spawn(Camera2d);
+}
+
+fn sync_hud_visibility(
+    state: Res<State<AppScreen>>,
+    mut roots: Query<&mut Visibility, With<components::HudRoot>>,
+) {
+    for mut visibility in &mut roots {
+        *visibility = if *state.get() == AppScreen::MainMenu {
+            Visibility::Hidden
+        } else {
+            Visibility::Visible
+        };
+    }
 }
 
 fn spawn_main_menu(mut commands: Commands) {
@@ -1267,7 +1287,7 @@ fn run_entry_smoke() {
     let research_from_triage = apothecary_spawn_position(&research, Some("from_triage_vault"));
 
     assert_eq!(lab_entry, Vec2::new(-390.0, 0.0));
-    assert_eq!(ward_entry, Vec2::new(390.0, 0.0));
+    assert_eq!(ward_entry, Vec2::new(315.0, 165.0));
     assert_eq!(triage_entry, Vec2::new(-390.0, -168.0));
     assert_eq!(lab_from_triage, Vec2::new(390.0, -168.0));
     assert_eq!(research_from_lab, Vec2::new(-650.0, -285.0));

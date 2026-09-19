@@ -14,6 +14,9 @@ pub struct ApothecaryAnimation {
 pub struct LevelEntity;
 
 #[derive(Component)]
+pub struct HudRoot;
+
+#[derive(Component)]
 pub struct MainMenuEntity;
 
 #[derive(Component, Clone, Copy)]
@@ -149,7 +152,6 @@ pub struct Door {
 #[derive(Component)]
 pub struct DoorOpening {
     pub timer: Timer,
-    pub original_size: Vec2,
 }
 
 #[derive(Component)]

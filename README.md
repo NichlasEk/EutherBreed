@@ -139,3 +139,21 @@ Current prototype:
 ## Non-Goals
 
 EutherBreed is not intended to ship original Alien Breed assets, names, story, audio, maps, or extracted commercial content. Original game files and OpenBreed are useful references for research, but this project should remain an original game.
+
+## Door and quarantine pass (2026-09-19)
+
+- Bulkheads have separate sliding, cropped leaves, fixed jambs/rails, status lights and a synthesized motor/pressure-release cue.
+- Energy barriers have animated blue electric strands, layered blue light and a discharge cue. Their field fades during release; collision remains until the animation finishes.
+- The quarantine ward now contains six rooms: reception, isolation, sample analysis, culture storage, medical stores and decontamination transit. Find the isolation keycard, collect the lab sample and use the analyzer with `E` to release the exit field and return shortcut.
+- Floors differ by room type; walls have shadows/bevels, and rooms have labels and light strips.
+- The bottom HUD uses two clipped, single-line rows and displays the current room name. The camera and HUD persist across level changes; the HUD is hidden on the main menu.
+
+Start a fresh play session to try the revised ward. Older quicksaves retain coordinates from the previous layout.
+
+Reproducible graphical smoke check (opens a window, saves four screenshots, checks camera/HUD counts through a level transition, then exits):
+
+```sh
+cargo run -p euther_game -- --visual-smoke /tmp/eutherbreed-visual
+```
+
+The check uses `/tmp/eutherbreed-visual/smoke-save.ron`, leaving the normal save slot alone. Original door sounds can be regenerated with `python3 scripts/generate-door-audio.py` (requires ffmpeg).
