@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::components::{Apothecary, Contaminant, EffectLifetime, LevelEntity, Projectile, Wall};
-use crate::geometry::circle_hits_any_wall;
+use crate::geometry::segment_box_hit;
 use crate::resources::{ApothecaryVitals, GameNotice, LocalLevelState};
 
 const PROJECTILE_SPEED: f32 = 720.0;
@@ -90,17 +90,52 @@ pub fn fire_syringe_round(
 pub fn move_projectiles(
     mut commands: Commands,
     time: Res<Time>,
-    wall_query: Query<(&Transform, &Wall), Without<Projectile>>,
+    assets: Res<AssetServer>,
+    audio: Res<crate::audio_settings::AudioSettings>,
+    mut state: ResMut<LocalLevelState>,
+    wall_query: Query<(Entity, &Transform, &Wall), Without<Projectile>>,
+    mut breaches: Query<(&mut crate::components::Door, &mut crate::breach::Breachable)>,
     mut query: Query<(Entity, &mut Projectile, &mut Transform)>,
 ) {
     for (entity, mut projectile, mut transform) in &mut query {
         projectile.lifetime.tick(time.delta());
-        transform.translation += (projectile.velocity * time.delta_secs()).extend(0.0);
-
-        if projectile.lifetime.is_finished()
-            || circle_hits_any_wall(transform.translation.xy(), PROJECTILE_RADIUS, &wall_query)
-        {
+        let from = transform.translation.xy();
+        let to = from + projectile.velocity * time.delta_secs();
+        // Sweep against the nearest wall so fast rounds cannot skip a thin door
+        // or damage a weak door through the solid wall in front of it.
+        let hit = wall_query
+            .iter()
+            .filter_map(|(id, t, w)| {
+                segment_box_hit(
+                    from,
+                    to,
+                    t.translation.xy(),
+                    w.half_extents + Vec2::splat(PROJECTILE_RADIUS),
+                )
+                .map(|fraction| (id, fraction))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1));
+        if let Some((wall, fraction)) = hit {
+            let position = from.lerp(to, fraction);
+            if let Ok((mut door, mut breach)) = breaches.get_mut(wall) {
+                crate::breach::hit(
+                    &mut commands,
+                    &assets,
+                    &audio,
+                    &mut state,
+                    wall,
+                    &mut door,
+                    &mut breach,
+                    position,
+                );
+            }
             commands.entity(entity).despawn();
+        } else {
+            transform.translation.x = to.x;
+            transform.translation.y = to.y;
+            if projectile.lifetime.is_finished() {
+                commands.entity(entity).despawn();
+            }
         }
     }
 }

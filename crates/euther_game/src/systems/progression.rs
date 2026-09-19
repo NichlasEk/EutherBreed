@@ -91,6 +91,7 @@ pub fn update_campaign_progress(
         &mut level_runtime,
         &mut current_level_map,
         &level,
+        &level_state.0,
         &mut contaminant_timer,
     );
     signal.exit_lock_active = true;
@@ -182,6 +183,7 @@ pub fn restart_current_level_on_death(
         &mut level_runtime,
         &mut current_level_map,
         &level,
+        &level_state.0,
         &mut contaminant_timer,
     );
 

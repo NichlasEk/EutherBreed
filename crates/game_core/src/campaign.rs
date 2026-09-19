@@ -315,22 +315,15 @@ mod tests {
     fn campaign_file_loads_and_validates_routes() {
         let campaign = CampaignDefinition::from_ron_file("../../assets/campaigns/prototype.ron")
             .expect("prototype campaign should load");
-        let quarantine =
-            LevelDefinition::from_ron_file("../../assets/levels/prototype_quarantine_ward.ron")
-                .expect("prototype level should load");
-        let corridor =
-            LevelDefinition::from_ron_file("../../assets/levels/lab_access_corridor.ron")
-                .expect("corridor level should load");
-        let triage = LevelDefinition::from_ron_file("../../assets/levels/triage_vault.ron")
-            .expect("triage level should load");
-        let research_spine =
-            LevelDefinition::from_ron_file("../../assets/levels/research_spine.ron")
-                .expect("research spine level should load");
-
-        assert_eq!(
-            campaign.validate_level_routes([&quarantine, &corridor, &triage, &research_spine]),
-            Ok(())
-        );
+        let levels: Vec<_> = campaign
+            .levels
+            .iter()
+            .map(|entry| {
+                LevelDefinition::from_ron_file(std::path::Path::new("../..").join(&entry.path))
+                    .expect("campaign level should load")
+            })
+            .collect();
+        assert_eq!(campaign.validate_level_routes(&levels), Ok(()));
     }
 
     #[test]
@@ -341,7 +334,10 @@ mod tests {
             .load_and_validate_levels_from_base("../..")
             .expect("prototype campaign content should validate");
 
-        assert_eq!(levels.len(), 4);
+        assert_eq!(levels.len(), 7);
+        for id in ["coolant_cathedral", "specimen_archive", "choir_relay"] {
+            assert!(levels.iter().any(|level| level.name == id));
+        }
     }
 
     #[test]

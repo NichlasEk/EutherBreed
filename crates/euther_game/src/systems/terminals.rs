@@ -91,6 +91,19 @@ fn response_for(
     }
 }
 
+pub(crate) fn terminal_actions_for_definition(
+    terminal: &game_core::TerminalDefinition,
+) -> Vec<LevelEvent> {
+    terminal_actions(&Terminal {
+        id: terminal.id.clone(),
+        kind: terminal.kind.clone(),
+        objective_id: terminal.objective_id.clone(),
+        required_bio_samples: terminal.required_bio_samples,
+        pattern: terminal.pattern.clone(),
+        actions: terminal.actions.clone(),
+    })
+}
+
 fn terminal_actions(terminal: &Terminal) -> Vec<LevelEvent> {
     if !terminal.actions.is_empty() {
         return terminal.actions.clone();

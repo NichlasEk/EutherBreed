@@ -640,6 +640,9 @@ fn editor_edit_input(
                     DoorKind::Bulkhead => DoorKind::EnergyBarrier,
                     DoorKind::EnergyBarrier => DoorKind::Bulkhead,
                 };
+                if door.kind != DoorKind::Bulkhead {
+                    door.breach = None;
+                }
                 message = Some(format!("door kind {}", door.id));
             }
             if let Some(message) = message {
@@ -731,6 +734,7 @@ fn editor_edit_input(
                     if let Some(door) = state.level.doors.iter_mut().find(|door| door.id == id) {
                         if !door.required_objectives.contains(&objective_id) {
                             door.required_objectives.push(objective_id.clone());
+                            door.breach = None;
                             door.starts_locked = true;
                             state.dirty = true;
                             state.graph_revision += 1;
@@ -1003,6 +1007,7 @@ fn place_palette_item(
                 kind,
                 required_objectives: Vec::new(),
                 connects: None,
+                breach: None,
             };
             spawn_door(commands, asset_server, &door);
             state.level.doors.push(door);
@@ -1365,7 +1370,7 @@ fn inspect_editable(level: &LevelDefinition, selected: &EditableRef) -> String {
                     .map(|connection| format!("{}->{}", connection.from, connection.to))
                     .unwrap_or_else(|| "none".to_string());
                 format!(
-                    "Inspector: door id={} kind={:?} pos=({:.0},{:.0}) size=({:.0},{:.0}) locked={} clearance={} objectives={} connects={}",
+                    "Inspector: door id={} kind={:?} pos=({:.0},{:.0}) size=({:.0},{:.0}) locked={} clearance={} objectives={} connects={} breach={}",
                     door.id,
                     door.kind,
                     door.position.x,
@@ -1375,7 +1380,8 @@ fn inspect_editable(level: &LevelDefinition, selected: &EditableRef) -> String {
                     door.starts_locked,
                     door.clearance_id,
                     door.required_objectives.join(","),
-                    connects
+                    connects,
+                    door.breach.as_ref().map(|b| format!("{} hits / {} alarm hosts",b.hits,b.alarm_spawns.len())).unwrap_or_else(||"none".into())
                 )
             })
             .unwrap_or_else(|| "Inspector: missing door".to_string()),

@@ -51,7 +51,13 @@ pub fn configure(app: &mut App, directory: String) {
     })
     .add_systems(PostUpdate, overview_camera)
     .add_systems(Startup, fullscreen_review);
-    if std::env::args().any(|a| a == "--terminal-review") {
+    if std::env::args().any(|a| a == "--breach-review") {
+        assert_eq!(
+            app.world().resource::<VisualSmoke>().expected_level,
+            "specimen_archive"
+        );
+        app.add_systems(PreUpdate, breach_review.after(bevy::input::InputSystems));
+    } else if std::env::args().any(|a| a == "--terminal-review") {
         app.add_systems(PreUpdate, terminal_review.after(bevy::input::InputSystems));
     } else {
         app.add_systems(Update, capture.run_if(in_state(AppScreen::InGame)));
@@ -78,7 +84,7 @@ fn capture(
     }
     match smoke.stage {
         0 | 2 | 3 | 5 => {
-            if smoke.stage == 0 {
+            if smoke.stage == 0 || smoke.stage == 5 {
                 assert_eq!(map.level.as_ref().unwrap().name, smoke.expected_level);
             }
             assert_eq!(
@@ -103,10 +109,7 @@ fn capture(
         }
         1 => {
             for (entity, mut door) in &mut doors {
-                if matches!(
-                    door.id.as_str(),
-                    "ward_triage_door" | "ward_quarantine_green_door"
-                ) {
+                if !door.opened {
                     door.locked = false;
                     commands.entity(entity).insert(DoorOpening {
                         timer: Timer::from_seconds(0.85, TimerMode::Once),
@@ -115,9 +118,11 @@ fn capture(
             }
         }
         4 => {
+            let route = &map.level.as_ref().unwrap().exits[0];
+            smoke.expected_level = route.target.clone();
             campaign.pending_exit = Some(PendingExit {
-                target: "lab_access_corridor".into(),
-                entry_id: "from_quarantine_ward".into(),
+                target: route.target.clone(),
+                entry_id: route.entry_id.clone(),
             });
         }
         _ => {
@@ -241,6 +246,95 @@ fn terminal_review(
             exit.write(AppExit::Success);
         }
         _ => (),
+    }
+    review.stage += 1;
+}
+
+fn breach_review(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut review: ResMut<VisualSmoke>,
+    mut keys: ResMut<ButtonInput<KeyCode>>,
+    mut mouse: ResMut<ButtonInput<MouseButton>>,
+    mut player: Query<&mut Transform, With<crate::components::Apothecary>>,
+    mut vitals: ResMut<ApothecaryVitals>,
+    mut local: ResMut<crate::resources::LocalLevelState>,
+    doors: Query<(&Door, Option<&crate::components::Wall>)>,
+    enemies: Query<(Entity, &crate::components::Contaminant)>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    keys.reset_all();
+    mouse.reset_all();
+    vitals.0.health = 100;
+    review.elapsed += time.delta_secs();
+    let times = [
+        1.0, 1.6, 1.9, 2.2, 2.5, 3.0, 3.6, 4.0, 4.8, 5.1, 5.4, 5.7, 6.0, 6.3, 6.6, 7.0, 7.8, 8.3,
+        9.1, 9.8,
+    ];
+    if review.elapsed < times[review.stage.min(times.len() - 1)] {
+        return;
+    }
+    let stage = review.stage;
+    info!(
+        "breach review stage {stage}: damage={:?}",
+        local.0.door_damage.get("reserve_gate")
+    );
+    match stage {
+        0 => {
+            if let Ok(mut p) = player.single_mut() {
+                p.translation.x = 0.0;
+                p.translation.y = 15.0;
+            }
+        }
+        1..=4 | 9..=14 => {
+            commands.spawn((
+                Sprite::from_color(Color::srgb(0.7, 1.0, 0.9), Vec2::new(4.0, 18.0)),
+                Transform::from_xyz(0.0, 50.0, 20.0),
+                crate::components::Projectile {
+                    velocity: Vec2::Y * 720.0,
+                    lifetime: Timer::from_seconds(1.0, TimerMode::Once),
+                },
+                crate::components::LevelEntity,
+            ));
+        }
+        5 | 8 => assert_eq!(local.0.door_damage.get("reserve_gate"), Some(&4)),
+        6 => keys.press(KeyCode::F5),
+        7 | 17 => keys.press(KeyCode::F9),
+        15 | 18 => {
+            assert_eq!(local.0.door_damage.get("reserve_gate"), Some(&10));
+            let (door, wall) = doors.iter().find(|(d, _)| d.id == "reserve_gate").unwrap();
+            assert!(door.opened && wall.is_none());
+            let count = enemies
+                .iter()
+                .filter(|(_, e)| e.id.as_deref().is_some_and(|id| id.starts_with("breach:")))
+                .count();
+            assert_eq!(count, if stage == 15 { 2 } else { 1 });
+        }
+        16 => {
+            let id = crate::breach::enemy_id("reserve_gate", 0);
+            for (entity, enemy) in &enemies {
+                if enemy.id.as_deref() == Some(&id) {
+                    commands.entity(entity).despawn();
+                }
+            }
+            local.0.kill_contaminant(id);
+            keys.press(KeyCode::F5);
+        }
+        _ => {
+            exit.write(AppExit::Success);
+        }
+    }
+    if let Some(name) = match stage {
+        0 => Some("intact"),
+        5 => Some("damaged"),
+        8 => Some("damage-restored"),
+        15 => Some("breached"),
+        18 => Some("breach-restored"),
+        _ => None,
+    } {
+        commands
+            .spawn(Screenshot::primary_window())
+            .observe(save_to_disk(format!("{}/{name}.png", review.directory)));
     }
     review.stage += 1;
 }

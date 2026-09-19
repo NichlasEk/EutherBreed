@@ -173,3 +173,11 @@ The check uses `/tmp/eutherbreed-visual/smoke-save.ron`, leaving the normal save
 - Pressing **E** at an already-used terminal gives a hollow double knock and a small display reaction. Missing requirements give a short dull buzz. Neither adds an explanatory text box.
 - Original synthesized cues can be regenerated with `python3 scripts/generate-terminal-audio.py` (NumPy and ffmpeg).
 - Automated graphical interaction review: `cargo run -p euther_game -- --visual-smoke /tmp/eutherbreed-terminal-review-new --terminal-review`. Use a fresh output directory for default-volume assertions. It captures terminal responses, verifies save/load state and adjusts both audio channels using isolated saves/settings.
+
+## Lower-deck scenarios (2026-09-19)
+
+The campaign now has **seven levels**. Complete Research Spine's objectives and use its eastern service lift to reach **Coolant Cathedral**, with an optional **Specimen Archive** detour and onward access to **Choir Relay**. These sectors add a circulation/shortcut puzzle, separate archive keycards and a two-wing signal isolation scenario. Each has its own layout, room art and lighting palette.
+
+See [scenario design, campaign routes and local OpenBreed research](docs/SCENARIOS.md) for details and walkthrough spoilers. Spawn pressure now survives save/load and return visits without repeating terminal rewards.
+
+Some worn bulkheads now support **forced entry**: the Specimen Archive reserve door can be shot apart as an alternative to its keycard. Damage, torn metal and the breach encounter persist across saves. Metal impacts and rupture sounds obey the SFX slider. See the scenario document for spoilers and the automated `--breach-review` check.

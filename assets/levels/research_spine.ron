@@ -578,6 +578,8 @@
         ),
     ],
     entry_points: [
+        (id: "from_coolant_cathedral", position: (650.0, 240.0)),
+        (id: "from_choir_relay", position: (-180.0, 305.0)),
         (
             id: "from_lab_access_corridor",
             position: (-650.0, -285.0),
@@ -608,6 +610,7 @@
         ),
     ],
     transitions: [
+        (id: "spine_coolant_lift", position: (650.0, 135.0), half_extents: (30.0, 32.0), target: "coolant_cathedral", entry_id: "from_research_spine", kind: Lift, required_objectives: ["restore_east_bypass", "route_lift_power", "purge_containment_spine"]),
         (
             id: "spine_power_lift",
             position: (270.0, -18.0),

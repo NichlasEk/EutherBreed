@@ -1,4 +1,5 @@
 mod audio_settings;
+mod breach;
 mod components;
 mod door_visuals;
 mod editor;
@@ -171,6 +172,7 @@ fn run_game() {
             (
                 door_visuals::tick_rejections,
                 terminal_visuals::tick_responses,
+                breach::animate_breaches,
                 terminal_visuals::update_terminal_art,
             )
                 .chain()
@@ -200,11 +202,14 @@ fn run_game() {
             Update,
             (
                 (move_apothecary, aim_apothecary, animate_apothecary_walk).chain(),
-                fire_syringe_round,
-                move_projectiles,
+                (
+                    fire_syringe_round,
+                    move_projectiles,
+                    resolve_projectile_hits,
+                )
+                    .chain(),
                 spawn_contaminants,
                 move_contaminants,
-                resolve_projectile_hits,
                 update_contaminant_hit_flash,
                 update_effect_lifetimes,
                 resolve_contaminant_contact,

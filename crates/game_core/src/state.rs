@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{ApothecaryVitals, ObjectiveProgress};
 use glam::Vec2;
@@ -36,6 +36,8 @@ impl RunState {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LevelState {
+    #[serde(default)]
+    pub door_damage: HashMap<String, u16>,
     #[serde(default)]
     pub clearances: HashSet<String>,
     #[serde(default)]

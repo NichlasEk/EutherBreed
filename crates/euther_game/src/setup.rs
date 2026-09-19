@@ -59,6 +59,7 @@ pub fn setup(
         &mut level_runtime,
         &mut current_level_map,
         &level,
+        &level_state.0,
         &mut contaminant_timer,
     );
 
@@ -563,7 +564,7 @@ pub fn spawn_level(
         let locked = !opened
             && door.starts_locked
             && !door_requirements_met(&door.clearance_id, &door.required_objectives, level_state);
-        spawn_door(
+        let owner = spawn_door(
             commands,
             asset_server,
             door.id.clone(),
@@ -575,6 +576,7 @@ pub fn spawn_level(
             door.kind,
             door.required_objectives.clone(),
         );
+        crate::breach::restore_door(commands, asset_server, owner, door, level_state);
     }
 
     for terminal in &level.terminals {
@@ -943,9 +945,10 @@ pub fn update_level_runtime(
     level_runtime: &mut LevelRuntime,
     current_level_map: &mut CurrentLevelMap,
     level: &LevelDefinition,
+    level_state: &game_core::LevelState,
     contaminant_timer: &mut ContaminantSpawnTimer,
 ) {
-    let interval = level.spawn_interval_seconds.unwrap_or(0.0);
+    let interval = restored_spawn_interval(level, level_state);
     level_runtime.camera_center = level.bounds.center;
     level_runtime.camera_size = level.bounds.half_extents * 2.0;
     level_runtime.dynamic_spawn_points = level.spawn_points.clone();
@@ -1102,6 +1105,9 @@ fn level_floor_tint(level_name: &str) -> Color {
     match level_name {
         "lab_access_corridor" => Color::srgba(0.22, 0.32, 0.36, 0.82),
         "triage_vault" => Color::srgba(0.30, 0.24, 0.34, 0.82),
+        "coolant_cathedral" => Color::srgba(0.20, 0.34, 0.32, 0.82),
+        "specimen_archive" => Color::srgba(0.25, 0.28, 0.38, 0.82),
+        "choir_relay" => Color::srgba(0.32, 0.22, 0.36, 0.82),
         _ => Color::srgba(0.25, 0.30, 0.34, 0.82),
     }
 }
@@ -1110,11 +1116,14 @@ fn level_wall_tint(level_name: &str) -> Color {
     match level_name {
         "lab_access_corridor" => Color::srgba(0.42, 0.62, 0.66, 0.92),
         "triage_vault" => Color::srgba(0.58, 0.46, 0.66, 0.92),
+        "coolant_cathedral" => Color::srgba(0.38, 0.65, 0.60, 0.92),
+        "specimen_archive" => Color::srgba(0.43, 0.49, 0.69, 0.92),
+        "choir_relay" => Color::srgba(0.62, 0.40, 0.67, 0.92),
         _ => Color::srgba(0.50, 0.56, 0.62, 0.92),
     }
 }
 
-fn spawn_contaminant(
+pub(crate) fn spawn_contaminant(
     commands: &mut Commands,
     asset_server: &AssetServer,
     id: Option<String>,
@@ -1311,7 +1320,7 @@ fn spawn_door(
     opened: bool,
     kind: DoorKind,
     required_objectives: Vec<String>,
-) {
+) -> Entity {
     // Gameplay geometry stays fixed. The visible leaves and field are separate children.
     let mut entity = commands.spawn((
         Sprite::from_color(Color::NONE, size),
@@ -1340,6 +1349,7 @@ fn spawn_door(
         opened,
         asset_server.load("sprites/biomech/v2_door_bulkhead.png"),
     );
+    owner
 }
 
 fn door_requirements_met(
@@ -1505,14 +1515,14 @@ mod art_tests {
     use super::*;
     #[test]
     fn all_campaign_decor_fits_inside_floor_without_wall_overlap() {
-        for name in [
-            "prototype_quarantine_ward",
-            "lab_access_corridor",
-            "triage_vault",
-            "research_spine",
-        ] {
-            let level =
-                LevelDefinition::from_ron_file(format!("../../assets/levels/{name}.ron")).unwrap();
+        let campaign =
+            game_core::CampaignDefinition::from_ron_file("../../assets/campaigns/prototype.ron")
+                .unwrap();
+        for level in campaign
+            .load_and_validate_levels_from_base("../..")
+            .unwrap()
+        {
+            let name = &level.name;
             for decor in &level.decor {
                 let half = decor_half_extents(decor);
                 let extent = (decor.position - level.bounds.center).abs() + half;
@@ -1551,14 +1561,14 @@ mod actor_art_tests {
     use super::*;
     #[test]
     fn enemy_spawns_leave_room_for_the_rotated_sprite() {
-        for name in [
-            "prototype_quarantine_ward",
-            "lab_access_corridor",
-            "triage_vault",
-            "research_spine",
-        ] {
-            let level =
-                LevelDefinition::from_ron_file(format!("../../assets/levels/{name}.ron")).unwrap();
+        let campaign =
+            game_core::CampaignDefinition::from_ron_file("../../assets/campaigns/prototype.ron")
+                .unwrap();
+        for level in campaign
+            .load_and_validate_levels_from_base("../..")
+            .unwrap()
+        {
+            let name = &level.name;
             let walls = split_walls_around_doors(&level.walls, &level.doors);
             for position in level
                 .contaminants
@@ -1575,4 +1585,26 @@ mod actor_art_tests {
             }
         }
     }
+}
+
+#[cfg(test)]
+#[path = "scenario_tests.rs"]
+mod scenario_tests;
+
+// Reconstruct persistent pressure without replaying one-shot supply/objective rewards.
+fn restored_spawn_interval(level: &LevelDefinition, state: &game_core::LevelState) -> f32 {
+    let base = level.spawn_interval_seconds.unwrap_or(0.0);
+    if base <= 0.0 {
+        return base;
+    }
+    level
+        .terminals
+        .iter()
+        .filter(|t| state.activated_terminals.contains(&t.id))
+        .flat_map(|t| crate::systems::terminals::terminal_actions_for_definition(t))
+        .filter_map(|a| match a {
+            game_core::LevelEvent::SetSpawnInterval(seconds) => Some(seconds),
+            _ => None,
+        })
+        .fold(base, f32::min)
 }

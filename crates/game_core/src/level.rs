@@ -91,6 +91,13 @@ pub struct LevelEntryPoint {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct DoorBreach {
+    pub hits: u16,
+    #[serde(default)]
+    pub alarm_spawns: Vec<Vec2>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct DoorDefinition {
     pub id: String,
     pub position: Vec2,
@@ -103,6 +110,8 @@ pub struct DoorDefinition {
     pub required_objectives: Vec<String>,
     #[serde(default)]
     pub connects: Option<SectionConnection>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub breach: Option<DoorBreach>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -291,6 +300,33 @@ impl LevelDefinition {
         for door in &self.doors {
             if door.id.trim().is_empty() || !door_ids.insert(door.id.clone()) {
                 return Err(LevelValidationError::InvalidEntityId);
+            }
+
+            if let Some(breach) = &door.breach {
+                if breach.hits == 0
+                    || door.kind != DoorKind::Bulkhead
+                    || !door.required_objectives.is_empty()
+                    || breach.alarm_spawns.len() > 4
+                    || breach.alarm_spawns.iter().any(|p| {
+                        !p.is_finite()
+                            || ((p - self.bounds.center).abs() + Vec2::splat(30.5))
+                                .cmpgt(self.bounds.half_extents)
+                                .any()
+                            || self
+                                .walls
+                                .iter()
+                                .any(|w| crate::circle_intersects_aabb(*p, 30.5, *w))
+                            || self.doors.iter().any(|d| {
+                                crate::circle_intersects_aabb(
+                                    *p,
+                                    30.5,
+                                    AxisAlignedBox::new(d.position, d.half_extents),
+                                )
+                            })
+                    })
+                {
+                    return Err(LevelValidationError::InvalidDoorBreach);
+                }
             }
 
             if door.clearance_id.trim().is_empty() {
@@ -633,6 +669,7 @@ impl LevelDefinition {
                 kind: DoorKind::Bulkhead,
                 required_objectives: vec![],
                 connects: None,
+                breach: None,
             }],
             terminals: vec![TerminalDefinition {
                 id: "ward_lab_analyzer".to_string(),
@@ -692,6 +729,7 @@ pub enum LevelValidationError {
     UnreachableClearance,
     UnreachableObjective,
     InvalidDoorPlacement,
+    InvalidDoorBreach,
     BlockedDoorApproach,
     InvalidDecorPlacement,
     InvalidTerminalAction,
@@ -1582,5 +1620,55 @@ mod tests {
             level.validate(),
             Err(LevelValidationError::InvalidSpawnInterval)
         );
+    }
+}
+
+#[cfg(test)]
+mod breach_tests {
+    use super::*;
+    fn archive() -> LevelDefinition {
+        LevelDefinition::from_ron_file("../../assets/levels/specimen_archive.ron").unwrap()
+    }
+    #[test]
+    fn breach_content_rejects_objective_bypass_fields_and_invalid_ambushes() {
+        for change in 0..5 {
+            let mut level = archive();
+            let door = level
+                .doors
+                .iter_mut()
+                .find(|d| d.id == "reserve_gate")
+                .unwrap();
+            match change {
+                0 => door.breach.as_mut().unwrap().hits = 0,
+                1 => door.kind = DoorKind::EnergyBarrier,
+                2 => door.required_objectives.push("catalog_restored".into()),
+                3 => door
+                    .breach
+                    .as_mut()
+                    .unwrap()
+                    .alarm_spawns
+                    .push(Vec2::new(200.0, 0.0)),
+                _ => door
+                    .breach
+                    .as_mut()
+                    .unwrap()
+                    .alarm_spawns
+                    .push(Vec2::splat(5000.0)),
+            }
+            assert_eq!(
+                level.validate(),
+                Err(LevelValidationError::InvalidDoorBreach)
+            );
+        }
+        assert_eq!(archive().validate(), Ok(()));
+    }
+    #[test]
+    fn old_state_and_levels_default_to_intact_unbreakable_doors() {
+        let state: crate::LevelState = ron::from_str("()").unwrap();
+        assert!(state.door_damage.is_empty());
+        let level =
+            LevelDefinition::from_ron_file("../../assets/levels/prototype_quarantine_ward.ron")
+                .unwrap();
+        assert!(level.doors.iter().all(|d| d.breach.is_none()));
     }
 }

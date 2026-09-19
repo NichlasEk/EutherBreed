@@ -66,12 +66,15 @@ Core game:
 
 Campaign/content:
 
-- Four campaign levels:
+- Seven campaign levels:
   - `prototype_quarantine_ward`
   - `lab_access_corridor`
   - `triage_vault`
   - `research_spine`
-- All four levels now have semantic `sections`.
+  - `coolant_cathedral`
+  - `specimen_archive`
+  - `choir_relay`
+- All seven levels have semantic `sections`.
 - Lab and triage have room graphs, doors, objectives, terminals, and decor passes.
 - Quarantine ward has room graph, objective router action, and decor pass.
 - Research spine remains the most advanced large level.
@@ -300,3 +303,24 @@ Keep pushing toward:
 - SETTINGS is accessible from main/pause menus, with independent mouse/keyboard music and SFX sliders. `saves/audio-settings.ron` persists volumes and music mute independently of game saves. All current door/terminal effects and ventilation obey SFX volume. Noto Sans and its license are bundled for Swedish labels.
 - Unit validation: 84 tests (72 core + 12 game), including terminal response priority, remote objective barrier release and settings roundtrip/sanitization. Successful graphical interaction review: `/tmp/eutherbreed-terminal-review-02`, including denied/success/used responses, F5/F9 state restoration, keyboard slider adjustment and saved values music 0.37 / SFX 0.75. Review mode isolates input and save/settings paths. Use a fresh output directory when repeating its default-volume assertions.
 - Graphics/music/terminal/settings work after `dff3914` is included together in the graphics, adaptive music and terminal feedback milestone.
+
+## Lower-deck scenario continuation (2026-09-19)
+
+- Added three original playable sectors, taking the campaign to seven levels. Research Spine has an objective-gated eastern service lift. Coolant Cathedral has a central sealed chamber, pump/analysis progression and a return shortcut; Specimen Archive is an optional keycard/supply branch; Choir Relay accepts its two wings in either order and reconnects to Research Spine after isolation.
+- New sectors use the existing terminal art/sound, energy fields and ambient music, with teal/blue/violet floor and wall palettes. Existing exits and save ids are retained.
+- Fixed activated-terminal spawn pressure being lost on load/revisit: `update_level_runtime` now derives the interval from saved terminal ids and their actions. Supply rewards are never replayed.
+- Added geometry-level staged route tests and expanded art/enemy placement checks to seven sectors. The graphical smoke now opens the selected level's doors and follows its actual first exit, asserting the destination, rather than always forcing Lab Access Corridor.
+- Local research and spoiler walkthroughs: `docs/SCENARIOS.md`. OpenBreed checkout inspected: `fac5b440`; original EPF has 55 MAP-named entries, but original game source code was not found in the game-data folder.
+- Validation: 89 tests (72 core + 17 game), full `scripts/check.sh`, and graphical checks under `/tmp/eutherbreed-{coolant,archive,relay}-final`. These verify all three new sectors and actual return destinations; save tests use isolated paths.
+- This continuation is included in the lower-deck scenarios and breachable bulkheads milestone.
+
+## Breachable bulkhead continuation (2026-09-19)
+
+- Implemented opt-in `DoorBreach` content based on the verified destruction path in local OpenBreed `Door.lua`. Only the archive reserve door currently opts in: ten hits, two one-shot alarm hosts. Keycard entry is quiet. Main objective fields are not breakable.
+- `breach.rs` handles saved damage, scars, metal-hit flash, animated fragments, collision removal and stable ambush enemy ids. New original impact/rupture audio uses the common SFX mixer; generator is `scripts/generate-breach-audio.py`.
+- `LevelState.door_damage` defaults for older saves. Unlocked state and existing killed-contaminant records reconstruct breached doors and surviving hosts; no new save version is needed.
+- Projectile movement now uses a nearest-wall segment sweep and runs before enemy-hit resolution. Tests cover fast rounds, occluding walls, partial damage restoration, one-shot ambushes and quiet entry.
+- Editor inspector displays breach configuration. Switching to an energy field or adding objective requirements clears the incompatible optional breach; ordinary editing/save preserves it.
+- Actual graphical breach/save/load review passed under `/tmp/eutherbreed-breach-review`; screenshot/log assertions cover four-hit damage, ten-hit destruction, removed collision and a killed host remaining dead after load.
+- Final validation: 95 unit tests (74 core + 21 game), complete `scripts/check.sh`, and graphical breach regression passed. Logs: `/tmp/eutherbreed-breach-final-tests.log`, `/tmp/eutherbreed-breach-final-check.log`, `/tmp/eutherbreed-breach-review.log`.
+- This work and the preceding three-level scenario slice are committed together as the lower-deck scenarios and breachable bulkheads milestone.

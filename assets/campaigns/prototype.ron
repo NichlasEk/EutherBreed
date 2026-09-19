@@ -18,5 +18,8 @@
             id: "research_spine",
             path: "assets/levels/research_spine.ron",
         ),
+        (id: "coolant_cathedral", path: "assets/levels/coolant_cathedral.ron"),
+        (id: "specimen_archive", path: "assets/levels/specimen_archive.ron"),
+        (id: "choir_relay", path: "assets/levels/choir_relay.ron"),
     ],
 )

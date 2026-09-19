@@ -116,6 +116,7 @@ pub fn quick_load_on_key(
         &mut level_runtime,
         &mut current_level_map,
         &level,
+        &level_state.0,
         &mut contaminant_timer,
     );
 
